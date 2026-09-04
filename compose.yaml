@@ -37,6 +37,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     command: ["corepack", "pnpm", "db:migrate"]
     environment:
+      NODE_ENV: ${NODE_ENV:-development}
       MIGRATION_DATABASE_URL: postgresql://vetoros_migration:${VETOROS_MIGRATION_PASSWORD:-local_migration_only}@postgres:5432/${POSTGRES_DB:-vetoros}
     depends_on:
       postgres:

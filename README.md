@@ -60,3 +60,6 @@ PostgreSQL e Redis são publicados somente em `127.0.0.1` no Compose de desenvol
 Qualquer acesso a tabela tenant-owned deve ocorrer por `withTenantTransaction`, que instala `app.tenant_id`, ator real e perfil efetivo via `set_config(..., true)`. O terceiro argumento `true` restringe o contexto à transação. IDs recebidos em body ou query nunca definem a autoridade do tenant.
 
 As decisões estão em [docs/architecture/DB01_MULTITENANCY_IMPLEMENTATION.md](docs/architecture/DB01_MULTITENANCY_IMPLEMENTATION.md).
+### Login faker local
+
+O seed de desenvolvimento cria a identidade `andersonbrasil72@gmail.com` no Tenant Alpha com a senha definida em `DEV_FAKER_PASSWORD` (padrão local: `12345678`). Essa conta é somente para testes locais; com `NODE_ENV=production` ela é criada bloqueada e não recebe membership.

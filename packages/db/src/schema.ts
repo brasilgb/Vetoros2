@@ -70,6 +70,12 @@ export const customerAddresses = pgTable('customer_addresses', {
 export const customerContacts = pgTable('customer_contacts', {
   id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), customerId: uuid('customer_id').notNull(), contactType: text('contact_type').notNull(), label: text('label'), value: text('value').notNull(), valueNormalized: text('value_normalized').notNull(), isPrimary: boolean('is_primary').notNull().default(false), ...timestamps,
 }, (t) => [unique('customer_contacts_tenant_id_id_uq').on(t.tenantId, t.id), index('customer_contacts_customer_idx').on(t.tenantId, t.customerId)]);
+export const customerAssets = pgTable('customer_assets', {
+  id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), customerId: uuid('customer_id').notNull(), internalIdentifier: text('internal_identifier').notNull(), category: text('category').notNull(), brand: text('brand'), model: text('model'), serialNumber: text('serial_number'), imei: text('imei'), assetTag: text('asset_tag'), description: text('description'), notes: text('notes'), status: text('status').notNull().default('active'), originCompanyId: uuid('origin_company_id'), originBranchId: uuid('origin_branch_id'), createdByIdentityId: uuid('created_by_identity_id'), updatedByIdentityId: uuid('updated_by_identity_id'), ...timestamps,
+}, (t) => [unique('customer_assets_tenant_id_id_uq').on(t.tenantId,t.id), unique('customer_assets_identifier_uq').on(t.tenantId,t.internalIdentifier), index('customer_assets_customer_idx').on(t.tenantId,t.customerId)]);
+export const customerAssetIdentifiers = pgTable('customer_asset_identifiers', {
+  id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), assetId: uuid('asset_id').notNull(), identifierType: text('identifier_type').notNull(), value: text('value').notNull(), valueNormalized: text('value_normalized').notNull(), ...timestamps,
+}, (t) => [unique('customer_asset_identifiers_tenant_id_id_uq').on(t.tenantId,t.id), unique('customer_asset_identifiers_uq').on(t.tenantId,t.identifierType,t.valueNormalized), index('customer_asset_identifiers_asset_idx').on(t.tenantId,t.assetId)]);
 
 export const permissions = pgTable('permissions', {
   id: uuid('id').primaryKey().defaultRandom(), code: text('code').notNull().unique(), module: text('module').notNull(), description: text('description'),

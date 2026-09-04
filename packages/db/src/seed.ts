@@ -9,6 +9,7 @@ const templates = ['owner', 'administrator', 'attendance', 'technician', 'invent
 const dev = {
   identity: '01992ea1-1250-7000-8000-000000000001',
   identitySingle: '01992ea1-1250-7000-8000-000000000002', identityNone: '01992ea1-1250-7000-8000-000000000003',
+  identityFaker: '01992ea1-1250-7000-8000-000000000004',
   tenantAlpha: '01992ea1-1250-7000-8000-000000000010', tenantBeta: '01992ea1-1250-7000-8000-000000000020',
   membershipAlpha: '01992ea1-1250-7000-8000-000000000011', membershipBeta: '01992ea1-1250-7000-8000-000000000021',
   membershipSingle: '01992ea1-1250-7000-8000-000000000014',
@@ -17,6 +18,7 @@ const dev = {
   branchAlpha: '01992ea1-1250-7000-8000-000000000013', branchBeta: '01992ea1-1250-7000-8000-000000000023',
   companyAlphaServices: '01992ea1-1250-7000-8000-000000000017', branchAlphaNorth: '01992ea1-1250-7000-8000-000000000018', branchAlphaServices: '01992ea1-1250-7000-8000-000000000019',
   permissionSessionRead: '01992ea1-1250-7000-8000-000000000030', roleSingle: '01992ea1-1250-7000-8000-000000000031', grantSingle: '01992ea1-1250-7000-8000-000000000032',
+  membershipFaker: '01992ea1-1250-7000-8000-000000000024', profileFaker: '01992ea1-1250-7000-8000-000000000026', roleFaker: '01992ea1-1250-7000-8000-000000000046', grantFaker: '01992ea1-1250-7000-8000-000000000047',
 };
 try {
   for (const code of templates) {
@@ -25,16 +27,20 @@ try {
   }
   const devPassword = process.env.DEV_SEED_PASSWORD ?? 'change-me-local-only';
   const passwordHash = await argon2.hash(devPassword, { type: argon2.argon2id });
+  const fakerEnabled = process.env.NODE_ENV !== 'production';
+  const fakerPassword = process.env.DEV_FAKER_PASSWORD ?? '12345678';
+  const fakerHash = fakerEnabled ? await argon2.hash(fakerPassword, { type: argon2.argon2id }) : null;
   await db.execute(sql`insert into identities (id,email_normalized,password_hash,display_name,status) values
     (${dev.identity},'shared@vetoros.local',${passwordHash},'Identity compartilhada','active'),
     (${dev.identitySingle},'single@vetoros.local',${passwordHash},'Identity single tenant','active'),
-    (${dev.identityNone},'none@vetoros.local',${passwordHash},'Identity sem membership','active')
+    (${dev.identityNone},'none@vetoros.local',${passwordHash},'Identity sem membership','active'),
+    (${dev.identityFaker},'andersonbrasil72@gmail.com',${fakerHash},'Usuário faker local',${fakerEnabled ? 'active' : 'blocked'})
     on conflict (id) do update set password_hash=excluded.password_hash`);
   await db.execute(sql`insert into tenants (id,slug,legal_name,trade_name,status) values
     (${dev.tenantAlpha},'tenant-alpha','Tenant Alpha','Tenant Alpha','active'),
     (${dev.tenantBeta},'tenant-beta','Tenant Beta','Tenant Beta','active') on conflict (id) do nothing`);
-  const permissionCodes = ['auth.session.read','operational.context.select','companies.read','companies.create','companies.update','branches.read','branches.create','branches.update','customers.read','customers.create','customers.update'];
-  const permissionIds = [dev.permissionSessionRead,'01992ea1-1250-7000-8000-000000000033','01992ea1-1250-7000-8000-000000000034','01992ea1-1250-7000-8000-000000000035','01992ea1-1250-7000-8000-000000000036','01992ea1-1250-7000-8000-000000000037','01992ea1-1250-7000-8000-000000000038','01992ea1-1250-7000-8000-000000000039','01992ea1-1250-7000-8000-000000000040','01992ea1-1250-7000-8000-000000000041','01992ea1-1250-7000-8000-000000000042'];
+  const permissionCodes = ['auth.session.read','operational.context.select','companies.read','companies.create','companies.update','branches.read','branches.create','branches.update','customers.read','customers.create','customers.update','customer_assets.read','customer_assets.create','customer_assets.update'];
+  const permissionIds = [dev.permissionSessionRead,'01992ea1-1250-7000-8000-000000000033','01992ea1-1250-7000-8000-000000000034','01992ea1-1250-7000-8000-000000000035','01992ea1-1250-7000-8000-000000000036','01992ea1-1250-7000-8000-000000000037','01992ea1-1250-7000-8000-000000000038','01992ea1-1250-7000-8000-000000000039','01992ea1-1250-7000-8000-000000000040','01992ea1-1250-7000-8000-000000000041','01992ea1-1250-7000-8000-000000000042','01992ea1-1250-7000-8000-000000000043','01992ea1-1250-7000-8000-000000000044','01992ea1-1250-7000-8000-000000000045'];
   for (const [position, code] of permissionCodes.entries()) await db.execute(sql`insert into permissions (id,code,module,description) values (${permissionIds[position]!},${code},${code.split('.')[0]!},${code}) on conflict (id) do nothing`);
   for (const item of [
     { tenant: dev.tenantAlpha, membership: dev.membershipAlpha, company: dev.companyAlpha, branch: dev.branchAlpha, suffix: 'Alpha' },
@@ -58,6 +64,14 @@ try {
     await tx.execute(sql`insert into access_grants (id,tenant_id,user_profile_id,role_id,scope_type) values (${dev.grantSingle},${dev.tenantAlpha},${dev.profileSingle},${dev.roleSingle},'tenant') on conflict (id) do nothing`);
     await tx.execute(sql`insert into companies (id,tenant_id,legal_name,trade_name,tax_id_type,tax_id_normalized) values (${dev.companyAlphaServices},${dev.tenantAlpha},'Company Alpha Serviços','Alpha Serviços','cnpj','01992ea1125071') on conflict (id) do nothing`);
     await tx.execute(sql`insert into branches (id,tenant_id,company_id,code,name) values (${dev.branchAlphaNorth},${dev.tenantAlpha},${dev.companyAlpha},'NORTH','Branch Alpha Norte'),(${dev.branchAlphaServices},${dev.tenantAlpha},${dev.companyAlphaServices},'SERVICES','Branch Alpha Serviços 01') on conflict (id) do nothing`);
+  });
+  if (fakerEnabled) await db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', ${dev.tenantAlpha}, true)`);
+    await tx.execute(sql`insert into tenant_memberships (id,tenant_id,identity_id,status) values (${dev.membershipFaker},${dev.tenantAlpha},${dev.identityFaker},'active') on conflict (id) do nothing`);
+    await tx.execute(sql`insert into tenant_user_profiles (id,tenant_id,membership_id,name) values (${dev.profileFaker},${dev.tenantAlpha},${dev.membershipFaker},'Anderson Brasil (faker)') on conflict (id) do nothing`);
+    await tx.execute(sql`insert into tenant_roles (id,tenant_id,code,name,scope_type) values (${dev.roleFaker},${dev.tenantAlpha},'dev_faker_all','Development faker local','tenant') on conflict (id) do nothing`);
+    for (const permissionId of permissionIds) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleFaker},${permissionId}) on conflict do nothing`);
+    await tx.execute(sql`insert into access_grants (id,tenant_id,user_profile_id,role_id,scope_type) values (${dev.grantFaker},${dev.tenantAlpha},${dev.profileFaker},${dev.roleFaker},'tenant') on conflict (id) do nothing`);
   });
   for (const sample of [
     { tenant: dev.tenantAlpha, customer: '01992ea1-1250-7000-8000-000000000050', type: 'individual', name: 'Cliente Alpha PF', docType: 'cpf', doc: '52998224725', company: dev.companyAlpha },

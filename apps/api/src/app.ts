@@ -5,6 +5,7 @@ import type { AuthService } from './auth/service.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerCoreRoutes } from './core/routes.js';
 import { registerCustomerRoutes } from './customers/routes.js';
+import { registerAssetRoutes } from './assets/routes.js';
 
 export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string }) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -14,6 +15,7 @@ export function buildApp(options?: { authService?: AuthService; secureCookie?: b
     registerAuthRoutes(app, options.authService, { secureCookie: options.secureCookie ?? false, ttlSeconds: options.sessionTtlSeconds ?? 28_800, loginRateLimitMax: options.loginRateLimitMax ?? 5 });
     registerCoreRoutes(app, options.authService);
     registerCustomerRoutes(app, options.authService);
+    registerAssetRoutes(app, options.authService);
   }
   return app;
 }
