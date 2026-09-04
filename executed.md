@@ -1,40 +1,42 @@
-# Resumo de execução — correio.md
+# Resumo de execução — correio.md (OS-02)
 
 **Data:** 4 de setembro de 2026  
 **Projeto:** `vetoros2`  
 **Status:** concluído para revisão, sem commit.
 
-CRM-02 foi executado e validado: equipamentos multitenant vinculados a clientes,
-identificadores extensíveis, RLS/FKs same-tenant, permissões, auditoria
-append-only, API e telas de equipamentos. OS-01 e demais módulos posteriores não
-foram iniciados; AUTH-01 permanece inalterado.
+Antes de executar, foi verificado que o `correio.md` atual era OS-02 — Itens e
+serviços da Ordem de Serviço, não o documento anterior de OS-01.
+
+## Implementação
+
+- criada `packages/db/migrations/0008_service_order_items.sql`;
+- itens `service`/`part` com quantidade, valores `numeric`, desconto e total
+  determinístico calculado no banco;
+- FK composta same-tenant para `service_orders`, checks de integridade e RLS;
+- API GET/POST/PATCH/DELETE de itens nas rotas de OS;
+- detalhe da OS com itens, subtotal, descontos e total;
+- teste dedicado `packages/db/tests/service-order-items-contract.test.ts`.
+
+Não foram implementados estoque, compras, fiscal, financeiro ou módulos
+posteriores.
 
 ## Validação
 
-- `docker compose up -d --build`: OK;
+- build Docker: OK;
 - migration e seed: `Exited (0)`;
 - lint/typecheck: OK;
-- testes DB: **31/31**;
-- testes API: **33/33**;
-- frontend/login: HTTP 200 em `http://localhost:3000/login`;
+- DB: **39/39 testes**;
+- API: **38/38 testes**;
 - health: `{"status":"ok"}` em `http://localhost:3001/health`;
-- logs recentes de API/web: nenhum erro relevante.
+- login: HTTP 200 em `http://localhost:3000/login`;
+- detalhe OS: HTTP 307 em `http://localhost:3000/app/service-orders` (redirecionamento esperado para autenticação);
+- API/web saudáveis; PostgreSQL e Redis apenas na rede interna.
 
-```text
-vetoros2-api-1        Up (healthy)  0.0.0.0:3001->3001/tcp
-vetoros2-web-1        Up (healthy)  0.0.0.0:3000->3000/tcp
-vetoros2-postgres-1   Up (healthy) 5432/tcp (rede interna)
-vetoros2-redis-1      Up (healthy)  6379/tcp (rede interna)
-vetoros2-migrate-1    Exited (0)
-vetoros2-seed-1       Exited (0)
-```
+URLs: `http://localhost:3000/app/service-orders`,
+`http://localhost:3000/app/service-orders/new` e
+`http://localhost:3001/health`.
 
-URLs: frontend `http://localhost:3000`, API `http://localhost:3001`, health
-`http://localhost:3001/health` e equipamentos `http://localhost:3000/app/assets`.
+DB-01, AUTH-01, CORE-01, CRM-01, CRM-02 e OS-01 permanecem preservados.
+`vetoros1` não foi alterado. Nenhum commit foi criado.
 
-Login faker local: `andersonbrasil72@gmail.com` / `12345678`, restrito ao
-desenvolvimento e validado anteriormente com sucesso.
-
-`vetoros1` não foi alterado.
-
-**Gate CRM-02: APROVÁVEL.**
+**Gate OS-02: APROVÁVEL**

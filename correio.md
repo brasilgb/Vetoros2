@@ -1,784 +1,396 @@
-# VetorOS 2 — OS-01 Núcleo de Ordens de Serviço
+Perfeito. Vamos abrir formalmente a próxima rodada.
 
-**Data:** 4 de setembro de 2026
-**Projeto:** `vetoros2`
-**Objetivo:** implementar exclusivamente o primeiro núcleo funcional de Ordens de Serviço.
+## OS-02 — Itens e serviços da Ordem de Serviço
 
-## 1. Contexto obrigatório
+Execute **exclusivamente o OS-02** no projeto `vetoros2`, sem commit ao final.
 
-O projeto já possui e deve reutilizar integralmente:
+### 1. Descoberta obrigatória antes de alterar código
 
-* DB-01 — multitenancy;
-* AUTH-01 — autenticação, sessão, TenantContext e autorização;
-* CORE-01 — Company, Branch e contexto operacional;
-* CRM-01 — Customers;
-* CRM-02 — Customer Assets.
+Antes de criar migration ou modificar schema, revisar:
 
-A cadeia arquitetural existente é:
+* `correio.md`;
+* migration `0007_service_orders.sql`;
+* estrutura atual de `service_orders`;
+* rotas e contratos de OS;
+* permissões `service_orders.*`;
+* auditoria existente;
+* padrões de RLS e FKs compostas usados em CRM-02 e OS-01;
+* telas:
 
-```text
-Identity
-→ Session
-→ TenantMembership
-→ TenantContext
-→ Company / Branch
-→ Customer
-→ Customer Asset
-→ Service Order
-```
+  * `/app/service-orders`;
+  * `/app/service-orders/new`;
+  * `/app/service-orders/:id`.
 
-Não recriar mecanismos paralelos de autenticação, autorização, tenant resolution, auditoria, sequenciamento ou contexto operacional.
+Confirmar primeiro se já existe alguma estrutura reutilizável para representar itens da OS.
 
-`vetoros1` é somente referência funcional e não deve ser alterado.
+**Não criar tabela nova sem justificar por que a estrutura existente não atende.**
 
 ---
 
-# 2. Escopo do OS-01
+## 2. Objetivo funcional
 
-Implementar o cadastro base multitenant de Ordens de Serviço.
+Permitir que uma Ordem de Serviço possua múltiplos itens, inicialmente de dois tipos:
 
-O OS-01 deve contemplar somente:
+* **serviço**
+* **peça/produto**
 
-* criação da ordem de serviço;
-* listagem;
-* consulta detalhada;
-* atualização dos dados básicos;
-* vínculo obrigatório com Customer;
-* vínculo opcional com Customer Asset;
-* Company e Branch responsáveis;
-* número sequencial da OS por tenant;
-* lifecycle/status inicial;
-* descrição do problema informado pelo cliente;
-* observações básicas;
-* prioridade;
-* datas operacionais essenciais;
-* permissões;
-* RLS;
-* auditoria append-only;
-* API;
-* frontend mínimo funcional;
-* migrations;
-* seed;
-* testes.
+O item deve pertencer obrigatoriamente à mesma:
 
-Não avançar para orçamento, peças, produtos, estoque, financeiro, pagamento, emissão fiscal, comissão, checklist avançado, anexos, fotos ou outros módulos posteriores.
+`Tenant → Company/Branch → Service Order`
+
+do contexto operacional permitido.
+
+Não implementar ainda movimentação de estoque, baixa de estoque, reserva, compra, fiscal ou financeiro.
 
 ---
 
-# 3. Persistência
+## 3. Modelo mínimo esperado
 
-Criar tabela principal para ordens de serviço seguindo os padrões existentes do projeto.
+Caso a descoberta confirme necessidade de nova persistência, criar algo equivalente a:
 
-Sugestão conceitual:
+`service_order_items`
 
-```text
-service_orders
-```
+Campos mínimos:
 
-Campos mínimos esperados:
+* `id`
+* `tenant_id`
+* `service_order_id`
+* `type`
 
-```text
-id
-tenant_id
-company_id
-branch_id
-customer_id
-customer_asset_id nullable
+  * `service`
+  * `part`
+* `description`
+* `quantity`
+* `unit_price`
+* `discount_amount` ou mecanismo equivalente
+* `total_amount`
+* `notes`, opcional
+* `created_at`
+* `updated_at`
 
-service_order_number
+Se o domínio atual já possuir `product_id` ou estrutura de produtos/peças apropriada, o vínculo poderá ser opcional.
 
-status
-priority
+Não criar agora um módulo inteiro de catálogo apenas para satisfazer OS-02.
 
-reported_issue
-internal_notes nullable
+### Valores monetários
 
-opened_at
-closed_at nullable
+Evitar `float`.
 
-created_at
-updated_at
-```
+Utilizar o padrão monetário já adotado pelo projeto, por exemplo `numeric/decimal` com precisão apropriada.
 
-Pode adicionar campos estritamente necessários para compatibilidade com os padrões técnicos já existentes, mas não ampliar o domínio funcional.
+O total do item deve ser determinístico:
 
----
+`quantidade × valor unitário − desconto`
 
-# 4. Numeração da OS
-
-`service_order_number` deve ser:
-
-* sequencial por tenant;
-* gerado no backend/banco;
-* transacional;
-* concorrente;
-* previsível somente dentro do tenant;
-* independente dos IDs técnicos.
-
-É proibido usar:
-
-```sql
-MAX(service_order_number) + 1
-```
-
-Reutilizar o mesmo padrão arquitetural adotado no `customer_number` do CRM-01 sempre que aplicável.
-
-A combinação abaixo deve ser única:
-
-```text
-tenant_id + service_order_number
-```
+Não aceitar total arbitrário enviado pelo frontend se ele puder ser calculado pelo backend.
 
 ---
 
-# 5. Customer e Asset
+## 4. Integridade multitenant
 
-Toda OS deve obrigatoriamente pertencer a um Customer.
+OS-02 deve seguir o padrão forte já adotado no projeto.
 
-`customer_asset_id` pode ser nulo.
+Garantir:
 
-Quando houver equipamento vinculado:
+* item nunca pode apontar para OS de outro tenant;
+* eventual produto/peça vinculada deve pertencer ao mesmo tenant;
+* FKs compostas sempre que forem necessárias para garantir isso no banco;
+* RLS para leitura e escrita;
+* contexto da sessão utilizado no backend;
+* nenhuma confiança em `tenant_id` informado pelo cliente.
 
-```text
-service_order.tenant_id
-=
-customer.tenant_id
-=
-customer_asset.tenant_id
-```
-
-E:
-
-```text
-customer_asset.customer_id
-=
-service_order.customer_id
-```
-
-Não confiar apenas na validação da aplicação.
-
-Criar constraints/FKs same-tenant adequadas no banco sempre que tecnicamente possível.
-
-Uma OS nunca pode vincular:
-
-* cliente de outro tenant;
-* equipamento de outro tenant;
-* equipamento pertencente a outro cliente.
+O usuário jamais deve conseguir escapar do tenant alterando UUIDs no payload.
 
 ---
 
-# 6. Company e Branch
+## 5. Regras funcionais
 
-Toda OS deve pertencer ao contexto operacional correto.
+Implementar pelo menos:
 
-Aplicar:
+### Criar item
 
-```text
-Tenant
-→ Company
-→ Branch
-→ Service Order
-```
-
-Reutilizar CORE-01.
-
-Não aceitar `tenant_id`, `company_id` ou `branch_id` arbitrários enviados pelo frontend se esses valores puderem ser derivados da sessão/contexto operacional.
-
-O ownership sempre deve ser derivado de contexto autorizado.
-
----
-
-# 7. Status
-
-Criar lifecycle simples e fechado.
-
-Status mínimos:
-
-```text
-OPEN
-IN_PROGRESS
-COMPLETED
-CANCELLED
-```
-
-Não implementar ainda uma máquina de estados complexa.
-
-Regras mínimas:
-
-* nova OS inicia como `OPEN`;
-* pode avançar para `IN_PROGRESS`;
-* pode ser concluída como `COMPLETED`;
-* pode ser cancelada como `CANCELLED`;
-* `closed_at` deve ser preenchido quando atingir `COMPLETED` ou `CANCELLED`;
-* reabertura ou workflows especiais ficam fora do OS-01.
-
-Centralizar as transições em um único ponto do backend.
-
-Não deixar lógica de lifecycle espalhada por controllers/routes.
-
----
-
-# 8. Prioridade
-
-Criar enum ou vocabulário fechado, por exemplo:
-
-```text
-LOW
-NORMAL
-HIGH
-URGENT
-```
-
-Nova OS deve assumir `NORMAL` por padrão.
-
----
-
-# 9. Descrição da ocorrência
-
-Campo obrigatório:
-
-```text
-reported_issue
-```
-
-Representa aquilo que o cliente informou no recebimento.
-
-Deve aceitar texto suficiente para descrição operacional normal.
-
-Campo opcional:
-
-```text
-internal_notes
-```
-
-Este campo é interno.
-
-Não criar ainda:
-
-* diagnóstico técnico formal;
-* laudo;
-* solução técnica;
-* checklist;
-* orçamento.
-
-Esses conceitos pertencem a etapas posteriores.
-
----
-
-# 10. Datas
-
-Manter no mínimo:
-
-```text
-opened_at
-closed_at
-created_at
-updated_at
-```
-
-`opened_at` deve ser definido pelo backend.
-
-`closed_at` deve permanecer `NULL` enquanto a OS estiver aberta/em andamento.
-
-Datas devem seguir os mesmos padrões UTC/timestamp já utilizados no projeto.
-
----
-
-# 11. RLS
-
-RLS é obrigatório.
-
-A tabela `service_orders` deve possuir:
-
-```sql
-ENABLE ROW LEVEL SECURITY
-FORCE ROW LEVEL SECURITY
-```
-
-As policies devem usar o mecanismo já existente de TenantContext.
-
-Nenhuma query de aplicação deve depender exclusivamente de:
-
-```sql
-WHERE tenant_id = ?
-```
-
-para segurança multitenant.
-
-O banco deve continuar fail-closed.
-
----
-
-# 12. Autorizações
-
-Criar e integrar no mecanismo existente as permissions:
-
-```text
-service_orders.read
-service_orders.create
-service_orders.update
-```
-
-Se o projeto já tiver convenção melhor de naming, seguir a convenção existente.
-
-Não implementar permission system paralelo.
-
-A API deve verificar autorização explicitamente antes das operações.
-
----
-
-# 13. Auditoria
-
-Todas as alterações relevantes devem gerar auditoria append-only seguindo o mecanismo já existente.
-
-Auditar ao menos:
-
-```text
-service_order.created
-service_order.updated
-service_order.status_changed
-```
-
-A auditoria deve registrar, seguindo o contrato existente:
-
-* tenant;
-* identidade/usuário;
-* ação;
-* entidade;
-* entidade_id;
-* dados pertinentes antes/depois, quando aplicável;
-* timestamp.
-
-Não permitir atualização ou remoção de registros históricos de auditoria.
-
----
-
-# 14. API
-
-Criar endpoints REST seguindo os padrões existentes.
-
-No mínimo:
-
-```http
-GET /service-orders
-GET /service-orders/:id
-POST /service-orders
-PATCH /service-orders/:id
-```
-
-Pode existir endpoint específico para alteração de status se isso preservar melhor a regra de domínio:
-
-```http
-POST /service-orders/:id/status
-```
-
-ou equivalente seguindo o padrão arquitetural existente.
-
-## GET /service-orders
-
-Suportar no mínimo:
-
-* paginação;
-* busca por número da OS;
-* filtro por status;
-* filtro por prioridade;
-* filtro por customer;
-* filtro por asset;
-* ordenação.
-
-A busca não deve permitir escape de tenant.
-
-## POST /service-orders
-
-Receber somente dados que realmente devem vir do cliente HTTP.
-
-Não confiar em `tenant_id`.
+Permitir adicionar item a uma OS existente.
 
 Validar:
 
-* customer existente e same-tenant;
-* asset, quando informado;
-* vínculo asset/customer;
-* contexto Company/Branch;
-* autorização.
+* OS existente;
+* acesso à OS;
+* tipo válido;
+* descrição obrigatória;
+* quantidade maior que zero;
+* valor unitário não negativo;
+* desconto não negativo;
+* desconto não pode tornar o total negativo.
 
-Retornar a OS criada.
+### Atualizar item
 
-## PATCH /service-orders/:id
+Permitir alterar campos editáveis.
 
-Permitir somente alteração dos campos pertencentes ao OS-01.
+Não permitir alterar:
 
-Não permitir troca arbitrária de:
+* `id`
+* `tenant_id`
+* `service_order_id`
+
+por atualização normal.
+
+### Remover item
+
+Permitir remoção de item da OS, desde que o usuário possua autorização adequada.
+
+A remoção deve seguir o padrão de auditoria definido no projeto.
+
+### Listar itens
+
+O detalhe da OS deve permitir recuperar seus itens.
+
+Pode ser:
+
+`GET /service-orders/:id/items`
+
+ou inclusão estruturada no detalhe atual da OS, desde que a decisão fique consistente e documentada.
+
+---
+
+## 6. Totais da Ordem de Serviço
+
+A OS deve expor, no mínimo:
+
+* subtotal dos itens;
+* descontos;
+* total da OS.
+
+Preferencialmente esses valores devem ser derivados dos itens, evitando duas fontes de verdade.
+
+Se decidir persistir agregados na própria `service_orders`, justificar tecnicamente e garantir atualização transacional.
+
+Se não houver necessidade real de persistência, calcular na consulta/API.
+
+---
+
+## 7. Status da OS
+
+Revisar os status definidos pelo OS-01 antes de criar regras.
+
+Não inventar novo workflow completo nesta rodada.
+
+Apenas impedir operações sobre itens se algum estado já existente significar inequivocamente que a OS está fechada/cancelada e o domínio exigir imutabilidade.
+
+Se isso ainda não estiver estabelecido no `correio.md`, **não criar regra de negócio nova por suposição**.
+
+---
+
+## 8. Permissões
+
+Reutilizar as permissões do módulo sempre que suficiente.
+
+Se for necessária granularidade adicional, justificar antes de adicionar algo como:
+
+* `service_orders.items.create`
+* `service_orders.items.update`
+* `service_orders.items.delete`
+
+Não proliferar permissões desnecessariamente.
+
+A autorização continua obrigatoriamente no backend.
+
+---
+
+## 9. Auditoria
+
+Registrar operações relevantes, seguindo o mecanismo append-only atual:
+
+* item criado;
+* item atualizado;
+* item removido.
+
+Não modificar `audit_logs` para representar estado atual.
+
+---
+
+## 10. API
+
+Implementar contratos tipados e validação de payload.
+
+Uma API aceitável seria:
 
 ```text
-tenant_id
-service_order_number
-created_at
+GET    /service-orders/:id/items
+POST   /service-orders/:id/items
+PATCH  /service-orders/:id/items/:itemId
+DELETE /service-orders/:id/items/:itemId
 ```
 
-Mudanças de contexto estrutural devem ser restritas conforme as regras arquiteturais existentes.
+Mas reutilize o padrão arquitetural já existente no projeto se houver alternativa melhor.
+
+Respostas e erros devem manter a convenção atual da API.
 
 ---
 
-# 15. Contratos e validação
+## 11. Frontend
 
-Utilizar os padrões existentes em `packages/contracts`.
+No detalhe:
 
-Criar schemas compartilhados para:
+`/app/service-orders/:id`
 
-* create;
-* update;
-* filtros;
-* paginação;
-* response DTO;
-* status;
-* prioridade.
+adicionar seção **Itens da OS**.
 
-Não duplicar validações independentes entre API e frontend quando o projeto já possuir mecanismo compartilhado.
+Interface mínima:
 
----
+* lista de itens;
+* descrição;
+* tipo;
+* quantidade;
+* valor unitário;
+* desconto;
+* total;
+* adicionar;
+* editar;
+* remover.
 
-# 16. Frontend
-
-Criar:
+Exibir também resumo:
 
 ```text
-/app/service-orders
-/app/service-orders/new
-/app/service-orders/:id
+Subtotal
+Descontos
+Total
 ```
 
-## Listagem
-
-Exibir pelo menos:
-
-```text
-OS
-Cliente
-Equipamento
-Status
-Prioridade
-Data de abertura
-```
-
-Incluir:
-
-* busca;
-* filtro de status;
-* paginação;
-* acesso ao detalhe;
-* ação para nova OS.
-
-## Nova OS
-
-Permitir:
-
-* selecionar Customer;
-* selecionar Customer Asset daquele cliente;
-* informar problema relatado;
-* prioridade;
-* observações internas opcionais.
-
-O seletor de equipamentos deve mostrar somente assets pertencentes ao Customer selecionado.
-
-Não carregar equipamentos de outros clientes.
-
-## Detalhe
-
-Exibir:
-
-* número da OS;
-* cliente;
-* equipamento;
-* status;
-* prioridade;
-* problema relatado;
-* observações;
-* datas;
-* contexto operacional relevante.
-
-Permitir edição dos campos autorizados.
-
-Permitir alteração do status usando o lifecycle centralizado no backend.
-
-Não implementar orçamento, peças ou financeiro nessa tela.
+Não transformar esta rodada em redesign da tela de OS.
 
 ---
 
-# 17. UX
+## 12. Testes obrigatórios de banco
 
-Manter interface coerente com:
+Criar suíte dedicada, preferencialmente:
 
-```text
-/app/customers
-/app/assets
-```
-
-Não realizar redesign global.
-
-Reutilizar:
-
-* componentes;
-* padrões de formulário;
-* tabelas;
-* loading;
-* erro;
-* empty state;
-* paginação;
-* navegação.
-
----
-
-# 18. Seed
-
-Adicionar seed idempotente mínimo para validar OS no ambiente local.
-
-Criar algumas ordens para clientes/assets Alpha e Beta já existentes.
-
-Garantir isolamento:
-
-```text
-Alpha não vê OS Beta
-Beta não vê OS Alpha
-```
-
-O seed deve poder executar repetidamente sem duplicar dados indevidamente.
-
----
-
-# 19. Testes de banco
-
-Adicionar testes de DB cobrindo pelo menos:
-
-1. criação de OS válida;
-2. `service_order_number` único por tenant;
-3. sequenciamento por tenant;
-4. mesmo número permitido em tenants diferentes;
-5. FK/customer same-tenant;
-6. FK/asset same-tenant;
-7. asset deve pertencer ao customer da OS;
-8. company same-tenant;
-9. branch same-tenant;
-10. RLS bloqueia leitura cross-tenant;
-11. RLS bloqueia escrita cross-tenant;
-12. `closed_at` inicialmente nulo;
-13. constraints de status/prioridade;
-14. auditoria append-only permanece protegida.
-
----
-
-# 20. Testes da API
+`packages/db/tests/service-order-items-contract.test.ts`
 
 Cobrir pelo menos:
 
-1. listar OS autorizadas;
-2. criar OS;
-3. obter detalhe;
-4. atualizar;
-5. mudar status;
-6. paginação;
-7. busca por número;
-8. filtros;
-9. permission denied;
-10. customer cross-tenant;
-11. asset cross-tenant;
-12. asset de outro customer;
-13. isolamento Alpha/Beta;
-14. tentativa de enviar `tenant_id` arbitrário;
-15. alteração de campos imutáveis;
-16. auditoria após criação;
-17. auditoria após update;
-18. auditoria após mudança de status.
-
-Preservar todos os testes anteriores.
-
----
-
-# 21. Migration
-
-Criar migration nova.
-
-Não editar migrations aprovadas:
-
-```text
-0001...
-0002...
-0003...
-0004...
-0005...
-0006...
-```
-
-Seguir numeração subsequente atual do repositório.
-
-Toda mudança de schema deve ser aditiva.
-
----
-
-# 22. Documentação
-
-Criar documentação arquitetural, por exemplo:
-
-```text
-docs/architecture/OS01_SERVICE_ORDERS.md
-```
-
-Documentar:
-
-* objetivo;
-* modelo;
-* ownership;
-* numeração;
-* lifecycle;
+* constraints de quantidade;
+* valores monetários;
+* tipo válido;
+* vínculo com OS;
+* FK same-tenant;
+* eventual produto same-tenant;
 * RLS;
-* permissions;
-* auditoria;
-* API;
-* frontend;
-* invariantes;
-* itens explicitamente fora do escopo.
+* impossibilidade de associação cross-tenant.
 
 ---
 
-# 23. Restrições absolutas
+## 13. Testes obrigatórios de API
 
-Não implementar nesta rodada:
+Criar suíte dedicada para OS-02.
 
-```text
-OS-02
-orçamento
-itens de orçamento
-produtos
-peças
-estoque
-serviços cobrados
-financeiro
-contas a receber
-pagamentos
-caixa
-NFe
-NFCe
-NFSe
-Focus NFe
-comissões
-garantia
-fotos
-anexos
-assinaturas
-WhatsApp
-notificações
-impressão/PDF
-checklist técnico
-diagnóstico estruturado
-laudo técnico
-workflow avançado
-SLA
-agendamento
-```
+Cobrir:
 
-Não alterar `vetoros1`.
+* criar item de serviço;
+* criar item de peça;
+* payload inválido;
+* quantidade zero/negativa;
+* preço negativo;
+* desconto inválido;
+* OS inexistente;
+* OS de outro tenant;
+* listar itens;
+* atualizar item;
+* tentar alterar campos imutáveis;
+* excluir item;
+* item pertencente a outra OS;
+* item pertencente a outro tenant;
+* cálculo correto de subtotal/desconto/total;
+* autorização.
 
-Não alterar AUTH-01 salvo se existir bug objetivo e bloqueante; nesse caso interromper a implementação desse ponto e reportar antes de modificar arquitetura aprovada.
-
-Não criar commit.
+Adicionar ao menos um cenário com múltiplos itens e valores fracionários para comprovar cálculo monetário correto.
 
 ---
 
-# 24. Validação obrigatória
+## 14. Não fazer nesta rodada
 
-Ao final executar:
+Fora do OS-02:
 
-```bash
-docker compose up -d --build
-```
+* movimentação de estoque;
+* reserva de peça;
+* saldo de produto;
+* compra;
+* fornecedor;
+* orçamento completo;
+* aprovação de orçamento;
+* contas a receber;
+* caixa;
+* pagamento;
+* NF-e;
+* NFC-e;
+* NFS-e;
+* comissão;
+* agenda;
+* técnico/execução avançada;
+* anexos/fotos;
+* WhatsApp;
+* módulos posteriores.
 
-Validar:
+Também não alterar `vetoros1`.
 
+---
+
+## 15. Validação final
+
+Ao terminar executar:
+
+* build Docker;
 * migrations;
 * seed;
 * lint;
 * typecheck;
-* testes DB;
-* testes API;
+* testes DB completos;
+* testes API completos;
+* testes dedicados OS-02;
+* health da API;
+* login do frontend;
+* acesso à página de detalhe de OS;
+* revisão de logs dos containers.
+
+Nenhuma regressão em:
+
+**DB-01 → AUTH-01 → CORE-01 → CRM-01 → CRM-02 → OS-01.**
+
+---
+
+## Critério do gate
+
+Ao final, produzir `correio.md` com:
+
+* descoberta realizada;
+* decisão de persistência;
+* migrations criadas;
+* contratos;
+* API;
 * frontend;
-* health;
-* logs recentes dos containers.
+* segurança multitenant;
+* auditoria;
+* testes acrescentados;
+* contagem total das suítes;
+* validação Docker;
+* eventuais limitações;
+* confirmação explícita de que módulos posteriores não foram iniciados.
 
-Confirmar também:
+**Não fazer commit.**
 
-```text
-/app/service-orders
-/app/service-orders/new
-```
+O resultado esperado é:
 
-e uma página real:
+> **Gate OS-02: APROVÁVEL**
 
-```text
-/app/service-orders/:id
-```
+Pode executar essa rodada agora.
 
----
+## Fechamento executado
 
-# 25. Resultado esperado
+Confirmada a ausência de estrutura reutilizável para itens; criada a migration
+`0008_service_order_items.sql` com valores `numeric`, total calculado, checks,
+FK same-tenant e RLS. A API de itens foi adicionada às rotas de OS e o detalhe
+passou a exibir itens e totais. Foi criada a suíte dedicada
+`packages/db/tests/service-order-items-contract.test.ts`. Totais: DB **39/39**,
+API **38/38**; lint/typecheck, migration/seed, health e frontend passaram. Não
+houve regressões nos módulos anteriores nem alteração de `vetoros1`.
 
-Ao terminar, entregar relatório contendo:
-
-```text
-1. resumo da implementação;
-2. migration criada;
-3. schema/tabelas;
-4. invariantes de banco;
-5. RLS;
-6. permissions;
-7. auditoria;
-8. endpoints;
-9. lifecycle;
-10. frontend;
-11. testes adicionados;
-12. contagem total dos testes;
-13. resultado lint/typecheck;
-14. resultado docker;
-15. URLs validadas;
-16. arquivos criados;
-17. arquivos alterados;
-18. git status;
-19. itens fora do escopo confirmados;
-20. eventuais limitações encontradas.
-```
-
-Não criar commit.
-
-O encerramento deve indicar explicitamente um dos gates:
-
-```text
-Gate OS-01: APROVÁVEL
-```
-
-ou
-
-```text
-Gate OS-01: NÃO APROVÁVEL
-```
-
-com justificativa objetiva.
-
----
-
-## Regra principal
-
-Implementar o menor núcleo sólido possível de Ordens de Serviço, preservando a arquitetura já aprovada.
-
-Priorizar:
-
-```text
-integridade de dados
-> isolamento multitenant
-> autorização
-> auditabilidade
-> consistência de domínio
-> API
-> interface
-> conveniência
-```
-
-Não antecipar funcionalidades das próximas fases.
+**Gate OS-02: APROVÁVEL**
