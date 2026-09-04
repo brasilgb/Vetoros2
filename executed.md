@@ -4,11 +4,10 @@
 **Projeto:** `vetoros2`  
 **Status:** concluído para revisão, sem commit.
 
-O escopo CRM-02 foi executado e validado: equipamentos multitenant vinculados a
-clientes, identificadores extensíveis, RLS/FKs same-tenant, permissões,
-auditoria append-only, API e telas `/app/assets`, `/app/assets/new` e
-`/app/assets/:id`. Não foram iniciados OS-01 ou módulos posteriores, e AUTH-01
-permanece intacto.
+CRM-02 foi executado e validado: equipamentos multitenant vinculados a clientes,
+identificadores extensíveis, RLS/FKs same-tenant, permissões, auditoria
+append-only, API e telas de equipamentos. OS-01 e demais módulos posteriores não
+foram iniciados; AUTH-01 permanece inalterado.
 
 ## Validação
 
@@ -33,8 +32,8 @@ vetoros2-seed-1       Exited (0)
 URLs: frontend `http://localhost:3000`, API `http://localhost:3001`, health
 `http://localhost:3001/health` e equipamentos `http://localhost:3000/app/assets`.
 
-O login faker local `andersonbrasil72@gmail.com` / `12345678` permanece restrito
-ao desenvolvimento e foi validado anteriormente com sucesso.
+Login faker local: `andersonbrasil72@gmail.com` / `12345678`, restrito ao
+desenvolvimento e validado anteriormente com sucesso.
 
 `vetoros1` não foi alterado.
 
