@@ -1,243 +1,709 @@
-# VetorOS 2 — CRM-02 Customer Assets / Equipamentos
-
-Implementar a próxima etapa do VetorOS 2, respeitando integralmente as bases já aprovadas: **DB-01, AUTH-01, CORE-01 e CRM-01**.
+# VetorOS 2 — CRM-02 Equipamentos / Devices do Cliente
 
 ## Objetivo
 
-Criar a base de equipamentos/bens dos clientes, permitindo que um mesmo cliente possua vários equipamentos e que cada equipamento possa futuramente ter vários orçamentos e várias ordens de serviço ao longo do tempo.
+Implementar o cadastro multitenant de equipamentos/dispositivos pertencentes aos clientes, reutilizando integralmente as fundações já aprovadas:
 
-Não implementar orçamento, ordem de serviço, estoque, fiscal ou qualquer módulo posterior nesta etapa.
+* DB-01 Multitenancy;
+* AUTH-01 Authentication/Authorization;
+* CORE-01 Operational Context;
+* CRM-01 Customers.
 
-## Modelagem
+A CRM-02 deve preparar a base para a futura OS-01, mas **não deve implementar Ordens de Serviço nesta rodada**.
 
-Criar entidade de equipamento vinculada obrigatoriamente a um `customer` do mesmo tenant.
+---
 
-O equipamento deve suportar, no mínimo:
+## 1. Princípio de domínio
 
-* identificação interna;
+A relação principal deve ser:
+
+```text
+Tenant
+  └── Customer
+        └── Customer Device
+```
+
+O equipamento pertence a um Customer e deve pertencer obrigatoriamente ao mesmo Tenant.
+
+Nenhum `tenant_id`, `customer_id`, `company_id` ou `branch_id` deve ser aceito como fonte confiável diretamente do frontend quando puder ser derivado do contexto autenticado ou do recurso pai.
+
+---
+
+## 2. Entidade principal
+
+Criar uma estrutura equivalente a:
+
+```text
+customer_devices
+```
+
+Campos mínimos:
+
+* `id`;
+* `tenant_id`;
 * `customer_id`;
-* categoria/tipo do equipamento;
-* marca;
-* modelo;
-* número de série;
-* IMEI quando aplicável;
-* patrimônio/tag interna quando aplicável;
-* descrição livre;
-* observações;
-* status;
-* timestamps;
-* origem operacional por Company/Branch quando fizer sentido dentro do padrão CORE-01.
+* `device_number`;
+* `category`;
+* `brand`;
+* `model`;
+* `serial_number`;
+* `imei`;
+* `asset_tag`;
+* `color`;
+* `notes`;
+* `status`;
+* `created_at`;
+* `updated_at`.
 
-A estrutura não deve ser limitada a celulares. Deve suportar notebooks, desktops, impressoras, TVs, eletroeletrônicos, equipamentos industriais e outros tipos.
+Use UUID para o identificador principal, seguindo o padrão atual do projeto.
 
-Para identificadores adicionais que possam variar conforme o tipo de equipamento, utilizar estrutura extensível e normalizada, evitando criar dezenas de colunas específicas no registro principal.
+### device_number
 
-Exemplos futuros de identificadores:
+Criar número sequencial por tenant, semelhante ao `customer_number`.
 
-* IMEI 1;
-* IMEI 2;
-* MAC Address;
-* número de patrimônio;
-* código do fabricante;
-* service tag;
-* serial secundário;
-* outros.
+Requisitos:
 
-## Multitenancy e segurança
+* incremental;
+* transacional;
+* seguro sob concorrência;
+* sem `MAX()+1`;
+* independente entre tenants.
 
-O ownership deve seguir exclusivamente:
+Exemplo:
 
-Session → TenantContext → Authorization → RLS.
+```text
+Tenant Alpha
+EQ-000001
+EQ-000002
 
-Nunca confiar em `tenant_id`, `company_id`, `branch_id`, ownership ou campos de segurança recebidos diretamente no payload HTTP.
+Tenant Beta
+EQ-000001
+```
 
-Garantir:
+Se o padrão arquitetural atual utilizar apenas número inteiro para sequências internas, mantenha a mesma convenção e deixe a formatação visual para frontend/API.
 
-* equipamento pertence ao tenant;
-* customer informado pertence ao mesmo tenant;
-* bloqueio absoluto de associação com customer de outro tenant;
-* RLS habilitado e `FORCE ROW LEVEL SECURITY`;
-* isolamento cross-tenant testado;
-* nenhuma elevação implícita de grants Company/Branch para tenant-wide;
-* nenhuma regressão em AUTH-01, CORE-01 ou CRM-01.
+---
 
-## Permissions
+## 3. Categoria do equipamento
 
-Criar permissions seguindo o padrão existente:
+A categoria deve ser um vocabulário controlado.
 
-* `customer_assets.read`;
-* `customer_assets.create`;
-* `customer_assets.update`.
+Exemplos iniciais:
 
-Reutilizar o mecanismo central de autorização já existente.
+```text
+smartphone
+tablet
+notebook
+desktop
+printer
+monitor
+television
+console
+appliance
+other
+```
 
-Não criar sistema paralelo de roles ou permissions.
+Evitar tabela de categorias nesta etapa se não houver necessidade real.
 
-## Auditoria
+Use enum/check constraint ou abordagem equivalente já adotada no projeto.
 
-Registrar auditoria append-only para:
+Não criar um catálogo complexo de equipamentos nesta rodada.
 
-* criação de equipamento;
-* alteração de equipamento;
-* inclusão/alteração/remoção lógica de identificadores adicionais;
-* mudanças relevantes de status.
+---
 
-Não permitir alteração destrutiva do histórico de auditoria.
+## 4. Marca e modelo
 
-## Exclusão
+Nesta primeira versão:
 
-Não implementar DELETE físico.
+```text
+brand
+model
+```
 
-Caso seja necessária desativação, utilizar status/soft state compatível com a arquitetura existente.
+podem permanecer como texto normalizado.
 
-## API
+Não criar tabelas globais `brands` ou `models` agora.
 
-Implementar endpoints para:
+Motivo:
 
-* listar equipamentos;
-* buscar equipamento por ID;
-* cadastrar equipamento;
-* editar equipamento;
-* listar equipamentos de um customer;
-* pesquisar por cliente, marca, modelo, serial, IMEI ou identificadores;
+* evitar complexidade prematura;
+* marcas/modelos variam conforme segmento;
+* futura normalização poderá ocorrer quando existir necessidade de catálogo.
+
+---
+
+## 5. Identificadores físicos
+
+Suportar:
+
+* `serial_number`;
+* `imei`;
+* `asset_tag`.
+
+Todos opcionais.
+
+Normalizar valores antes da persistência.
+
+Para IMEI:
+
+* remover espaços e caracteres de formatação;
+* aceitar apenas dígitos;
+* quando informado, validar comprimento compatível com IMEI.
+
+Não exigir IMEI porque vários tipos de equipamento não possuem esse identificador.
+
+Não assumir unicidade global.
+
+Quando houver constraint de unicidade, deve ser no mínimo tenant-aware.
+
+Avaliar cuidadosamente se serial/IMEI devem ser únicos por tenant. Caso haja risco legítimo de duplicidade histórica ou equipamento compartilhado, priorizar índice para busca e não constraint rígida sem necessidade comprovada.
+
+---
+
+## 6. Customer ownership
+
+Todo equipamento deve possuir `customer_id`.
+
+Ao criar ou atualizar:
+
+1. obter TenantContext da sessão;
+2. verificar `customers.read` quando necessário;
+3. localizar o Customer dentro do tenant corrente;
+4. rejeitar Customer de outro tenant;
+5. nunca confiar apenas no `customer_id` enviado;
+6. deixar RLS como última barreira fail-closed.
+
+Cross-tenant access deve resultar em comportamento equivalente a recurso inexistente ou acesso negado, de acordo com o padrão já usado no projeto.
+
+---
+
+## 7. Status
+
+Criar estado simples.
+
+Exemplo:
+
+```text
+active
+inactive
+```
+
+Se houver padrão semelhante em CRM-01, reutilizá-lo.
+
+Não implementar estados relacionados à Ordem de Serviço nesta etapa.
+
+Não adicionar:
+
+```text
+in_repair
+awaiting_parts
+ready
+delivered
+```
+
+Esses estados pertencem ao lifecycle da futura OS.
+
+---
+
+## 8. Banco e migration
+
+Criar nova migration sequencial, sem alterar migrations anteriores.
+
+Esperado:
+
+```text
+packages/db/migrations/0005_customer_devices.sql
+```
+
+ou o próximo número efetivamente disponível no repositório.
+
+A migration deve contemplar:
+
+* tabela;
+* FKs;
+* índices;
+* contador da numeração;
+* constraints;
+* RLS;
+* policies;
+* permissions;
+* grants mínimos necessários.
+
+Nunca editar retroativamente migrations de DB-01, AUTH-01, CORE-01 ou CRM-01.
+
+---
+
+## 9. Integridade referencial
+
+Garantir estruturalmente:
+
+```text
+customer_devices.tenant_id
+customer_devices.customer_id
+```
+
+não possam formar uma combinação cross-tenant.
+
+Preferir FK composta, caso o padrão existente permita:
+
+```text
+(tenant_id, customer_id)
+→ customers(tenant_id, id)
+```
+
+A integridade multitenant não deve depender exclusivamente da aplicação.
+
+---
+
+## 10. RLS
+
+Ativar e forçar RLS:
+
+```sql
+ENABLE ROW LEVEL SECURITY
+FORCE ROW LEVEL SECURITY
+```
+
+As policies devem reutilizar o mecanismo de contexto PostgreSQL já definido pelo projeto.
+
+Nenhuma nova forma paralela de resolução de tenant deve ser criada.
+
+Fluxo obrigatório:
+
+```text
+Session
+→ TenantContext
+→ Authorization
+→ PostgreSQL context
+→ RLS
+```
+
+Testar explicitamente:
+
+* leitura same-tenant;
+* leitura cross-tenant;
+* insert cross-tenant;
+* update cross-tenant;
+* delete cross-tenant, caso delete exista;
+* ausência de contexto;
+* contexto inválido.
+
+---
+
+## 11. Permissions
+
+Adicionar permissions seguindo exatamente o sistema AUTH-01.
+
+No mínimo:
+
+```text
+devices.read
+devices.create
+devices.update
+```
+
+Se houver exclusão:
+
+```text
+devices.delete
+```
+
+Não criar RBAC paralelo.
+
+Integrar as novas permissions aos perfis/seed existentes usando o mecanismo oficial já adotado.
+
+---
+
+## 12. Auditoria
+
+Registrar eventos append-only de:
+
+* criação;
+* atualização;
+* mudança de status;
+* eventual exclusão lógica/física.
+
+Registrar no mínimo:
+
+* tenant;
+* usuário/identity;
+* customer;
+* device;
+* ação;
+* timestamp;
+* alterações relevantes.
+
+Reutilizar a infraestrutura de auditoria existente.
+
+Não criar tabela de auditoria paralela específica para devices.
+
+---
+
+## 13. API
+
+Criar endpoints REST alinhados ao padrão atual.
+
+Sugestão:
+
+```text
+GET    /devices
+GET    /devices/:id
+POST   /devices
+PATCH  /devices/:id
+```
+
+Opcionalmente permitir:
+
+```text
+GET /customers/:customerId/devices
+```
+
+somente se isso não duplicar desnecessariamente a lógica do endpoint principal.
+
+O endpoint `/devices` deve suportar filtro por:
+
+```text
+customer_id
+category
+status
+search
+```
+
+Busca deve considerar ao menos:
+
+* `device_number`;
+* `brand`;
+* `model`;
+* `serial_number`;
+* `imei`;
+* `asset_tag`.
+
+Adicionar:
+
 * paginação;
 * ordenação;
-* filtros por status, categoria/tipo e customer;
-* manutenção dos identificadores adicionais.
+* limites máximos;
+* schemas de request/response;
+* validação adequada.
 
-Validar rigorosamente todos os UUIDs, enums, campos textuais e ownership.
+---
 
-## Frontend
+## 14. Frontend
 
-Criar interface mínima e funcional seguindo o padrão visual atual do VetorOS 2.
+Criar interface mínima integrada ao CRM atual.
 
-Rotas sugeridas:
+Rotas recomendadas:
 
-* `/app/assets`;
-* `/app/assets/new`;
-* `/app/assets/:id`.
+```text
+/app/devices
+/app/devices/new
+/app/devices/:id
+```
 
-Também integrar o cadastro do cliente com uma área de equipamentos, por exemplo na tela:
+E integrar também ao cliente:
 
-* `/app/customers/:id`.
+```text
+/app/customers/:id
+```
 
-A partir do cliente deve ser possível visualizar seus equipamentos e iniciar o cadastro de um novo equipamento já associado ao cliente.
+Na tela do cliente deve existir uma seção:
 
-Não criar ainda botões funcionais de orçamento ou ordem de serviço. Caso seja útil visualmente preparar o espaço, ele deve permanecer claramente fora do escopo funcional da CRM-02.
+```text
+Equipamentos
+```
 
-## Banco e migrations
+com:
 
-Criar migrations somente aditivas.
+* quantidade;
+* lista resumida;
+* botão "Novo equipamento";
+* link para abrir equipamento.
 
-Não alterar ou reescrever migrations já aprovadas.
+---
 
-Atualizar o schema Drizzle.
+## 15. Cadastro
 
-Preservar completamente os dados e estruturas existentes.
+Formulário deve possuir:
 
-Se houver necessidade de seed, criar exemplos idempotentes seguindo o padrão Alpha/Beta já utilizado.
+* Cliente;
+* Categoria;
+* Marca;
+* Modelo;
+* Número de série;
+* IMEI;
+* Patrimônio/asset tag;
+* Cor;
+* Observações;
+* Status.
 
-## Testes obrigatórios
+O `device_number` deve ser gerado no backend e não editável.
 
-Adicionar testes de integração cobrindo pelo menos:
+Ao abrir cadastro a partir da tela de Customer, o cliente deve vir previamente selecionado.
 
-* criação válida;
-* edição válida;
-* leitura;
-* listagem;
+---
+
+## 16. Listagem
+
+A tela `/app/devices` deve permitir:
+
+* busca;
+* filtro por cliente;
+* filtro por categoria;
+* filtro por status;
 * paginação;
-* filtros;
-* pesquisa por serial/IMEI;
-* múltiplos equipamentos para o mesmo customer;
-* customer inexistente;
-* customer de outro tenant;
-* leitura cross-tenant;
-* alteração cross-tenant;
-* permissions ausentes;
-* RLS direto no banco;
-* identificadores adicionais;
-* duplicidades onde houver regra de unicidade;
-* auditoria;
-* ausência de DELETE físico.
+* ordenação.
 
-Garantir que todos os testes existentes continuem passando.
+Mostrar pelo menos:
 
-## Documentação
+```text
+Número
+Cliente
+Categoria
+Marca
+Modelo
+Serial/IMEI
+Status
+```
 
-Criar documentação arquitetural da CRM-02 explicando:
+---
 
-* propósito;
-* modelo de dados;
-* ownership;
+## 17. Tela de detalhe
+
+A página `/app/devices/:id` deve mostrar:
+
+* identificação;
+* proprietário;
+* categoria;
+* marca/modelo;
+* serial;
+* IMEI;
+* asset tag;
+* cor;
+* status;
+* observações;
+* datas;
+* opção de edição.
+
+Reservar visualmente uma futura seção:
+
+```text
+Histórico de Ordens de Serviço
+```
+
+mas **não implementar consultas de OS nesta rodada**.
+
+Se necessário, apenas deixar o domínio preparado, sem UI fictícia ou dados simulados.
+
+---
+
+## 18. Seed
+
+Adicionar devices para os tenants de desenvolvimento.
+
+Exemplo:
+
+```text
+Alpha:
+Customer PF → Smartphone Samsung
+Customer PJ → Notebook Dell
+
+Beta:
+Customer PF/PJ → equipamento diferente
+```
+
+Seed deve continuar:
+
+* idempotente;
+* determinístico;
+* tenant-safe.
+
+Não utilizar IDs fixos frágeis quando o padrão atual usar lookup por identificadores naturais.
+
+---
+
+## 19. Testes de banco
+
+Adicionar cobertura para:
+
+* criação;
+* contador sequencial;
+* concorrência;
+* isolamento Alpha/Beta;
+* FK Customer/Tenant;
 * RLS;
-* permissions;
-* API;
-* identificadores extensíveis;
-* relação Customer → Asset;
-* preparação futura para Asset → Budget → Work Order;
-* decisões que foram propositalmente deixadas para módulos posteriores.
+* ausência de tenant context;
+* documento/identificadores opcionais;
+* status inválido;
+* enum/category inválido;
+* auditoria.
 
-## Validação final
+Não reduzir ou remover testes anteriores.
 
-Executar obrigatoriamente:
+---
 
-```bash
-docker compose up -d --build
+## 20. Testes da API
+
+Cobrir no mínimo:
+
+```text
+unauthenticated
+permission denied
+list
+detail
+create
+update
+search
+filters
+pagination
+cross-tenant
+customer ownership
+invalid customer
+invalid payload
 ```
 
-Executar migrations e seed se aplicável.
+A suíte completa anterior deve continuar verde.
 
-Depois executar:
+---
 
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
+## 21. Validação frontend
+
+Executar:
+
+```text
+lint
+typecheck
+build
 ```
 
-Validar também:
+E validar pelo menos:
 
-* frontend acessível;
-* API health;
-* containers saudáveis;
-* migrations exit 0;
-* seed exit 0 quando aplicável.
+```text
+/login
+/app/customers
+/app/devices
+```
 
-## Restrições
+Realizar login com o faker local já existente e confirmar navegação autenticada.
 
-* Não alterar `vetoros1`.
-* Não implementar orçamento.
-* Não implementar ordem de serviço.
-* Não implementar estoque.
-* Não implementar fiscal.
-* Não implementar financeiro.
-* Não iniciar módulos posteriores.
-* Não criar nova arquitetura paralela.
-* Não reescrever migrations anteriores.
-* Não criar commit.
+---
 
-## Entrega esperada
+## 22. Segurança
 
-Ao final, entregar relatório contendo:
+Preservar integralmente:
+
+```text
+Session
+→ TenantMembership
+→ TenantContext
+→ Authorization
+→ RLS
+```
+
+Não permitir:
+
+* spoofing de tenant;
+* acesso direto a device de outro tenant;
+* alteração de customer para customer de outro tenant;
+* bypass por ID conhecido;
+* fallback silencioso sem tenant context.
+
+---
+
+## 23. Fora de escopo
+
+NÃO implementar nesta rodada:
+
+* Ordens de Serviço;
+* orçamento;
+* diagnóstico;
+* defeito relatado;
+* técnico responsável;
+* peças;
+* estoque;
+* garantia;
+* fotos;
+* anexos;
+* checklists;
+* histórico de reparos;
+* financeiro;
+* fiscal;
+* WhatsApp;
+* notificações;
+* IA.
+
+Esses recursos serão tratados posteriormente.
+
+---
+
+## 24. Compatibilidade
+
+Não alterar comportamento já aprovado de:
+
+```text
+DB-01
+AUTH-01
+CORE-01
+CRM-01
+```
+
+`vetoros1` permanece somente como referência.
+
+Nenhum arquivo do legado deve ser alterado.
+
+---
+
+## 25. Critério de conclusão
+
+CRM-02 poderá ser considerada pronta quando:
+
+```text
+migrations       PASS
+seed             PASS
+DB tests         PASS
+API tests        PASS
+lint             PASS
+typecheck        PASS
+frontend build   PASS
+Docker services  HEALTHY
+```
+
+Além disso, deve ser possível executar manualmente:
+
+```text
+Login
+→ Clientes
+→ abrir cliente
+→ Novo equipamento
+→ salvar
+→ visualizar equipamento
+→ editar
+→ retornar ao cliente
+→ visualizar equipamento na lista
+```
+
+---
+
+## 26. Relatório final obrigatório
+
+Ao concluir, retornar:
 
 1. resumo da implementação;
-2. arquivos criados;
-3. arquivos alterados;
-4. migrations;
-5. modelo de dados;
-6. endpoints;
-7. frontend;
-8. permissions;
-9. RLS e segurança;
-10. auditoria;
-11. testes executados;
-12. quantidade de testes aprovados;
-13. estado dos containers;
-14. confirmação de que `vetoros1` não foi alterado;
-15. confirmação de que nenhum módulo posterior foi iniciado;
-16. confirmação de que nenhum commit foi criado;
-17. conclusão do gate:
+2. migrations criadas;
+3. tabelas/constraints/índices adicionados;
+4. permissions;
+5. endpoints;
+6. páginas/componentes;
+7. policies RLS;
+8. auditoria;
+9. seed;
+10. quantidade de testes DB;
+11. quantidade de testes API;
+12. lint/typecheck/build;
+13. status dos containers;
+14. validação manual;
+15. arquivos criados/modificados;
+16. riscos ou pendências encontradas.
 
-`CRM-02 APROVÁVEL`
+Não criar commit.
 
-ou descrição objetiva de qualquer pendência que impeça aprovação.
+Aguardar revisão e aprovação antes do commit.

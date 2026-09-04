@@ -1,41 +1,66 @@
-# VetorOS 2 — CRM-01 Customers
+# Resumo de execução — CRM-02
 
-**Execução:** 4 de setembro de 2026  
-**Status:** concluída para revisão
+**Data:** 4 de setembro de 2026  
+**Projeto:** `vetoros2`  
+**Status:** concluído para revisão; nenhum commit criado.
 
-CRM-01 está implementada em `vetoros2` sobre DB-01, AUTH-01 e CORE-01: Customer PF/PJ multitenant, documentos normalizados, numeração sequencial por tenant, endereços e contatos normalizados, RLS, permissions, auditoria, API CRUD com busca/paginação e telas de clientes.
+## Entrega
 
-O seed Alpha/Beta é idempotente e módulos posteriores não foram iniciados.
+Implementado o CRM-02 de equipamentos/dispositivos do cliente, sobre DB-01,
+AUTH-01, CORE-01 e CRM-01. A entrega inclui:
+
+- tabelas `customer_assets` e `customer_asset_identifiers`, migration `0006`,
+  FKs same-tenant, RLS habilitado/forçado e índices;
+- permissões `customer_assets.read/create/update`;
+- API para listar, consultar, criar, atualizar, listar por cliente e adicionar
+  identificadores, com contexto de sessão, autorização e auditoria append-only;
+- telas `/app/assets`, `/app/assets/new` e `/app/assets/:id`;
+- documentação em `docs/architecture/CRM02_CUSTOMER_ASSETS.md`;
+- login faker local: `andersonbrasil72@gmail.com` / `12345678`.
+
+Não foi implementado nenhum módulo posterior (incluindo OS-01), nem houve
+alteração em migrations de módulos anteriores, AUTH-01, RLS ou permissions já
+existentes. O login faker é somente para desenvolvimento local e fica bloqueado
+em produção; a senha pode ser sobrescrita por `DEV_FAKER_PASSWORD`.
+
+## Arquivos alterados ou adicionados
+
+`apps/api/src/assets/routes.ts`, `apps/api/src/app.ts`,
+`apps/api/tests/assets.integration.test.ts`,
+`apps/web/app/app/assets/page.tsx`, `apps/web/app/app/assets/new/page.tsx`,
+`apps/web/app/app/assets/[id]/page.tsx`, `apps/web/app/app/page.tsx`,
+`packages/db/migrations/0006_customer_assets.sql`,
+`packages/db/migrations/meta/_journal.json`, `packages/db/src/schema.ts`,
+`packages/db/src/seed.ts`, `.env.example`, `README.md`,
+`docs/architecture/CRM02_CUSTOMER_ASSETS.md` e `correio.md`.
 
 ## Validação
 
-- Build Docker, migrations e seed: passaram;
-- lint/typecheck: passaram;
-- DB: **31/31 testes**;
-- API: **28/28 testes**;
-- Frontend login: HTTP 200 em http://localhost:3000/login;
-- Health: `{"status":"ok"}` em http://localhost:3001/health.
+`docker compose up -d --build`: concluído com build limpo; migration e seed
+encerraram com código 0.
+
+Lint, typecheck e testes no container API: **DB 31/31**, **API 33/33**; todos
+os 5 arquivos de teste da API passaram.
+
+Ambiente Docker validado:
 
 ```text
-api        Up (healthy)   0.0.0.0:3001->3001/tcp
-web        Up (healthy)   0.0.0.0:3000->3000/tcp
-postgres   Up (healthy)   5432/tcp interno
-redis      Up (healthy)   6379/tcp interno
-migrate    Exited (0)
-seed       Exited (0)
+vetoros2-api-1       Up (healthy)   0.0.0.0:3001->3001/tcp
+vetoros2-web-1       Up (healthy)   0.0.0.0:3000->3000/tcp
+vetoros2-postgres-1  Up (healthy)   5432/tcp (rede interna)
+vetoros2-redis-1     Up (healthy)   6379/tcp (rede interna)
+vetoros2-migrate-1   Exited (0)
+vetoros2-seed-1      Exited (0)
 ```
 
-Ambiente permanece em execução. Nenhum commit foi criado.
+URLs para teste:
+
+- frontend: http://localhost:3000
+- login: http://localhost:3000/login
+- API: http://localhost:3001
+- health: http://localhost:3001/health — `{"status":"ok"}`
+- equipamentos: http://localhost:3000/app/assets
 
 `vetoros1` não foi alterado.
 
-## Login faker local
-
-Foi adicionada uma identidade de desenvolvimento para validação visual:
-
-- e-mail: `andersonbrasil72@gmail.com`;
-- senha padrão: `12345678` (configurável por `DEV_FAKER_PASSWORD`);
-- tenant: Alpha;
-- resultado validado: login e sessão HTTP autenticados.
-
-A credencial é criada com hash Argon2 e fica bloqueada sem membership quando `NODE_ENV=production`. O serviço `seed` recebe `NODE_ENV` pelo Compose para preservar essa proteção.
+**Gate CRM-02: APROVÁVEL.**

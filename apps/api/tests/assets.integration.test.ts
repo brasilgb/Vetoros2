@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import postgres from 'postgres';
 import { afterAll,beforeAll,describe,expect,it } from 'vitest';
 import { AuthService } from '../src/auth/service.js';import { buildApp } from '../src/app.js';
 const authUrl=process.env.AUTH_DATABASE_URL??'postgresql://vetoros_auth:local_auth_only@127.0.0.1:5432/vetoros',runtimeUrl=process.env.DATABASE_URL??'postgresql://vetoros_runtime:local_runtime_only@127.0.0.1:5432/vetoros',password=process.env.DEV_SEED_PASSWORD??'change-me-local-only';const customer='01992ea1-1250-7000-8000-000000000050';const service=new AuthService(authUrl,runtimeUrl,3600),app=buildApp({authService:service,loginRateLimitMax:100});let cookie='';
