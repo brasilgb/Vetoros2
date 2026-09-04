@@ -1,0 +1,238 @@
+# =========================================================
+
+# VetorOS 2
+
+# Node.js / TypeScript / Next.js / Fastify / pnpm / Docker
+
+# =========================================================
+
+# ---------------------------------------------------------
+
+# Dependencies
+
+# ---------------------------------------------------------
+
+node_modules/
+**/node_modules/
+
+# ---------------------------------------------------------
+
+# pnpm
+
+# ---------------------------------------------------------
+
+.pnpm-store/
+.pnpm-debug.log*
+
+# ---------------------------------------------------------
+
+# Build outputs
+
+# ---------------------------------------------------------
+
+dist/
+build/
+out/
+.next/
+**/.next/
+.turbo/
+.cache/
+coverage/
+**/coverage/
+
+# TypeScript
+
+*.tsbuildinfo
+
+# ---------------------------------------------------------
+
+# Environment variables / secrets
+
+# ---------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local secrets
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# ---------------------------------------------------------
+
+# Logs
+
+# ---------------------------------------------------------
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------
+
+# Runtime / temporary files
+
+# ---------------------------------------------------------
+
+tmp/
+temp/
+*.tmp
+*.temp
+*.pid
+*.pid.lock
+
+# ---------------------------------------------------------
+
+# Test artifacts
+
+# ---------------------------------------------------------
+
+.vitest/
+test-results/
+playwright-report/
+blob-report/
+
+# ---------------------------------------------------------
+
+# Next.js / Vercel
+
+# ---------------------------------------------------------
+
+.vercel/
+
+# ---------------------------------------------------------
+
+# Docker local overrides
+
+# ---------------------------------------------------------
+
+docker-compose.override.yml
+compose.override.yml
+
+# ---------------------------------------------------------
+
+# Database local files / dumps
+
+# ---------------------------------------------------------
+
+*.sql.gz
+*.dump
+*.backup
+*.bak
+
+backups/
+dumps/
+
+# IMPORTANT:
+
+# Do NOT ignore versioned database migrations.
+
+# packages/db/migrations/ must remain tracked.
+
+# ---------------------------------------------------------
+
+# Uploads / local application storage
+
+# ---------------------------------------------------------
+
+uploads/
+storage/
+.local/
+
+# ---------------------------------------------------------
+
+# IDEs / editors
+
+# ---------------------------------------------------------
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+.idea/
+*.iml
+
+# Vim
+
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------
+
+# Operating systems
+
+# ---------------------------------------------------------
+
+# macOS
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+
+.directory
+
+# ---------------------------------------------------------
+
+# Miscellaneous
+
+# ---------------------------------------------------------
+
+*.local
+*.orig
+*.rej
+
+# ESLint cache
+
+.eslintcache
+
+# Prettier cache
+
+.prettier-cache
+
+# ---------------------------------------------------------
+
+# Local development tooling
+
+# ---------------------------------------------------------
+
+.codex/
+.claude/
+.cursor/
+.history/
+.pnpm*
+# ---------------------------------------------------------
+
+# Package artifacts
+
+# ---------------------------------------------------------
+
+*.tgz
+
+# ---------------------------------------------------------
+
+# Keep important versioned files
+
+# ---------------------------------------------------------
+
+!pnpm-lock.yaml
+!packages/db/migrations/**
+!packages/db/migrations/meta/**

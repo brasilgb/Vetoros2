@@ -1,0 +1,24 @@
+{
+  "name": "@vetoros/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./schema": "./src/schema.ts" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src tests drizzle.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --import tsx src/migrate.ts",
+    "db:seed": "node --import tsx src/seed.ts"
+  },
+  "dependencies": { "argon2": "^0.44.0", "drizzle-orm": "^0.44.0", "postgres": "^3.4.0" },
+  "devDependencies": {
+    "@vetoros/eslint-config": "workspace:*",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

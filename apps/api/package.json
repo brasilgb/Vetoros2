@@ -1,0 +1,29 @@
+{
+  "name": "@vetoros/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "eslint src tests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vetoros/config": "workspace:*",
+    "@vetoros/contracts": "workspace:*",
+    "@vetoros/db": "workspace:*",
+    "fastify": "^5.6.0",
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "argon2": "^0.44.0",
+    "drizzle-orm": "^0.44.0",
+    "ioredis": "^5.7.0",
+    "postgres": "^3.4.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": { "@vetoros/eslint-config": "workspace:*", "tsx": "^4.20.0", "typescript": "^5.9.0", "vitest": "^3.2.0" }
+}

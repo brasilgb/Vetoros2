@@ -1,0 +1,106 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vetoros}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_postgres_only}
+      VETOROS_MIGRATION_PASSWORD: ${VETOROS_MIGRATION_PASSWORD:-local_migration_only}
+      VETOROS_RUNTIME_PASSWORD: ${VETOROS_RUNTIME_PASSWORD:-local_runtime_only}
+      VETOROS_AUTH_PASSWORD: ${VETOROS_AUTH_PASSWORD:-local_auth_only}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vetoros}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+  migrate:
+    image: vetoros2-app:local
+    pull_policy: never
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    command: ["corepack", "pnpm", "db:migrate"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://vetoros_migration:${VETOROS_MIGRATION_PASSWORD:-local_migration_only}@postgres:5432/${POSTGRES_DB:-vetoros}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+  seed:
+    image: vetoros2-app:local
+    pull_policy: never
+    command: ["corepack", "pnpm", "db:seed"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://vetoros_migration:${VETOROS_MIGRATION_PASSWORD:-local_migration_only}@postgres:5432/${POSTGRES_DB:-vetoros}
+      DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-change-me-local-only}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+  api:
+    image: vetoros2-app:local
+    pull_policy: never
+    command: ["corepack", "pnpm", "--filter", "@vetoros/api", "exec", "tsx", "src/server.ts"]
+    environment:
+      NODE_ENV: development
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      WEB_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://vetoros_runtime:${VETOROS_RUNTIME_PASSWORD:-local_runtime_only}@postgres:5432/${POSTGRES_DB:-vetoros}
+      AUTH_DATABASE_URL: postgresql://vetoros_auth:${VETOROS_AUTH_PASSWORD:-local_auth_only}@postgres:5432/${POSTGRES_DB:-vetoros}
+      REDIS_URL: redis://redis:6379
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
+      COOKIE_SECURE: "false"
+    ports:
+      - "3001:3001"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt: ["no-new-privileges:true"]
+  web:
+    image: vetoros2-app:local
+    pull_policy: never
+    command: ["corepack", "pnpm", "--filter", "@vetoros/web", "start", "--hostname", "0.0.0.0", "--port", "3000"]
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      API_INTERNAL_URL: http://api:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  postgres-data:
+  redis-data:
