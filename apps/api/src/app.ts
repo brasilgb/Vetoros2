@@ -10,6 +10,8 @@ import { registerServiceOrderRoutes } from './service-orders/routes.js';
 import { registerQuoteRoutes } from './quotes/routes.js';
 import { registerInventoryRoutes } from './inventory/routes.js';
 import { registerSupplierRoutes } from './suppliers/routes.js';
+import { registerPurchaseOrderRoutes } from './purchase-orders/routes.js';
+import { registerPurchaseReceiptRoutes } from './purchase-receipts/routes.js';
 
 export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string }) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -24,6 +26,8 @@ export function buildApp(options?: { authService?: AuthService; secureCookie?: b
     registerQuoteRoutes(app, options.authService);
     registerInventoryRoutes(app, options.authService);
     registerSupplierRoutes(app, options.authService);
+    registerPurchaseOrderRoutes(app, options.authService);
+    registerPurchaseReceiptRoutes(app, options.authService);
   }
   return app;
 }
