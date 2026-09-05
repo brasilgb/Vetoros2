@@ -1,0 +1,4 @@
+export const onlyDigits=(value:string)=>value.replace(/\D/g,'');
+export function validCpf(value:string){if(!/^\d{11}$/.test(value)||/^(\d)\1+$/.test(value))return false;for(const size of[9,10]){let sum=0;for(let i=0;i<size;i++)sum+=Number(value[i])*(size+1-i);if(((sum*10)%11)%10!==Number(value[size]))return false;}return true;}
+export function validCnpj(value:string){if(!/^\d{14}$/.test(value)||/^(\d)\1+$/.test(value))return false;for(const size of[12,13]){const weights=size===12?[5,4,3,2,9,8,7,6,5,4,3,2]:[6,5,4,3,2,9,8,7,6,5,4,3,2],sum=weights.reduce((a,w,i)=>a+Number(value[i])*w,0),rest=sum%11;if(Number(value[size])!==(rest<2?0:11-rest))return false;}return true;}
+export function normalizeBrazilianDocument(personType:'individual'|'company',document?:string|null){if(!document)return null;const value=onlyDigits(document),valid=personType==='individual'?validCpf(value):validCnpj(value);if(!valid)throw new Error('INVALID_DOCUMENT');return value;}

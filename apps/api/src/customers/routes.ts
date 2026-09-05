@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AuthService, AuthSession, ResourceScope } from '../auth/service.js';
 import { requirePermission } from '../auth/service.js';
+import { normalizeBrazilianDocument as normalizedDocument } from '../shared/br-documents.js';
 
 const digits = (value: string) => value.replace(/\D/g, '');
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
@@ -19,9 +20,6 @@ const listSchema = z.object({ search: z.string().trim().max(100).optional(), pag
 const contactSchema = z.object({ contactType: z.enum(['phone','mobile','whatsapp','email']), label: optionalText(80), value: z.string().trim().min(1).max(254), isPrimary: z.boolean().default(false) }).strict();
 const addressSchema = address.extend({ addressType: z.enum(['main','billing','shipping','other']).default('main'), isPrimary: z.boolean().default(true) }).strict();
 
-function validCpf(value: string) { if (!/^\d{11}$/.test(value) || /^(\d)\1+$/.test(value)) return false; for (const size of [9,10]) { let sum=0; for(let i=0;i<size;i++)sum+=Number(value[i])*(size+1-i); const digit=((sum*10)%11)%10; if(digit!==Number(value[size]))return false; } return true; }
-function validCnpj(value: string) { if (!/^\d{14}$/.test(value) || /^(\d)\1+$/.test(value)) return false; for(const size of [12,13]) { const weights=size===12?[5,4,3,2,9,8,7,6,5,4,3,2]:[6,5,4,3,2,9,8,7,6,5,4,3,2]; const sum=weights.reduce((acc,w,i)=>acc+Number(value[i])*w,0); const rest=sum%11; if(Number(value[size])!==(rest<2?0:11-rest))return false; } return true; }
-function normalizedDocument(personType: 'individual'|'company', document?: string|null) { if (!document) return null; const value=digits(document); const valid=personType==='individual'?validCpf(value):validCnpj(value); if(!valid) throw new Error('INVALID_DOCUMENT'); return value; }
 const scopeFor = (session: AuthSession): ResourceScope => session.activeBranchId ? { companyId: session.activeCompanyId!, branchId: session.activeBranchId } : session.activeCompanyId ? { companyId: session.activeCompanyId } : { requireTenant: true };
 const serializeCustomer = <T extends Record<string, unknown>>(row: T) => ({ ...row, ...(row.customer_number !== undefined ? { customer_number: Number(row.customer_number) } : {}) });
 const isDuplicate = (error: unknown) => { if (typeof error !== 'object' || !error) return false; const candidate=error as { code?: string; cause?: { code?: string } }; return candidate.code==='23505' || candidate.cause?.code==='23505'; };

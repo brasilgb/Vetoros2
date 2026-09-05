@@ -1,0 +1,1 @@
+import Link from'next/link';import{SupplierForm}from'../supplier-form';export default function NewSupplier(){return <main><Link href="/app/suppliers">← Fornecedores</Link><h1>Novo fornecedor</h1><SupplierForm/></main>}

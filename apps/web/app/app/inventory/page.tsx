@@ -1,0 +1,1 @@
+import Link from 'next/link'; export default function Inventory(){return <main><h1>Estoque</h1><nav><Link href="/app/inventory/parts">Peças e saldos</Link> · <Link href="/app/inventory/movements">Movimentações</Link></nav></main>}

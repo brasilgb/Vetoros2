@@ -1,4 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import Link from 'next/link'; import { useEffect,useState } from 'react'; import { api } from '../../../lib/api'; // eslint-disable-line @typescript-eslint/no-explicit-any
+import Link from 'next/link'; import { useEffect,useState } from 'react'; import { api } from '../../../lib/api';
 export default function Orders(){const [data,setData]=useState<any>(null);const [error,setError]=useState('');useEffect(()=>{api('/service-orders').then(r=>r.ok?r.json():Promise.reject()).then(setData).catch(()=>setError('Não foi possível carregar as ordens.'));},[]);return <main><h1>Ordens de serviço</h1><Link href="/app/service-orders/new">Nova OS</Link>{error&&<p>{error}</p>}{data?.items?.length===0&&<p>Nenhuma ordem cadastrada.</p>}<ul>{data?.items?.map((o:any)=><li key={o.id}><Link href={`/app/service-orders/${o.id}`}>OS {o.order_number} — {o.customer_name} — {o.status}</Link></li>)}</ul></main>}

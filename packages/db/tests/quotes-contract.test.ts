@@ -1,0 +1,10 @@
+import { readFile } from 'node:fs/promises'; import { describe,expect,it } from 'vitest';
+const migration=await readFile(new URL('../migrations/0009_quotes.sql',import.meta.url),'utf8');
+describe('CRM-03 database contract',()=>{
+ it('uses dedicated quote and item tables with a transactional counter',()=>{expect(migration).toContain('create table quote_number_counters');expect(migration).toContain('create table quotes');expect(migration).toContain('create table quote_items');});
+ it('restricts statuses and item types',()=>{expect(migration).toContain("check (status in ('draft','sent','approved','rejected','expired','cancelled'))");expect(migration).toContain("check (type in ('service','part'))");});
+ it.each(['foreign key (tenant_id, company_id) references companies(tenant_id, id)','foreign key (tenant_id, company_id, branch_id) references branches(tenant_id, company_id, id)','foreign key (tenant_id, customer_id) references customers(tenant_id, id)','foreign key (tenant_id, customer_id, customer_asset_id) references customer_assets(tenant_id, customer_id, id)','foreign key (tenant_id, quote_id) references quotes(tenant_id, id)'])('enforces same-tenant relation %s',value=>expect(migration).toContain(value));
+ it('calculates money deterministically and validates values',()=>{expect(migration).toContain('numeric(14,3)');expect(migration).toContain('numeric(14,2) generated always as');expect(migration).toContain('check (discount_amount <= quantity * unit_price)');});
+ it('forces fail-closed RLS on both tenant tables',()=>{expect(migration.match(/force row level security/g)).toHaveLength(2);expect(migration.match(/current_setting\('app.tenant_id', true\)::uuid/g)?.length).toBeGreaterThanOrEqual(4);});
+ it('makes conversion traceable and idempotent in storage',()=>{expect(migration).toContain('converted_service_order_id');expect(migration).toContain('unique (tenant_id, converted_service_order_id)');expect(migration).toContain('references service_orders(tenant_id, id)');});
+});

@@ -1,396 +1,399 @@
-Perfeito. Vamos abrir formalmente a próxima rodada.
+# COM-01 — Fornecedores
 
-## OS-02 — Itens e serviços da Ordem de Serviço
+## Objetivo
 
-Execute **exclusivamente o OS-02** no projeto `vetoros2`, sem commit ao final.
+Implementar o domínio de **Fornecedores** do VetorOS 2, preservando integralmente os marcos já aprovados:
 
-### 1. Descoberta obrigatória antes de alterar código
+* DB-01;
+* AUTH-01;
+* CORE-01;
+* CRM-01;
+* CRM-02;
+* OS-01;
+* OS-02;
+* CRM-03;
+* EST-01;
+* EST-02.
 
-Antes de criar migration ou modificar schema, revisar:
+Esta etapa deve criar o cadastro mestre de fornecedores que servirá de base para os futuros módulos de compras e recebimento de mercadorias.
 
-* `correio.md`;
-* migration `0007_service_orders.sql`;
-* estrutura atual de `service_orders`;
-* rotas e contratos de OS;
-* permissões `service_orders.*`;
-* auditoria existente;
-* padrões de RLS e FKs compostas usados em CRM-02 e OS-01;
-* telas:
+Não alterar `vetoros1`.
 
-  * `/app/service-orders`;
-  * `/app/service-orders/new`;
-  * `/app/service-orders/:id`.
-
-Confirmar primeiro se já existe alguma estrutura reutilizável para representar itens da OS.
-
-**Não criar tabela nova sem justificar por que a estrutura existente não atende.**
+Não criar commit ao final. Entregar para revisão.
 
 ---
 
-## 2. Objetivo funcional
+## 1. Descoberta obrigatória antes da implementação
 
-Permitir que uma Ordem de Serviço possua múltiplos itens, inicialmente de dois tipos:
+Antes de criar migration ou alterar código, revisar obrigatoriamente:
 
-* **serviço**
-* **peça/produto**
+* estrutura atual de `customers`;
+* padrões adotados para PF/PJ, CPF/CNPJ, endereços e contatos;
+* `inventory_parts`;
+* `stock_movements`;
+* contexto Tenant / Company / Branch;
+* RLS e políticas fail-closed existentes;
+* RBAC e permissões;
+* auditoria append-only;
+* padrões de API e frontend dos módulos CRM já concluídos.
 
-O item deve pertencer obrigatoriamente à mesma:
+Responder explicitamente no relatório:
 
-`Tenant → Company/Branch → Service Order`
+1. Existe alguma entidade atual que represente fornecedores de forma inequívoca?
+2. `customers` pode ser reutilizado sem misturar os domínios CRM e Suprimentos?
+3. Fornecedor pertence ao Tenant, Company ou Branch?
+4. Há necessidade real de vínculo fornecedor × Branch nesta etapa?
+5. Quais padrões existentes podem ser reutilizados sem duplicação?
 
-do contexto operacional permitido.
-
-Não implementar ainda movimentação de estoque, baixa de estoque, reserva, compra, fiscal ou financeiro.
-
----
-
-## 3. Modelo mínimo esperado
-
-Caso a descoberta confirme necessidade de nova persistência, criar algo equivalente a:
-
-`service_order_items`
-
-Campos mínimos:
-
-* `id`
-* `tenant_id`
-* `service_order_id`
-* `type`
-
-  * `service`
-  * `part`
-* `description`
-* `quantity`
-* `unit_price`
-* `discount_amount` ou mecanismo equivalente
-* `total_amount`
-* `notes`, opcional
-* `created_at`
-* `updated_at`
-
-Se o domínio atual já possuir `product_id` ou estrutura de produtos/peças apropriada, o vínculo poderá ser opcional.
-
-Não criar agora um módulo inteiro de catálogo apenas para satisfazer OS-02.
-
-### Valores monetários
-
-Evitar `float`.
-
-Utilizar o padrão monetário já adotado pelo projeto, por exemplo `numeric/decimal` com precisão apropriada.
-
-O total do item deve ser determinístico:
-
-`quantidade × valor unitário − desconto`
-
-Não aceitar total arbitrário enviado pelo frontend se ele puder ser calculado pelo backend.
+Nenhuma migration deve ser criada antes dessa análise.
 
 ---
 
-## 4. Integridade multitenant
+## 2. Decisão arquitetural esperada
 
-OS-02 deve seguir o padrão forte já adotado no projeto.
+Fornecedor deve ser uma entidade própria do domínio de Suprimentos.
 
-Garantir:
+Não reutilizar `customers` apenas porque cliente e fornecedor podem compartilhar características cadastrais como:
 
-* item nunca pode apontar para OS de outro tenant;
-* eventual produto/peça vinculada deve pertencer ao mesmo tenant;
-* FKs compostas sempre que forem necessárias para garantir isso no banco;
-* RLS para leitura e escrita;
-* contexto da sessão utilizado no backend;
-* nenhuma confiança em `tenant_id` informado pelo cliente.
+* razão social;
+* nome fantasia;
+* CPF/CNPJ;
+* endereço;
+* telefone;
+* e-mail.
 
-O usuário jamais deve conseguir escapar do tenant alterando UUIDs no payload.
+A semelhança cadastral não implica identidade de domínio.
 
----
+Nesta etapa, o fornecedor deve pertencer ao **Tenant**.
 
-## 5. Regras funcionais
+Não criar vínculo obrigatório com Branch sem necessidade operacional comprovada.
 
-Implementar pelo menos:
+Não criar ainda:
 
-### Criar item
-
-Permitir adicionar item a uma OS existente.
-
-Validar:
-
-* OS existente;
-* acesso à OS;
-* tipo válido;
-* descrição obrigatória;
-* quantidade maior que zero;
-* valor unitário não negativo;
-* desconto não negativo;
-* desconto não pode tornar o total negativo.
-
-### Atualizar item
-
-Permitir alterar campos editáveis.
-
-Não permitir alterar:
-
-* `id`
-* `tenant_id`
-* `service_order_id`
-
-por atualização normal.
-
-### Remover item
-
-Permitir remoção de item da OS, desde que o usuário possua autorização adequada.
-
-A remoção deve seguir o padrão de auditoria definido no projeto.
-
-### Listar itens
-
-O detalhe da OS deve permitir recuperar seus itens.
-
-Pode ser:
-
-`GET /service-orders/:id/items`
-
-ou inclusão estruturada no detalhe atual da OS, desde que a decisão fique consistente e documentada.
+* pedido de compra;
+* recebimento;
+* contas a pagar;
+* condições de pagamento;
+* custo médio;
+* lote;
+* serialização;
+* movimentação de estoque automática;
+* integração fiscal.
 
 ---
 
-## 6. Totais da Ordem de Serviço
+## 3. Persistência
 
-A OS deve expor, no mínimo:
+Criar estrutura mínima para fornecedores.
 
-* subtotal dos itens;
-* descontos;
-* total da OS.
+Sugestão de entidades:
 
-Preferencialmente esses valores devem ser derivados dos itens, evitando duas fontes de verdade.
+* `suppliers`;
+* `supplier_addresses`;
+* `supplier_contacts`.
 
-Se decidir persistir agregados na própria `service_orders`, justificar tecnicamente e garantir atualização transacional.
+A implementação deve seguir os padrões já consolidados em CRM-01 quando aplicáveis, sem acoplar fornecedores a clientes.
 
-Se não houver necessidade real de persistência, calcular na consulta/API.
+### `suppliers`
 
----
+Campos mínimos esperados:
 
-## 7. Status da OS
+* `id`;
+* `tenant_id`;
+* `supplier_number`;
+* `person_type`;
+* `legal_name`;
+* `trade_name`;
+* CPF/CNPJ normalizado;
+* inscrição estadual;
+* inscrição municipal;
+* observações;
+* status ativo/inativo;
+* `created_at`;
+* `updated_at`.
 
-Revisar os status definidos pelo OS-01 antes de criar regras.
+O número do fornecedor deve ser sequencial por Tenant e gerado de forma transacional.
 
-Não inventar novo workflow completo nesta rodada.
+### Endereços
 
-Apenas impedir operações sobre itens se algum estado já existente significar inequivocamente que a OS está fechada/cancelada e o domínio exigir imutabilidade.
+Permitir múltiplos endereços, seguindo padrão semelhante ao já utilizado para clientes.
 
-Se isso ainda não estiver estabelecido no `correio.md`, **não criar regra de negócio nova por suposição**.
+Suportar ao menos:
 
----
+* comercial;
+* cobrança;
+* entrega;
+* outro.
 
-## 8. Permissões
+Deve existir mecanismo inequívoco para endereço principal.
 
-Reutilizar as permissões do módulo sempre que suficiente.
+### Contatos
 
-Se for necessária granularidade adicional, justificar antes de adicionar algo como:
+Permitir múltiplos contatos.
 
-* `service_orders.items.create`
-* `service_orders.items.update`
-* `service_orders.items.delete`
+Suportar ao menos:
 
-Não proliferar permissões desnecessariamente.
-
-A autorização continua obrigatoriamente no backend.
-
----
-
-## 9. Auditoria
-
-Registrar operações relevantes, seguindo o mecanismo append-only atual:
-
-* item criado;
-* item atualizado;
-* item removido.
-
-Não modificar `audit_logs` para representar estado atual.
-
----
-
-## 10. API
-
-Implementar contratos tipados e validação de payload.
-
-Uma API aceitável seria:
-
-```text
-GET    /service-orders/:id/items
-POST   /service-orders/:id/items
-PATCH  /service-orders/:id/items/:itemId
-DELETE /service-orders/:id/items/:itemId
-```
-
-Mas reutilize o padrão arquitetural já existente no projeto se houver alternativa melhor.
-
-Respostas e erros devem manter a convenção atual da API.
-
----
-
-## 11. Frontend
-
-No detalhe:
-
-`/app/service-orders/:id`
-
-adicionar seção **Itens da OS**.
-
-Interface mínima:
-
-* lista de itens;
-* descrição;
-* tipo;
-* quantidade;
-* valor unitário;
-* desconto;
-* total;
-* adicionar;
-* editar;
-* remover.
-
-Exibir também resumo:
-
-```text
-Subtotal
-Descontos
-Total
-```
-
-Não transformar esta rodada em redesign da tela de OS.
-
----
-
-## 12. Testes obrigatórios de banco
-
-Criar suíte dedicada, preferencialmente:
-
-`packages/db/tests/service-order-items-contract.test.ts`
-
-Cobrir pelo menos:
-
-* constraints de quantidade;
-* valores monetários;
-* tipo válido;
-* vínculo com OS;
-* FK same-tenant;
-* eventual produto same-tenant;
-* RLS;
-* impossibilidade de associação cross-tenant.
-
----
-
-## 13. Testes obrigatórios de API
-
-Criar suíte dedicada para OS-02.
-
-Cobrir:
-
-* criar item de serviço;
-* criar item de peça;
-* payload inválido;
-* quantidade zero/negativa;
-* preço negativo;
-* desconto inválido;
-* OS inexistente;
-* OS de outro tenant;
-* listar itens;
-* atualizar item;
-* tentar alterar campos imutáveis;
-* excluir item;
-* item pertencente a outra OS;
-* item pertencente a outro tenant;
-* cálculo correto de subtotal/desconto/total;
-* autorização.
-
-Adicionar ao menos um cenário com múltiplos itens e valores fracionários para comprovar cálculo monetário correto.
-
----
-
-## 14. Não fazer nesta rodada
-
-Fora do OS-02:
-
-* movimentação de estoque;
-* reserva de peça;
-* saldo de produto;
-* compra;
-* fornecedor;
-* orçamento completo;
-* aprovação de orçamento;
-* contas a receber;
-* caixa;
-* pagamento;
-* NF-e;
-* NFC-e;
-* NFS-e;
-* comissão;
-* agenda;
-* técnico/execução avançada;
-* anexos/fotos;
+* telefone;
+* celular;
 * WhatsApp;
-* módulos posteriores.
+* e-mail;
+* outro.
 
-Também não alterar `vetoros1`.
+Normalizar os dados quando aplicável.
+
+Deve existir mecanismo para contato principal por tipo ou regra equivalente já consolidada no projeto.
 
 ---
 
-## 15. Validação final
+## 4. Integridade
 
-Ao terminar executar:
+Implementar:
 
-* build Docker;
+* FKs same-tenant;
+* constraints adequadas;
+* unicidade de CPF/CNPJ por Tenant quando juridicamente/cadastralmente aplicável;
+* proteção contra referências cross-tenant;
+* validações de PF/PJ;
+* normalização de documentos;
+* validação de CPF/CNPJ seguindo o mesmo padrão de CRM-01.
+
+Evitar duplicar lógica existente de normalização e validação quando houver utilitários reutilizáveis.
+
+---
+
+## 5. RLS
+
+Todas as novas tabelas devem possuir:
+
+* RLS habilitado;
+* RLS forçado;
+* políticas fail-closed;
+* isolamento por `tenant_id`.
+
+Nenhuma consulta deve depender exclusivamente de filtro aplicado pela aplicação.
+
+Testar explicitamente acesso cross-tenant.
+
+---
+
+## 6. RBAC
+
+Criar apenas as permissões necessárias.
+
+Sugestão:
+
+* `suppliers.read`;
+* `suppliers.create`;
+* `suppliers.update`.
+
+Não criar permissões de compras ou estoque nesta etapa.
+
+Aplicar as permissões de forma consistente na API e interface.
+
+---
+
+## 7. Auditoria
+
+Registrar eventos relevantes no mecanismo append-only já existente.
+
+Auditar no mínimo:
+
+* criação;
+* alteração cadastral;
+* ativação;
+* inativação;
+* inclusão/alteração de endereço;
+* inclusão/alteração de contato.
+
+Não criar mecanismo paralelo de auditoria.
+
+---
+
+## 8. API
+
+Implementar endpoints mínimos para:
+
+* listar fornecedores;
+* consultar fornecedor;
+* criar fornecedor;
+* atualizar fornecedor;
+* listar endereços;
+* adicionar/atualizar endereço;
+* listar contatos;
+* adicionar/atualizar contato.
+
+A listagem deve suportar, seguindo os padrões do projeto:
+
+* busca;
+* paginação;
+* ordenação;
+* filtro por status.
+
+Busca deve considerar pelo menos:
+
+* número;
+* razão social;
+* nome fantasia;
+* CPF/CNPJ.
+
+Não implementar exclusão física de fornecedor.
+
+A desativação deve ocorrer por status.
+
+---
+
+## 9. Frontend
+
+Criar:
+
+* `/app/suppliers`;
+* `/app/suppliers/new`;
+* `/app/suppliers/:id`.
+
+A listagem deve exibir de forma objetiva:
+
+* número;
+* nome/razão social;
+* nome fantasia quando houver;
+* CPF/CNPJ;
+* contato principal;
+* status.
+
+A tela de detalhe deve permitir:
+
+* consultar dados cadastrais;
+* editar;
+* visualizar endereços;
+* visualizar contatos;
+* incluir/editar endereços;
+* incluir/editar contatos;
+* ativar/inativar quando autorizado.
+
+Manter padrões visuais e de interação já usados nos módulos existentes.
+
+---
+
+## 10. Compatibilidade futura
+
+A modelagem deve permitir futuramente relacionar fornecedor com:
+
+* peças;
+* códigos próprios do fornecedor;
+* pedidos de compra;
+* recebimentos;
+* notas fiscais de entrada;
+* custos;
+* prazos;
+* condições comerciais.
+
+Porém **nenhuma dessas funcionalidades deve ser implementada no COM-01**.
+
+Não adicionar campos especulativos sem necessidade atual.
+
+---
+
+## 11. Testes obrigatórios
+
+Criar testes dedicados de banco e API.
+
+### Banco
+
+Validar no mínimo:
+
+* criação de fornecedor PF;
+* criação de fornecedor PJ;
+* CPF válido/inválido;
+* CNPJ válido/inválido;
+* normalização;
+* numeração sequencial por Tenant;
+* concorrência na geração do número;
+* unicidade;
+* FKs same-tenant;
+* RLS;
+* isolamento cross-tenant;
+* endereços;
+* contatos;
+* status.
+
+### API
+
+Validar no mínimo:
+
+* criação sem autenticação/contexto;
+* criação sem permissão;
+* payload inválido;
+* criação válida;
+* listagem;
+* busca;
+* paginação;
+* detalhe;
+* atualização;
+* tentativa cross-tenant;
+* ativação/inativação;
+* endereços;
+* contatos.
+
+---
+
+## 12. Validação final
+
+Executar e registrar:
+
+* build Docker de produção;
 * migrations;
 * seed;
 * lint;
 * typecheck;
-* testes DB completos;
-* testes API completos;
-* testes dedicados OS-02;
+* testes DB;
+* testes API;
 * health da API;
-* login do frontend;
-* acesso à página de detalhe de OS;
-* revisão de logs dos containers.
+* disponibilidade do frontend;
+* revisão dos logs finais.
 
-Nenhuma regressão em:
-
-**DB-01 → AUTH-01 → CORE-01 → CRM-01 → CRM-02 → OS-01.**
+Nenhum warning ou erro novo deve ser ignorado.
 
 ---
 
-## Critério do gate
+## 13. Restrições de escopo
 
-Ao final, produzir `correio.md` com:
+Não iniciar nesta etapa:
+
+* pedido de compra;
+* cotação de fornecedores;
+* recebimento;
+* entrada automática de estoque;
+* contas a pagar;
+* financeiro;
+* custo médio;
+* FIFO/LIFO;
+* lote;
+* serialização unitária;
+* transferência de estoque;
+* fiscal;
+* NF-e de entrada;
+* comissão;
+* contratos;
+* automações.
+
+---
+
+## Gate COM-01
+
+Ao final, preencher `executed.md` com:
 
 * descoberta realizada;
-* decisão de persistência;
-* migrations criadas;
-* contratos;
-* API;
+* decisões arquiteturais;
+* migrations;
+* entidades criadas;
+* endpoints;
 * frontend;
-* segurança multitenant;
+* RLS;
+* RBAC;
 * auditoria;
-* testes acrescentados;
-* contagem total das suítes;
-* validação Docker;
-* eventuais limitações;
-* confirmação explícita de que módulos posteriores não foram iniciados.
+* testes;
+* validação final;
+* itens explicitamente não implementados.
 
-**Não fazer commit.**
+Encerrar com:
 
-O resultado esperado é:
-
-> **Gate OS-02: APROVÁVEL**
-
-Pode executar essa rodada agora.
-
-## Fechamento executado
-
-Confirmada a ausência de estrutura reutilizável para itens; criada a migration
-`0008_service_order_items.sql` com valores `numeric`, total calculado, checks,
-FK same-tenant e RLS. A API de itens foi adicionada às rotas de OS e o detalhe
-passou a exibir itens e totais. Foi criada a suíte dedicada
-`packages/db/tests/service-order-items-contract.test.ts`. Totais: DB **39/39**,
-API **38/38**; lint/typecheck, migration/seed, health e frontend passaram. Não
-houve regressões nos módulos anteriores nem alteração de `vetoros1`.
-
-**Gate OS-02: APROVÁVEL**
+**Gate COM-01: para revisão.**
