@@ -267,6 +267,11 @@ export function registerCashRoutes(app: FastifyInstance, service: AuthService) {
     const s = await auth(req, reply); if (!s || !await allow(reply, s, 'payments.refund')) return;
     try {
       const result = await service.withAuthenticatedTenant(s, async (tx) => {
+        // Serialize refunds for the same immutable receipt without granting UPDATE on the
+        // append-only payments table. This is deliberately a separate SQL statement: after a
+        // concurrent transaction commits, the following statements receive a fresh READ
+        // COMMITTED snapshot and can replay the refund.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${p.data.id}::text, 0))`);
         const payment = await tx.execute(sql`select id from payments where id=${p.data.id} and branch_id=${s.activeBranchId!}`);
         if (!payment.length) return 'not_found';
         const session = await tx.execute(sql`select id from cash_sessions where id=${b.data.cashSessionId} and branch_id=${s.activeBranchId!}`);
