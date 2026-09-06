@@ -126,6 +126,39 @@ export class AuthService {
     });
   }
 
+  // ADM-01: identities vivem numa conexão/role separada (vetoros_auth) de tudo que é
+  // tenant-scoped (vetoros_runtime, com RLS) — ver executed.md, "Descoberta", pergunta 8. Por
+  // isso o módulo de usuários precisa destes três métodos aqui (únicos com acesso a `this.auth`)
+  // em vez de fazer um JOIN direto: `tenant_user_profiles`/`tenant_memberships` (via
+  // withAuthenticatedTenant) dizem QUEM pertence ao tenant, e estes métodos resolvem e-mail/nome
+  // global a partir do identityId que vem de lá.
+  async identitiesByIds(ids: string[]): Promise<{ id: string; emailNormalized: string; displayName: string; status: string; lastLoginAt: Date | null }[]> {
+    if (ids.length === 0) return [];
+    return this.auth<{ id: string; emailNormalized: string; displayName: string; status: string; lastLoginAt: Date | null }[]>`
+      select id, email_normalized as "emailNormalized", display_name as "displayName", status, last_login_at as "lastLoginAt" from identities where id = any(${ids})`;
+  }
+
+  async findIdentityIdsByEmailPrefix(prefix: string): Promise<string[]> {
+    const rows = await this.auth<{ id: string }[]>`select id from identities where email_normalized like ${prefix} limit 200`;
+    return rows.map((row) => row.id);
+  }
+
+  /** Reaproveita a Identity se o e-mail já existir (seção 3 do correio.md: a mesma pessoa pode
+   * ter membership em mais de um tenant) — nesse caso a senha existente NÃO é tocada. Só gera
+   * senha temporária quando a Identity é realmente nova. Ver seção 7: não existe infraestrutura
+   * de convite/e-mail ainda, então este é o "menor fluxo funcional" — a senha volta em texto
+   * puro UMA única vez na resposta da criação, para o administrador repassar por fora do
+   * sistema; nunca é logada nem persistida em lugar nenhum além do hash. */
+  async findOrCreateIdentity(email: string, displayName: string): Promise<{ id: string; isNew: boolean; temporaryPassword?: string }> {
+    const normalized = normalizeEmail(email);
+    const [existing] = await this.auth<{ id: string }[]>`select id from identities where email_normalized=${normalized}`;
+    if (existing) return { id: existing.id, isNew: false };
+    const temporaryPassword = randomBytes(9).toString('base64url');
+    const hash = await argon2.hash(temporaryPassword, { type: argon2.argon2id });
+    const [created] = await this.auth<{ id: string }[]>`insert into identities (email_normalized,password_hash,display_name,status) values (${normalized},${hash},${displayName},'active') returning id`;
+    return { id: created!.id, isNew: true, temporaryPassword };
+  }
+
   async selectOperationalContext(session: AuthSession, scope: ResourceScope): Promise<AuthSession | null> {
     if (!session.activeTenantId || !scope.companyId) return null;
     const allowed = await this.hasPermission(session, 'operational.context.select', scope);

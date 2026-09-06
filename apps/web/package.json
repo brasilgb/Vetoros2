@@ -7,13 +7,28 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint app next.config.ts",
+    "lint": "eslint app components lib e2e next.config.ts playwright.config.ts vitest.config.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test"
   },
-  "dependencies": { "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" },
+  "dependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
+    "@radix-ui/react-popover": "^1.1.23",
+    "lucide-react": "^1.41.0",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.0", "@types/node": "^24.0.0", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0",
-    "@vetoros/eslint-config": "workspace:*", "tailwindcss": "^4.1.0", "typescript": "^5.9.0", "vitest": "^3.2.0"
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vetoros/eslint-config": "workspace:*",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AuthService, AuthSession, ResourceScope } from '../auth/service.js';
 import { requirePermission } from '../auth/service.js';
+import { purchaseReceiptReturnSummary } from '../purchase-returns/routes.js';
 
 const id = z.string().uuid();
 const statuses = ['draft', 'confirmed', 'cancelled'] as const;
@@ -37,7 +38,9 @@ export function registerPurchaseReceiptRoutes(app: FastifyInstance, service: Aut
       const items = await tx.execute(sql`select ri.*,oi.quantity ordered_quantity,ip.sku part_sku,coalesce((select sum(pri.quantity) from purchase_receipt_items pri join purchase_receipts pr on pr.id=pri.purchase_receipt_id where pri.purchase_order_item_id=ri.purchase_order_item_id and pr.status='confirmed' and pr.id<>${receiptId}),0) previously_received_quantity from purchase_receipt_items ri join purchase_order_items oi on oi.id=ri.purchase_order_item_id join inventory_parts ip on ip.id=ri.inventory_part_id where ri.purchase_receipt_id=${receiptId} order by ri.created_at`);
       const withPending = items.map((i) => ({ ...i, pending_after_quantity: Number(i.ordered_quantity) - Number(i.previously_received_quantity) - Number(i.quantity) }));
       const orderReceiptState = await purchaseOrderReceiptState(tx, row.purchase_order_id);
-      return { ...row, items: withPending, order_receipt_state: orderReceiptState };
+      const { returnedByItem, returns } = await purchaseReceiptReturnSummary(tx, receiptId);
+      const withReturns = withPending.map((i) => ({ ...i, returned_quantity: returnedByItem[i.id] ?? 0, returnable_quantity: Number(i.quantity) - (returnedByItem[i.id] ?? 0) }));
+      return { ...row, items: withReturns, order_receipt_state: orderReceiptState, returns };
     });
   }
 

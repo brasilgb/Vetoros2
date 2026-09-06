@@ -51,7 +51,11 @@ export function registerCoreRoutes(app: FastifyInstance, service: AuthService) {
       where g.user_profile_id=${session.activeUserProfileId!} and p.code='branches.read' and g.status='active' and r.status='active' and g.valid_from<=now() and (g.valid_until is null or g.valid_until>now()) and (g.scope_type='tenant' or (g.scope_type='company' and g.company_id=b.company_id) or (g.scope_type='branch' and g.branch_id=b.id))) order by b.name`));
   });
   app.get('/branches/:id', async (request, reply) => {
-    const params=idSchema.safeParse(request.params);if(!params.success)return reply.code(400).send({error:'invalid_request'});const session=await authenticated(request,reply);if(!session)return;const [target]=await service.withAuthenticatedTenant(session,tx=>tx.execute(sql`select id,company_id from branches where id=${params.data.id}`));if(!target)return reply.code(404).send({error:'not_found'});if(!await authorize(reply,session,'branches.read',{companyId:String(target.company_id),branchId:params.data.id}))return;return target;
+    // ADM-01 seção 19: antes este endpoint devolvia só {id,company_id} (o restante dos campos só
+    // existia na listagem) — apps/web/app/app/branches/[id]/page.tsx tinha que buscar TODAS as
+    // filiais e procurar a certa. Corrigido para devolver os mesmos campos da listagem; o
+    // workaround no frontend foi removido junto (ver Implementação/"Correção de Branch").
+    const params=idSchema.safeParse(request.params);if(!params.success)return reply.code(400).send({error:'invalid_request'});const session=await authenticated(request,reply);if(!session)return;const [target]=await service.withAuthenticatedTenant(session,tx=>tx.execute(sql`select * from branches where id=${params.data.id}`));if(!target)return reply.code(404).send({error:'not_found'});if(!await authorize(reply,session,'branches.read',{companyId:String(target.company_id),branchId:params.data.id}))return;return target;
   });
   app.post('/branches', async (request, reply) => {
     const body=branchCreate.safeParse(request.body);if(!body.success)return reply.code(400).send({error:'invalid_request'});const session=await authenticated(request,reply);if(!session)return;if(!await authorize(reply,session,'branches.create',{companyId:body.data.companyId}))return;

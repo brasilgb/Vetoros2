@@ -1,1 +1,11 @@
-import Link from'next/link';import{SupplierForm}from'../supplier-form';export default function NewSupplier(){return <main><Link href="/app/suppliers">← Fornecedores</Link><h1>Novo fornecedor</h1><SupplierForm/></main>}
+import { PageHeader } from '../../../../components/page-header';
+import { SupplierForm } from '../supplier-form';
+
+export default function NewSupplierPage() {
+  return (
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <PageHeader title="Novo fornecedor" />
+      <SupplierForm />
+    </div>
+  );
+}
