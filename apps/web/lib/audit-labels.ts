@@ -21,9 +21,12 @@ export const moduleGroups: Record<ModuleKey, { label: string; resourceTypes: str
   inventory: { label: 'Estoque', resourceTypes: ['inventory_part', 'stock_movement'] },
   purchases: { label: 'Compras', resourceTypes: ['supplier', 'purchase_order', 'purchase_receipt', 'purchase_return'] },
   sales: { label: 'Vendas', resourceTypes: ['sale'] },
-  // FIN-01: `cash_register`/`cash_session`/`payment` são os `resourceType`s reais emitidos por
-  // `auditResource` em apps/api/src/cash/routes.ts.
-  finance: { label: 'Financeiro', resourceTypes: ['cash_register', 'cash_session', 'payment'] },
+  // FIN-01/FIN-02/FIN-03/FIN-04: `cash_register`/`cash_session`/`payment`/`receivable`/`payable`/
+  // `financial_account`/`financial_transfer` são os `resourceType`s reais emitidos por
+  // `auditResource` em apps/api/src/cash/routes.ts, apps/api/src/receivables/routes.ts,
+  // apps/api/src/payables/routes.ts e apps/api/src/financial-accounts/routes.ts (e pelo
+  // cancelamento em cascata em sales.ts/service-orders.ts).
+  finance: { label: 'Financeiro', resourceTypes: ['cash_register', 'cash_session', 'payment', 'receivable', 'payable', 'financial_account', 'financial_transfer'] },
   users: { label: 'Usuários', resourceTypes: ['tenant_user_profile'] },
   roles: { label: 'Papéis e Permissões', resourceTypes: ['tenant_role'] },
   companies: { label: 'Empresas', resourceTypes: ['company'] },
@@ -73,6 +76,12 @@ const actionLabels: Record<string, string> = {
   'cash_register.created': 'Caixa criado', 'cash_register.updated': 'Caixa alterado',
   'cash_session.opened': 'Caixa aberto', 'cash_session.closed': 'Caixa fechado',
   'payment.created': 'Recebimento registrado', 'payment.refunded': 'Recebimento estornado',
+  'receivable.generated': 'Título gerado', 'receivable.canceled': 'Título cancelado', 'receivable.allocated': 'Pagamento alocado a título',
+  'payable.created': 'Conta a pagar criada', 'payable.updated': 'Conta a pagar alterada', 'payable.paid': 'Pagamento registrado',
+  'payable.payment_reversed': 'Pagamento estornado', 'payable.canceled': 'Conta a pagar cancelada',
+  'financial_account.created': 'Conta financeira criada', 'financial_account.updated': 'Conta financeira alterada',
+  'financial_transaction.created': 'Movimentação financeira lançada', 'financial_transaction.reversed': 'Movimentação financeira estornada',
+  'financial_transfer.created': 'Transferência entre contas realizada', 'financial_transfer.reversed': 'Transferência entre contas estornada',
   'company.created': 'Empresa criada', 'company.updated': 'Empresa alterada',
   'branch.created': 'Filial criada', 'branch.updated': 'Filial alterada',
   'user.created': 'Usuário criado', 'user.role_changed': 'Papel do usuário alterado', 'user.profile_updated': 'Dados do usuário alterados',

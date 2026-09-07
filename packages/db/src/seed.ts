@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import argon2 from 'argon2';
 import { createDatabase } from './client.js';
@@ -16,7 +17,7 @@ const roleTemplateNames: Record<string, string> = { owner: 'Proprietário', admi
 // dois nesta rodada — ambos contam como "papel administrativo" para a proteção da seção 10);
 // `operational.context.select`, `companies.read` e `branches.read` vão para todo template, pois
 // sem isso o usuário nunca conseguiria escolher Empresa/Filial no cabeçalho.
-async function mapTemplatePermissions() {
+export async function mapTemplatePermissions() {
   await db.execute(sql`insert into system_role_template_permissions (role_template_id,permission_id) select t.id,p.id from system_role_templates t, permissions p where t.code in ('owner','administrator') on conflict do nothing`);
   const byCode: Record<string, string[]> = {
     attendance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'customers.create', 'customers.update', 'customer_assets.read', 'customer_assets.create', 'customer_assets.update', 'service_orders.read', 'service_orders.create', 'service_orders.update', 'quotes.read', 'quotes.create', 'quotes.update', 'sales.read', 'sales.create'],
@@ -28,7 +29,19 @@ async function mapTemplatePermissions() {
     // supervisão, não algo que quem opera o caixa faz sozinho) — nenhum dos dois ganha a
     // permission do outro por coincidência, os dois mapas são explícitos (seção 12 do correio.md).
     cashier: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'sales.read', 'sales.create', 'sales.update', 'sales.confirm', 'cash.read', 'cash.open', 'cash.close', 'payments.read', 'payments.create'],
-    finance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'suppliers.read', 'suppliers.update', 'purchase_orders.read', 'purchase_orders.create', 'purchase_orders.update', 'purchase_orders.approve', 'purchase_receipts.read', 'sales.read', 'cash.read', 'cash.manage', 'payments.read', 'payments.refund'],
+    // FIN-02: `receivables.*` completo vai para `finance` — é quem gera parcelamento, aloca
+    // pagamento a título e cancela título (seção 14 do correio.md: "não conceder automaticamente
+    // acesso financeiro sensível a papéis operacionais" — `cashier`, que só recebe/abre/fecha
+    // caixa no dia a dia, fica de fora, mesmo critério que já separava `cash.manage`/
+    // `payments.refund` como exclusivos de `finance`).
+    // FIN-03: `payables.*` completo vai para `finance` também — mesmo critério de `receivables.*`
+    // acima (é quem cria/paga/estorna/cancela título financeiro; `inventory`, que só lida com o
+    // lado físico de Compras — recebimento/devolução de mercadoria — fica de fora).
+    // FIN-04: `financial_accounts.*` completo vai para `finance` também — mesmo critério de
+    // `receivables.*`/`payables.*` acima (é quem cadastra conta bancária, lança crédito/débito
+    // manual, transfere entre contas e estorna; nenhum papel operacional recebe automaticamente
+    // acesso a tesouraria, seção 20 do correio.md).
+    finance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'suppliers.read', 'suppliers.update', 'purchase_orders.read', 'purchase_orders.create', 'purchase_orders.update', 'purchase_orders.approve', 'purchase_receipts.read', 'sales.read', 'cash.read', 'cash.manage', 'payments.read', 'payments.refund', 'receivables.read', 'receivables.create', 'receivables.cancel', 'receivables.allocate', 'payables.read', 'payables.create', 'payables.update', 'payables.pay', 'payables.cancel', 'payables.reverse', 'financial_accounts.read', 'financial_accounts.create', 'financial_accounts.update', 'financial_accounts.transact', 'financial_accounts.transfer', 'financial_accounts.reverse'],
     fiscal: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'purchase_orders.read', 'purchase_receipts.read', 'sales.read'],
   };
   for (const [code, codes] of Object.entries(byCode)) {
@@ -45,22 +58,54 @@ async function mapTemplatePermissions() {
 }
 
 // ADM-01: instancia, para o tenant dado, um `tenant_roles` por `system_role_template` ativo
-// (nome em pt-BR) e copia as permissions já mapeadas em `system_role_template_permissions`
-// (migration 0019) para `tenant_role_permissions` — idempotente (não recria o que já existe).
-// Precisa rodar aqui, depois que o tenant já existe: migrations rodam antes de qualquer tenant
-// existir, então esta provisão não pode morar numa migration (ver comentário na 0019). Uma
-// futura rotina de criação de tenant pela API deve chamar o equivalente desta função.
-async function provisionRoleTemplates(tenantId: string) {
+// (nome em pt-BR). Precisa rodar aqui, depois que o tenant já existe: migrations rodam antes de
+// qualquer tenant existir, então esta provisão não pode morar numa migration (ver comentário na
+// 0019). Uma futura rotina de criação de tenant pela API deve chamar o equivalente desta função.
+//
+// SAN-01 — reconciliação de permissions (ver executed.md "Descoberta" para o relacionamento
+// completo entre as 4 tabelas envolvidas): antes desta rodada, um `tenant_roles` já existente
+// pulava TODO o resto do laço (`if (existing.length > 0) continue`) — então uma permission
+// adicionada a um módulo depois que o tenant já tinha sido provisionado nunca chegava a
+// `tenant_role_permissions`, mesmo rodando `db:seed` de novo. Agora o papel já existente
+// continua sendo o MESMO (nunca recriado, nunca perde `id`/grants apontando pra ele — requisito
+// 1), e a diferença é só que a cópia de permissions roda SEMPRE, para papel novo e para papel já
+// existente.
+//
+// Espelhamento EXATO com o template atual, não união (requisitos 3+4: adicionar o que é novo E
+// definir política para o que foi removido) — decisão deliberada, não por conveniência:
+// `PATCH /roles/:id` e `DELETE /roles/:id` (apps/api/src/roles/routes.ts) já recusam qualquer
+// alteração de um papel `is_system_managed=true` com 403 `system_role_protected`, reforçado por
+// `tenant_roles_protect_system` (trigger de banco, migration 0020) — ou seja, um papel
+// system-managed **nunca** pode ter permission divergente do template por uma customização
+// legítima do tenant; a única fonte de verdade das permissions dele é `system_role_template_id`
+// -> `system_role_template_permissions`. Não há, portanto, nenhuma customização para proteger:
+// espelhar exatamente (inserir o que falta, remover o que sobra) é seguro e é o único jeito de
+// cumprir o requisito 4 sem inventar uma segunda política implícita.
+//
+// Um papel CUSTOMIZADO do tenant (`is_system_managed=false`) nunca é tocado por esta função:
+// só entra no laço um `tenant_roles` cujo `code` bate com o de um template ativo, e mesmo nesse
+// caso (código coincidente, algo que só aconteceria por acidente — só o seed cria papel com
+// código de template) a reconciliação só roda se a linha encontrada já for `is_system_managed`
+// (requisitos 5+6: nunca sobrescrever papel customizado, nunca transformá-lo em system-managed).
+export async function provisionRoleTemplates(tenantId: string) {
   await db.transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
     const templateRows = await tx.execute<{ id: string; code: string; name: string; scope_type: string; inherits_descendants: boolean }>(sql`select id,code,name,scope_type,inherits_descendants from system_role_templates where is_active`);
     for (const template of templateRows) {
-      const existing = await tx.execute<{ id: string }>(sql`select id from tenant_roles where tenant_id=${tenantId} and code=${template.code}`);
-      if (existing.length > 0) continue;
-      const [role] = await tx.execute<{ id: string }>(sql`insert into tenant_roles (tenant_id,system_role_template_id,code,name,scope_type,inherits_descendants,is_system_managed,status)
-        values (${tenantId},${template.id},${template.code},${roleTemplateNames[template.code] ?? template.name},${template.scope_type},${template.inherits_descendants},true,'active') returning id`);
+      const [existing] = await tx.execute<{ id: string; is_system_managed: boolean }>(sql`select id,is_system_managed from tenant_roles where tenant_id=${tenantId} and code=${template.code}`);
+      let roleId: string;
+      if (existing) {
+        if (!existing.is_system_managed) continue; // papel customizado com código coincidente — nunca tocado
+        roleId = existing.id;
+      } else {
+        const [role] = await tx.execute<{ id: string }>(sql`insert into tenant_roles (tenant_id,system_role_template_id,code,name,scope_type,inherits_descendants,is_system_managed,status)
+          values (${tenantId},${template.id},${template.code},${roleTemplateNames[template.code] ?? template.name},${template.scope_type},${template.inherits_descendants},true,'active') returning id`);
+        roleId = role!.id;
+      }
       await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id)
-        select ${tenantId},${role!.id},stp.permission_id from system_role_template_permissions stp where stp.role_template_id=${template.id} on conflict do nothing`);
+        select ${tenantId},${roleId},stp.permission_id from system_role_template_permissions stp where stp.role_template_id=${template.id} on conflict do nothing`);
+      await tx.execute(sql`delete from tenant_role_permissions where tenant_id=${tenantId} and role_id=${roleId}
+        and permission_id not in (select permission_id from system_role_template_permissions where role_template_id=${template.id})`);
     }
   });
 }
@@ -78,7 +123,14 @@ const dev = {
   permissionSessionRead: '01992ea1-1250-7000-8000-000000000030', roleSingle: '01992ea1-1250-7000-8000-000000000031', grantSingle: '01992ea1-1250-7000-8000-000000000032',
   membershipFaker: '01992ea1-1250-7000-8000-000000000024', profileFaker: '01992ea1-1250-7000-8000-000000000026', roleFaker: '01992ea1-1250-7000-8000-000000000046', grantFaker: '01992ea1-1250-7000-8000-000000000047',
 };
-try {
+
+// SAN-01: o corpo de seed de desenvolvimento (tenants/identities/fixtures fixos) só deve rodar
+// quando este arquivo é executado diretamente (`pnpm db:seed`) — nunca como efeito colateral de
+// só importar `mapTemplatePermissions`/`provisionRoleTemplates` (agora exportadas) a partir de um
+// teste. Sem essa guarda, `import` já dispara todo o seed de dev e fecha a conexão (`client.end()`
+// no `finally` abaixo) antes do teste conseguir chamar as funções de novo.
+const isMainModule = process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];
+async function runDevSeed() {
   for (const code of templates) {
     await db.execute(sql`insert into system_role_templates (code, name, scope_type, inherits_descendants)
       values (${code}, ${code.replaceAll('_', ' ')}, 'tenant', true) on conflict (code) do nothing`);
@@ -106,8 +158,9 @@ try {
   const usersPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='users' order by code`)).map((row) => row.id);
   // ADM-03: `audit.read` é inserida pela migration 0021 (mesmo padrão de `users.*` no ADM-01).
   const auditPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='audit' order by code`)).map((row) => row.id);
-  // FIN-01: `cash.*`/`payments.*` são inseridas pela migration 0022 (mesmo padrão).
-  const finPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module in ('cash','payments') order by code`)).map((row) => row.id);
+  // FIN-01/FIN-02/FIN-03/FIN-04: `cash.*`/`payments.*`/`receivables.*`/`payables.*`/
+  // `financial_accounts.*` são inseridas pelas migrations 0022/0023/0024/0025 (mesmo padrão).
+  const finPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module in ('cash','payments','receivables','payables','financial_accounts') order by code`)).map((row) => row.id);
   await mapTemplatePermissions();
   await provisionRoleTemplates(dev.tenantAlpha);
   await provisionRoleTemplates(dev.tenantBeta);
@@ -155,4 +208,5 @@ try {
     { tenant: dev.tenantAlpha, customer: '01992ea1-1250-7000-8000-000000000051', type: 'company', name: 'Cliente Alpha PJ', docType: 'cnpj', doc: '11222333000181', company: dev.companyAlpha },
     { tenant: dev.tenantBeta, customer: '01992ea1-1250-7000-8000-000000000052', type: 'individual', name: 'Cliente Beta PF', docType: 'cpf', doc: '39053344705', company: dev.companyBeta },
   ]) await db.transaction(async (tx) => { await tx.execute(sql`select set_config('app.tenant_id',${sample.tenant},true)`); const existing=await tx.execute(sql`select id from customers where id=${sample.customer} or (tenant_id=${sample.tenant} and document_type=${sample.docType} and document_normalized=${sample.doc})`); if(existing.length)return; const [counter]=await tx.execute<{last_number:number}>(sql`insert into customer_number_counters(tenant_id,last_number) values(${sample.tenant},1) on conflict(tenant_id) do update set last_number=customer_number_counters.last_number+1,updated_at=now() returning last_number`); await tx.execute(sql`insert into customers(id,tenant_id,customer_number,person_type,legal_name,document_type,document_normalized,origin_company_id) values(${sample.customer},${sample.tenant},${counter!.last_number},${sample.type},${sample.name},${sample.docType},${sample.doc},${sample.company})`); });
-} finally { await client.end(); }
+}
+if (isMainModule) { try { await runDevSeed(); } finally { await client.end(); } }

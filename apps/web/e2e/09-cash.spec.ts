@@ -111,14 +111,28 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
 
     // 7) volta ao Caixa e fecha — saldo esperado reflete o recebimento estornado (de volta a R$ 100).
     // A tela reabre sem lembrar qual caixa estava selecionado (novo mount, seleção volta ao
-    // primeiro por nome) — como execuções anteriores desta suíte deixam outros caixas
-    // cadastrados no mesmo tenant, o teste precisa reselecionar explicitamente o próprio, em vez
-    // de assumir que ele continua em foco.
+    // primeiro por NOME — GET /cash-registers ordena `order by r.name`) — como execuções
+    // anteriores desta suíte (e de sessões manuais de teste) deixam muitos outros caixas
+    // cadastrados no mesmo tenant (centenas, em bases de desenvolvimento de longa duração), o
+    // teste precisa reselecionar explicitamente o próprio.
+    //
+    // SAN-01, seção 3 do correio.md: a versão anterior (`if (await
+    // registerSelect.isVisible().catch(() => false))`) tinha uma corrida real, não uma regra da
+    // aplicação — `isVisible()` é uma checagem instantânea, e o `<select>` só existe no DOM
+    // depois que `GET /cash-registers` resolve (a página começa com `registers=[]`, e o próprio
+    // componente só renderiza o seletor quando há mais de um caixa). Rodando cedo o bastante,
+    // antes da resposta chegar, `isVisible()` via `false` e o teste pulava a reseleção
+    // inteira — sem re-selecionar, o `<select>` (que carrega segundos depois) assume o primeiro
+    // caixa em ordem alfabética entre todos os cadastrados, quase nunca o deste teste. A correção
+    // espera pela PRÓPRIA opção deste caixa aparecer no `<select>` (o que só acontece depois que
+    // a lista carrega) antes de selecionar — sem essa corrida, o `<select>` está sempre visível
+    // na prática (basta mais de um caixa existir, o que é sempre verdade aqui).
     await page.locator('a[href="/app/cash"]').first().click();
     await page.waitForURL('**/app/cash');
     await expect(page.getByText('Carregando…')).toHaveCount(0);
     const registerSelect = page.getByLabel('Caixa selecionado');
-    if (await registerSelect.isVisible().catch(() => false)) await registerSelect.selectOption({ label: registerName });
+    await expect(registerSelect.locator('option', { hasText: registerName })).toHaveCount(1);
+    await registerSelect.selectOption({ label: registerName });
     await expect(page.getByRole('heading', { name: registerName })).toBeVisible();
     await page.getByRole('button', { name: 'Fechar caixa' }).click();
     const closeDialog = page.getByRole('dialog');

@@ -176,6 +176,13 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
         // estornados pode ser cancelada normalmente.
         const activePayments = await tx.execute(sql`select 1 from payments p where p.sale_id=${p.data.id} and not exists (select 1 from cash_movements m where m.payment_id=p.id and m.type='refund') limit 1`);
         if (activePayments.length) return 'has_active_payments';
+        // FIN-02, seção 11: uma venda cancelada não pode deixar título em aberto incoerente nem
+        // fazer um título já pago "sumir" — `cancel_receivables_for_origin` bloqueia (sem alterar
+        // nada) se existir alocação ativa sobre algum título desta venda, mesmo princípio do
+        // bloqueio de pagamento acima, e cancela em cascata (com rastreabilidade) os títulos
+        // ainda sem nenhum valor recebido.
+        const [receivablesResult] = await tx.execute(sql`select * from cancel_receivables_for_origin(${p.data.id},null,${`Cancelamento da venda #${old.sale_number}`})`);
+        if (receivablesResult.blocked) return 'has_active_receivables';
         if (old.status === 'confirmed') {
           const exits = await tx.execute(sql`select id,part_id,branch_id,quantity,sale_item_id from stock_movements where sale_id=${p.data.id} and type='exit' and sale_item_id is not null order by part_id`);
           const reason = `Cancelamento da venda #${old.sale_number}`;
@@ -185,12 +192,14 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
           }
         }
         const [row] = await tx.execute(sql`update sales set status='cancelled',updated_by_identity_id=${s.identityId},updated_at=now() where id=${p.data.id} returning *`);
-        return { ...row, idempotent: false };
+        return { ...row, idempotent: false, cascadedReceivableIds: receivablesResult.canceled_ids ?? [] };
       });
       if (result === 'missing') return reply.code(404).send({ error: 'not_found' });
       if (result === 'transition') return reply.code(409).send({ error: 'invalid_status_transition' });
       if (result === 'has_active_payments') return reply.code(409).send({ error: 'sale_has_active_payments' });
+      if (result === 'has_active_receivables') return reply.code(409).send({ error: 'sale_has_active_receivables' });
       await service.auditResource(s, 'sale.cancelled', 'sale', p.data.id, { idempotent: result.idempotent });
+      for (const receivableId of result.cascadedReceivableIds ?? []) await service.auditResource(s, 'receivable.canceled', 'receivable', receivableId, { reason: 'origin_cancelled' });
       return result;
     } catch (e) {
       const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;

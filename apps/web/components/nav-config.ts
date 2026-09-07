@@ -3,10 +3,12 @@ import {
   Banknote,
   Building,
   Building2,
+  CalendarClock,
   ClipboardList,
   Cpu,
   FileText,
   History,
+  Landmark,
   LayoutDashboard,
   Package,
   PackageCheck,
@@ -17,6 +19,7 @@ import {
   Undo2,
   UserCog,
   Users,
+  Wallet,
   Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -80,6 +83,18 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Caixa', href: '/app/cash', icon: Banknote, requiresOperationalContext: true },
       { label: 'Recebimentos', href: '/app/payments', icon: Receipt, requiresOperationalContext: true },
+      // FIN-02, seção 17 do correio.md: terceiro item do agrupamento "Financeiro", exatamente
+      // como o correio.md pede ("Financeiro: Caixa, Recebimentos, Contas a Receber").
+      { label: 'Contas a Receber', href: '/app/receivables', icon: CalendarClock, requiresOperationalContext: true },
+      // FIN-03, seção 17 do correio.md: agrupamento pedido literalmente ("Financeiro: Contas a
+      // Receber, Contas a Pagar, Caixa") — mantido como quarto item (em vez de reordenar os já
+      // existentes) para não alterar um contrato de UI já aprovado sem necessidade real.
+      { label: 'Contas a Pagar', href: '/app/payables', icon: Landmark, requiresOperationalContext: true },
+      // FIN-04, seção 25 do correio.md: quinto item do grupo "Financeiro" — Contas Financeiras/
+      // Bancárias e Tesouraria, domínio próprio e semanticamente separado de "Caixa" (ícone
+      // próprio, `Wallet`, para não confundir visualmente com `Banknote`/Caixa ou `Landmark`/
+      // Contas a Pagar).
+      { label: 'Contas Financeiras', href: '/app/financial-accounts', icon: Wallet, requiresOperationalContext: true },
     ],
   },
   {

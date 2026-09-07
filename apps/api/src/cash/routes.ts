@@ -47,6 +47,10 @@ const paymentList = z.object({
   from: z.string().trim().min(1).optional(), to: z.string().trim().min(1).optional(),
   paymentMethodId: id.optional(), origin: z.enum(['sale', 'service_order', 'none']).optional(), status: z.enum(['active', 'refunded']).optional(),
   q: z.string().trim().min(1).max(200).optional(),
+  // FIN-02: filtro adicional (aditivo, não muda o comportamento existente quando ausente) — a
+  // tela de alocação de Contas a Receber precisa listar só os recebimentos da MESMA origem do
+  // título, não "toda venda" via `origin=sale`.
+  saleId: id.optional(), serviceOrderId: id.optional(),
 }).strict();
 
 const scope = (s: AuthSession): ResourceScope => (s.activeBranchId ? { companyId: s.activeCompanyId!, branchId: s.activeBranchId } : s.activeCompanyId ? { companyId: s.activeCompanyId } : { requireTenant: true });
@@ -211,6 +215,8 @@ export function registerCashRoutes(app: FastifyInstance, service: AuthService) {
         and (${q.data.from ?? null}::timestamptz is null or p.created_at>=${q.data.from ?? null})
         and (${q.data.to ?? null}::timestamptz is null or p.created_at<(${q.data.to ?? null}::date + 1))
         and (${q.data.paymentMethodId ?? null}::uuid is null or p.payment_method_id=${q.data.paymentMethodId ?? null})
+        and (${q.data.saleId ?? null}::uuid is null or p.sale_id=${q.data.saleId ?? null})
+        and (${q.data.serviceOrderId ?? null}::uuid is null or p.service_order_id=${q.data.serviceOrderId ?? null})
         and (${q.data.origin ?? null}::text is null
           or (${q.data.origin ?? null}='sale' and p.sale_id is not null)
           or (${q.data.origin ?? null}='service_order' and p.service_order_id is not null)

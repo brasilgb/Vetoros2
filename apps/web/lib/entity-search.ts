@@ -56,3 +56,32 @@ export async function searchOpenServiceOrders(term: string): Promise<ServiceOrde
   // para não oferecer uma opção que o backend vai recusar de qualquer forma.
   return items.filter((item) => item.status !== 'canceled');
 }
+
+// FIN-03: origem de uma conta a pagar (seção 2.2/4 do correio.md) — pedido de compra APROVADO é
+// a única origem reconhecida como financeiramente exigível (`create_payable` recusa qualquer
+// outro status). `total` já vem do próprio pedido (COM-01) para o resumo "a financiar" na tela.
+export type PurchaseOrderOption = { id: string; purchase_order_number: number; supplier_name: string | null; status: string; total: string };
+export async function searchApprovedPurchaseOrders(term: string): Promise<PurchaseOrderOption[]> {
+  const response = await api(`/purchase-orders?page=1&pageSize=8&status=approved&search=${encodeURIComponent(term)}`);
+  if (!response.ok) throw new Error('search_failed');
+  return (await response.json()).items;
+}
+
+// FIN-02: recebimentos da MESMA origem de um título — usada pelo diálogo "Alocar pagamento" (a
+// tela de Contas a Receber nunca deve oferecer um pagamento de outra venda/OS: o próprio backend
+// já recusaria, seção 8, mas oferecer a opção seria confuso). Só um dos dois ids é informado.
+export type PaymentOption = { id: string; amount: string; payment_method_name: string; created_at: string; refunded: boolean };
+export function searchPaymentsForOrigin(origin: { saleId?: string; serviceOrderId?: string }) {
+  return async (term: string): Promise<PaymentOption[]> => {
+    const query = new URLSearchParams({ page: '1', pageSize: '50', ...(origin.saleId ? { saleId: origin.saleId } : {}), ...(origin.serviceOrderId ? { serviceOrderId: origin.serviceOrderId } : {}) });
+    const response = await api(`/payments?${query}`);
+    if (!response.ok) throw new Error('search_failed');
+    const items: PaymentOption[] = (await response.json()).items;
+    const active = items.filter((item) => !item.refunded);
+    // A origem já é pequena o bastante (recebimentos de UMA venda/OS) para filtrar no cliente em
+    // vez de precisar de um parâmetro de busca textual dedicado no backend — digitar filtra por
+    // forma de pagamento ou pelo valor exibido.
+    const normalized = term.trim().toLowerCase();
+    return normalized ? active.filter((item) => item.payment_method_name.toLowerCase().includes(normalized) || item.amount.includes(normalized)) : active;
+  };
+}

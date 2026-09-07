@@ -11,11 +11,22 @@ export const moduleLabels: Record<string, string> = {
   // conjuntos de responsabilidade diferentes (gerir caixas/sessões vs. registrar/estornar
   // recebimentos), mesma granularidade de purchase_orders/purchase_receipts.
   cash: 'Caixa', payments: 'Recebimentos (financeiro)',
+  // FIN-02: `receivables.*` (migration 0023) — módulo próprio (mesma granularidade de
+  // cash/payments): gerir a DÍVIDA com vencimento, distinto de registrar o dinheiro que já entrou.
+  receivables: 'Contas a Receber',
+  // FIN-03: `payables.*` (migration 0024) — módulo próprio simétrico a `receivables`, mas para a
+  // dívida da empresa perante fornecedores/credores, não a do cliente.
+  payables: 'Contas a Pagar',
+  // FIN-04: `financial_accounts.*` (migration 0025) — módulo próprio de tesouraria (contas
+  // bancárias/financeiras e suas movimentações), distinto de `cash` (caixa físico/operacional).
+  financial_accounts: 'Contas Financeiras',
 };
 
 export const actionLabels: Record<string, string> = {
   read: 'Visualizar', create: 'Criar', update: 'Alterar', approve: 'Aprovar', confirm: 'Confirmar', move: 'Movimentar',
   select: 'Selecionar', manage_roles: 'Gerenciar papéis', manage: 'Gerenciar', open: 'Abrir', close: 'Fechar', refund: 'Estornar',
+  cancel: 'Cancelar', allocate: 'Alocar pagamento', pay: 'Pagar', reverse: 'Estornar pagamento/transferência',
+  transact: 'Lançar crédito/débito manual', transfer: 'Transferir entre contas',
 };
 
 export function permissionLabel(code: string): string {
