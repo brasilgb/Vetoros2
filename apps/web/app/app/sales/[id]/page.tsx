@@ -11,7 +11,7 @@ import { StatusBadge, commonStatus } from '../../../../components/status-badge';
 import { FormSection, FormField, formFieldClass } from '../../../../components/form-section';
 import { AsyncButton } from '../../../../components/async-button';
 import { ConfirmDialog } from '../../../../components/confirm-dialog';
-import { formatCurrency } from '../../../../lib/format';
+import { formatCurrency, formatDate } from '../../../../lib/format';
 import { useSetBreadcrumb } from '../../../../components/breadcrumb-context';
 import { RequireOperationalContext } from '../../../../components/require-operational-context';
 import { useOperationalContext } from '../../../../components/operational-context';
@@ -20,7 +20,7 @@ import { PartOptionRow, partLabel } from '../../../../components/entity-option-r
 import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
 type Item = { id: string; type: string; part_sku: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total: string };
-type Sale = { id: string; sale_number: number; customer_name: string | null; status: string; notes: string | null; items: Item[]; subtotal: number; discount_total: number; total: number };
+type Sale = { id: string; sale_number: number; sale_date: string; customer_name: string | null; branch_name: string; status: string; notes: string | null; items: Item[]; subtotal: string; discount_total: string; total: string };
 
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -103,7 +103,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <RequireOperationalContext>
     <div className="flex flex-col gap-6">
-      <PageHeader title={`Venda ${sale.sale_number}`} description={`Cliente: ${sale.customer_name ?? 'Consumidor não identificado'}`} action={<StatusBadge tone={tone}>{label}</StatusBadge>} />
+      <PageHeader title={`Venda ${sale.sale_number}`} description={`${formatDate(sale.sale_date)} · ${sale.branch_name} · Cliente: ${sale.customer_name ?? 'Consumidor não identificado'}`} action={<StatusBadge tone={tone}>{label}</StatusBadge>} />
 
       {editable && (
         <FormSection title="Observações" columns={1}>

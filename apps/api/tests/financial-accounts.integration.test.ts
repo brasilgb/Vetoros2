@@ -364,7 +364,7 @@ describe('FIN-04 transfers (atômica, idempotente, mesma empresa)', () => {
 });
 
 describe('FIN-04 RBAC, auditoria e isolamento de tenant', () => {
-  it('rejects create/read/transact/transfer/reverse without the specific financial_accounts.* permission (403)', async () => {
+  it('rejects create/read/transact/transfer without the specific financial_accounts.* permission (403)', async () => {
     const restricted = await createRestrictedIdentity();
     const restrictedCookie = await loginAs(restricted.email);
     expect((await app.inject({ method: 'POST', url: '/financial-accounts', headers: { cookie: restrictedCookie }, payload: { name: 'x' } })).statusCode).toBe(403);
@@ -373,6 +373,52 @@ describe('FIN-04 RBAC, auditoria e isolamento de tenant', () => {
     expect((await app.inject({ method: 'GET', url: `/financial-accounts/${acc.id}`, headers: { cookie: restrictedCookie } })).statusCode).toBe(403);
     expect((await app.inject({ method: 'POST', url: `/financial-accounts/${acc.id}/transactions`, headers: { cookie: restrictedCookie }, payload: { type: 'credit', amount: 10, description: 'x', idempotencyKey: `rbac-${randomUUID()}` } })).statusCode).toBe(403);
     expect((await app.inject({ method: 'POST', url: `/financial-accounts/${acc.id}/transfer`, headers: { cookie: restrictedCookie }, payload: { toFinancialAccountId: acc.id, amount: 10, description: 'x', idempotencyKey: `rbac-tr-${randomUUID()}` } })).statusCode).toBe(403);
+  });
+
+  it('rejects update without financial_accounts.update and leaves the account unchanged (403)', async () => {
+    const restricted = await createRestrictedIdentity();
+    const restrictedCookie = await loginAs(restricted.email);
+    const originalName = `Conta protegida ${randomUUID()}`;
+    const acc = await makeAccount(originalName);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/financial-accounts/${acc.id}`,
+      headers: { cookie: restrictedCookie },
+      payload: { name: `Alteração negada ${randomUUID()}`, status: 'inactive' },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect((await getAccount(acc.id)).json()).toMatchObject({ name: originalName, status: 'active' });
+  });
+
+  it('rejects transaction and transfer reversal without financial_accounts.reverse and preserves ledger and balances (403)', async () => {
+    const restricted = await createRestrictedIdentity();
+    const restrictedCookie = await loginAs(restricted.email);
+    const from = await makeAccount(), to = await makeAccount();
+    const credit = await transact(from.id, { type: 'credit', amount: 200, description: 'Crédito protegido', idempotencyKey: `rbac-rev-tx-${randomUUID()}` });
+    const createdTransfer = await transfer(from.id, { toFinancialAccountId: to.id, amount: 50, description: 'Transferência protegida', idempotencyKey: `rbac-rev-tr-${randomUUID()}` });
+
+    const transactionReversal = await app.inject({
+      method: 'POST',
+      url: `/financial-accounts/${from.id}/transactions/${credit.json().transaction_id}/reverse`,
+      headers: { cookie: restrictedCookie },
+      payload: { reason: 'Tentativa sem permissão' },
+    });
+    const transferReversal = await app.inject({
+      method: 'POST',
+      url: `/financial-transfers/${createdTransfer.json().transfer_id}/reverse`,
+      headers: { cookie: restrictedCookie },
+      payload: { reason: 'Tentativa sem permissão' },
+    });
+
+    expect(transactionReversal.statusCode).toBe(403);
+    expect(transferReversal.statusCode).toBe(403);
+    expect((await getAccount(from.id)).json().balance).toBe('150.00');
+    expect((await getAccount(to.id)).json().balance).toBe('50.00');
+    const fromTransactions = (await listTransactions(from.id)).json().items as { origin: string }[];
+    const toTransactions = (await listTransactions(to.id)).json().items as { origin: string }[];
+    expect([...fromTransactions, ...toTransactions].filter((item) => item.origin === 'reversal')).toHaveLength(0);
   });
 
   it('audits account creation, manual entry, reversal and transfer', async () => {

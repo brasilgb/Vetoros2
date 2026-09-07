@@ -13,8 +13,9 @@ import { friendlyError } from '../../../components/error-state';
 import { RequireOperationalContext } from '../../../components/require-operational-context';
 import { useOperationalContext } from '../../../components/operational-context';
 import { useDebouncedValue } from '../../../lib/use-debounced-value';
+import { formatCurrency, formatDate } from '../../../lib/format';
 
-type Sale = { id: string; sale_number: number; customer_name: string | null; status: string };
+type Sale = { id: string; sale_number: number; customer_name: string | null; sale_date: string; total: number; status: string };
 const statuses = ['draft', 'confirmed', 'cancelled'] as const;
 const PAGE_SIZE = 20;
 
@@ -57,7 +58,9 @@ export default function SalesPage() {
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Sale>[] = [
     { key: 'number', header: 'Venda', render: (row) => <span className="font-medium text-emerald-50">#{row.sale_number}</span> },
+    { key: 'date', header: 'Data', render: (row) => formatDate(row.sale_date), hideBelow: 'md' },
     { key: 'customer', header: 'Cliente', render: (row) => row.customer_name ?? 'Consumidor não identificado' },
+    { key: 'total', header: 'Total', align: 'right', render: (row) => formatCurrency(row.total), hideBelow: 'sm' },
     { key: 'status', header: 'Status', render: (row) => { const { label, tone } = commonStatus(row.status); return <StatusBadge tone={tone}>{label}</StatusBadge>; } },
   ];
 

@@ -28,7 +28,7 @@ export async function mapTemplatePermissions() {
     // administrativo que operacional) e `payments.refund` (estorno tratado como ação de
     // supervisão, não algo que quem opera o caixa faz sozinho) — nenhum dos dois ganha a
     // permission do outro por coincidência, os dois mapas são explícitos (seção 12 do correio.md).
-    cashier: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'sales.read', 'sales.create', 'sales.update', 'sales.confirm', 'cash.read', 'cash.open', 'cash.close', 'payments.read', 'payments.create'],
+    cashier: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'sales.read', 'sales.create', 'sales.update', 'sales.confirm', 'sales.cancel', 'cash.read', 'cash.open', 'cash.close', 'payments.read', 'payments.create'],
     // FIN-02: `receivables.*` completo vai para `finance` — é quem gera parcelamento, aloca
     // pagamento a título e cancela título (seção 14 do correio.md: "não conceder automaticamente
     // acesso financeiro sensível a papéis operacionais" — `cashier`, que só recebe/abre/fecha
@@ -161,6 +161,7 @@ async function runDevSeed() {
   // FIN-01/FIN-02/FIN-03/FIN-04: `cash.*`/`payments.*`/`receivables.*`/`payables.*`/
   // `financial_accounts.*` são inseridas pelas migrations 0022/0023/0024/0025 (mesmo padrão).
   const finPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module in ('cash','payments','receivables','payables','financial_accounts') order by code`)).map((row) => row.id);
+  const salesPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='sales' order by code`)).map((row) => row.id);
   await mapTemplatePermissions();
   await provisionRoleTemplates(dev.tenantAlpha);
   await provisionRoleTemplates(dev.tenantBeta);
@@ -182,7 +183,7 @@ async function runDevSeed() {
     await tx.execute(sql`insert into tenant_memberships (id,tenant_id,identity_id,status) values (${dev.membershipSingle},${dev.tenantAlpha},${dev.identitySingle},'active') on conflict (id) do nothing`);
     await tx.execute(sql`insert into tenant_user_profiles (id,tenant_id,membership_id,name) values (${dev.profileSingle},${dev.tenantAlpha},${dev.membershipSingle},'Single Alpha') on conflict (id) do nothing`);
     await tx.execute(sql`insert into tenant_roles (id,tenant_id,code,name,scope_type) values (${dev.roleSingle},${dev.tenantAlpha},'dev_auth_reader','Development auth reader','tenant') on conflict (id) do nothing`);
-    for (const permissionId of [...permissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
+    for (const permissionId of [...permissionIds, ...salesPermissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
     await tx.execute(sql`insert into access_grants (id,tenant_id,user_profile_id,role_id,scope_type) values (${dev.grantSingle},${dev.tenantAlpha},${dev.profileSingle},${dev.roleSingle},'tenant') on conflict (id) do nothing`);
     await tx.execute(sql`insert into companies (id,tenant_id,legal_name,trade_name,tax_id_type,tax_id_normalized) values (${dev.companyAlphaServices},${dev.tenantAlpha},'Company Alpha Serviços','Alpha Serviços','cnpj','01992ea1125071') on conflict (id) do nothing`);
     await tx.execute(sql`insert into branches (id,tenant_id,company_id,code,name) values (${dev.branchAlphaNorth},${dev.tenantAlpha},${dev.companyAlpha},'NORTH','Branch Alpha Norte'),(${dev.branchAlphaServices},${dev.tenantAlpha},${dev.companyAlphaServices},'SERVICES','Branch Alpha Serviços 01') on conflict (id) do nothing`);

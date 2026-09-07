@@ -15,6 +15,7 @@ import { searchCustomers, type CustomerOption } from '../../../../lib/entity-sea
 export default function NewSalePage() {
   const router = useRouter();
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
+  const [saleDate, setSaleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -23,7 +24,7 @@ export default function NewSalePage() {
     event.preventDefault();
     setSaving(true);
     setError('');
-    const response = await api('/sales', { method: 'POST', body: JSON.stringify({ customerId: customer?.id ?? null, notes: notes || null }) });
+    const response = await api('/sales', { method: 'POST', body: JSON.stringify({ customerId: customer?.id ?? null, saleDate, notes: notes || null }) });
     setSaving(false);
     if (!response.ok) return setError(friendlyError((await response.json().catch(() => ({}))).error, 'Não foi possível criar a venda.'));
     router.push(`/app/sales/${(await response.json()).id}`);
@@ -35,6 +36,9 @@ export default function NewSalePage() {
         <PageHeader title="Nova venda" />
         <form onSubmit={submit} className="flex flex-col gap-5">
           <FormSection title="Identificação" columns={1}>
+            <FormField label="Data da venda" htmlFor="saleDate">
+              <input id="saleDate" type="date" required className={formFieldClass} value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
+            </FormField>
             <FormField label="Cliente (opcional)" htmlFor="customerId" helperText="Deixe em branco para consumidor não identificado.">
               <EntityCombobox
                 id="customerId"

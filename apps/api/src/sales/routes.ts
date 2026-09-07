@@ -7,10 +7,11 @@ import type { AuthService, AuthSession, ResourceScope } from '../auth/service.js
 import { requirePermission } from '../auth/service.js';
 
 const id = z.string().uuid();
+const date = z.string().date();
 const statuses = ['draft', 'confirmed', 'cancelled'] as const;
 const params = z.object({ id });
-const createSchema = z.object({ customerId: id.nullable().optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
-const updateSchema = z.object({ customerId: id.nullable().optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
+const createSchema = z.object({ customerId: id.nullable().optional(), saleDate: date.optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
+const updateSchema = z.object({ customerId: id.nullable().optional(), saleDate: date.optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
 const listSchema = z.object({ search: z.string().trim().max(100).optional(), customerId: id.optional(), status: z.enum(statuses).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20), order: z.enum(['newest', 'oldest', 'number_asc', 'number_desc']).default('newest') }).strict();
 const itemCreate = z.object({ type: z.enum(['service', 'part']), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300), quantity: z.coerce.number().positive(), unitPrice: z.coerce.number().nonnegative(), discountAmount: z.coerce.number().nonnegative().default(0), notes: z.string().trim().max(2000).nullable().optional() }).strict();
 const itemUpdate = z.object({ type: z.enum(['service', 'part']).optional(), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300).optional(), quantity: z.coerce.number().positive().optional(), unitPrice: z.coerce.number().nonnegative().optional(), discountAmount: z.coerce.number().nonnegative().optional(), notes: z.string().trim().max(2000).nullable().optional() }).strict();
@@ -28,15 +29,11 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
       const [row] = await tx.execute(sql`select s.*,c.legal_name customer_name,b.name branch_name from sales s left join customers c on c.id=s.customer_id join branches b on b.id=s.branch_id where s.id=${saleId}`);
       if (!row) return null;
       const items = await tx.execute(sql`select i.*,ip.sku part_sku from sale_items i left join inventory_parts ip on ip.id=i.inventory_part_id where i.sale_id=${saleId} order by i.created_at`);
-      const typed = items as Array<{ total: string | number; discount_amount: string | number; quantity: string | number; unit_price: string | number }>;
-      const subtotal = typed.reduce((n, i) => n + Number(i.quantity) * Number(i.unit_price), 0);
-      const discountTotal = typed.reduce((n, i) => n + Number(i.discount_amount), 0);
-      const total = typed.reduce((n, i) => n + Number(i.total), 0);
-      return { ...row, items, subtotal: Number(subtotal.toFixed(2)), discount_total: Number(discountTotal.toFixed(2)), total: Number(total.toFixed(2)) };
+      return { ...row, items, subtotal: Number(row.subtotal), discount_total: Number(row.discount_total), total: Number(row.total) };
     });
   }
 
-  app.get('/sales', async (req, reply) => { const q = listSchema.safeParse(req.query); if (!q.success) return reply.code(400).send({ error: 'invalid_request' }); const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.read')) return; const offset = (q.data.page - 1) * q.data.pageSize, term = q.data.search ? `%${q.data.search}%` : null; const ordering = q.data.order === 'oldest' ? sql`sa.created_at asc` : q.data.order === 'number_asc' ? sql`sa.sale_number asc` : q.data.order === 'number_desc' ? sql`sa.sale_number desc` : sql`sa.created_at desc`; const rows = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select sa.*,c.legal_name customer_name,b.name branch_name,count(*) over()::int total from sales sa left join customers c on c.id=sa.customer_id join branches b on b.id=sa.branch_id where (${q.data.customerId ?? null}::uuid is null or sa.customer_id=${q.data.customerId ?? null}) and (${q.data.status ?? null}::text is null or sa.status=${q.data.status ?? null}) and (${term}::text is null or sa.sale_number::text ilike ${term} or c.legal_name ilike ${term}) order by ${ordering} limit ${q.data.pageSize} offset ${offset}`)); return { items: rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'total'))), page: q.data.page, pageSize: q.data.pageSize, total: Number(rows[0]?.total ?? 0) }; });
+  app.get('/sales', async (req, reply) => { const q = listSchema.safeParse(req.query); if (!q.success) return reply.code(400).send({ error: 'invalid_request' }); const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.read')) return; const offset = (q.data.page - 1) * q.data.pageSize, term = q.data.search ? `%${q.data.search}%` : null; const ordering = q.data.order === 'oldest' ? sql`sa.created_at asc` : q.data.order === 'number_asc' ? sql`sa.sale_number asc` : q.data.order === 'number_desc' ? sql`sa.sale_number desc` : sql`sa.created_at desc`; const rows = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select sa.*,c.legal_name customer_name,b.name branch_name,count(*) over()::int result_count from sales sa left join customers c on c.id=sa.customer_id join branches b on b.id=sa.branch_id where (${q.data.customerId ?? null}::uuid is null or sa.customer_id=${q.data.customerId ?? null}) and (${q.data.status ?? null}::text is null or sa.status=${q.data.status ?? null}) and (${term}::text is null or sa.sale_number::text ilike ${term} or c.legal_name ilike ${term}) order by ${ordering} limit ${q.data.pageSize} offset ${offset}`)); return { items: rows.map((r) => ({ ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'result_count')), subtotal: Number(r.subtotal), discount_total: Number(r.discount_total), total: Number(r.total) })), page: q.data.page, pageSize: q.data.pageSize, total: Number(rows[0]?.result_count ?? 0) }; });
   app.get('/sales/:id', async (req, reply) => { const p = params.safeParse(req.params); if (!p.success) return reply.code(400).send({ error: 'invalid_request' }); const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.read')) return; return await saleDetail(s, p.data.id) ?? reply.code(404).send({ error: 'not_found' }); });
   app.post('/sales', async (req, reply) => {
     const b = createSchema.safeParse(req.body); if (!b.success) return reply.code(400).send({ error: 'invalid_request' });
@@ -44,7 +41,7 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
     const result = await service.withAuthenticatedTenant(s, async (tx) => {
       if (b.data.customerId) { const customer = await tx.execute(sql`select id from customers where id=${b.data.customerId}`); if (!customer.length) return 'customer'; }
       const [counter] = await tx.execute(sql`insert into sale_number_counters(tenant_id,last_number) values(${s.activeTenantId!},1) on conflict(tenant_id) do update set last_number=sale_number_counters.last_number+1,updated_at=now() returning last_number`);
-      const [row] = await tx.execute(sql`insert into sales(tenant_id,company_id,branch_id,sale_number,customer_id,notes,created_by_identity_id,updated_by_identity_id) values(${s.activeTenantId!},${s.activeCompanyId!},${s.activeBranchId!},${counter!.last_number},${b.data.customerId ?? null},${b.data.notes ?? null},${s.identityId},${s.identityId}) returning *`);
+      const [row] = await tx.execute(sql`insert into sales(tenant_id,company_id,branch_id,sale_number,customer_id,sale_date,notes,created_by_identity_id,updated_by_identity_id) values(${s.activeTenantId!},${s.activeCompanyId!},${s.activeBranchId!},${counter!.last_number},${b.data.customerId ?? null},coalesce(${b.data.saleDate ?? null}::date,current_date),${b.data.notes ?? null},${s.identityId},${s.identityId}) returning *`);
       return row;
     });
     if (result === 'customer') return reply.code(404).send({ error: 'customer_not_found' });
@@ -57,7 +54,7 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
     const result = await service.withAuthenticatedTenant(s, async (tx) => {
       const [old] = await tx.execute(sql`select status from sales where id=${p.data.id} for update`); if (!old) return 'missing'; if (old.status !== 'draft') return 'locked';
       if ('customerId' in b.data && b.data.customerId) { const customer = await tx.execute(sql`select id from customers where id=${b.data.customerId}`); if (!customer.length) return 'customer'; }
-      const [row] = await tx.execute(sql`update sales set customer_id=case when ${'customerId' in b.data} then ${b.data.customerId ?? null} else customer_id end,notes=case when ${'notes' in b.data} then ${b.data.notes ?? null} else notes end,updated_by_identity_id=${s.identityId},updated_at=now() where id=${p.data.id} returning *`);
+      const [row] = await tx.execute(sql`update sales set customer_id=case when ${'customerId' in b.data} then ${b.data.customerId ?? null} else customer_id end,sale_date=coalesce(${b.data.saleDate ?? null}::date,sale_date),notes=case when ${'notes' in b.data} then ${b.data.notes ?? null} else notes end,updated_by_identity_id=${s.identityId},updated_at=now() where id=${p.data.id} returning *`);
       return row;
     });
     if (result === 'missing') return reply.code(404).send({ error: 'not_found' });
@@ -162,7 +159,7 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
   // em ordem estável de `part_id`, mesma técnica de VEN-02/COM-04 contra deadlock.
   app.post('/sales/:id/cancel', async (req, reply) => {
     const p = params.safeParse(req.params); if (!p.success) return reply.code(400).send({ error: 'invalid_request' });
-    const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.update')) return;
+    const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.cancel')) return;
     try {
       const result = await service.withAuthenticatedTenant(s, async (tx) => {
         const [old] = await tx.execute(sql`select * from sales where id=${p.data.id} for update`);

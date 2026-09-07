@@ -89,9 +89,10 @@ describe('VEN-01 sales API', () => {
   });
 
   it('creates a sale with no customer (anonymous) and with a valid same-tenant customer, rejecting a nonexistent or cross-tenant one', async () => {
-    const anonymous = await create();
+    const anonymous = await create({ saleDate: '2026-09-07' });
     expect(anonymous.statusCode).toBe(201);
     expect(anonymous.json().customer_id).toBeNull();
+    expect(anonymous.json().sale_date).toBe('2026-09-07');
     const withCustomer = await create({ customerId: customer });
     expect(withCustomer.statusCode).toBe(201);
     expect((await create({ customerId: randomUUID() })).statusCode).toBe(404);
@@ -101,6 +102,7 @@ describe('VEN-01 sales API', () => {
 
   it('rejects immutable/invalid payload fields', async () => {
     expect((await app.inject({ method: 'POST', url: '/sales', headers: { cookie }, payload: { tenantId: randomUUID(), saleNumber: 1 } })).statusCode).toBe(400);
+    expect((await create({ saleDate: '07/09/2026' })).statusCode).toBe(400);
   });
 
   it('generates unique sequential numbers under concurrency', async () => {
@@ -130,6 +132,29 @@ describe('VEN-01 sales API', () => {
     expect(detail.subtotal).toBe(70); // 2*10 + 1*50, gross
     expect(detail.discount_total).toBe(1);
     expect(detail.total).toBe(69);
+    const [persisted] = await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id',${tenantAlpha},true)`;
+      return tx<{ subtotal: string; discount_total: string; total: string }[]>`select subtotal,discount_total,total from sales where id=${saleId}`;
+    });
+    expect(Number(persisted!.subtotal)).toBe(70);
+    expect(Number(persisted!.discount_total)).toBe(1);
+    expect(Number(persisted!.total)).toBe(69);
+  });
+
+  it('registers a draft sale with a linked stock part without moving stock or creating any financial fact', async () => {
+    const partId = await makePartWithBalance(8);
+    const before = await balanceOf(partId);
+    const saleId = (await create({ customerId: customer })).json().id;
+    expect((await addItem(saleId, { type: 'part', inventoryPartId: partId, description: 'Snapshot sem baixa', quantity: 3, unitPrice: 25 })).statusCode).toBe(201);
+    expect(await balanceOf(partId)).toBe(before);
+    const [proof] = await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id',${tenantAlpha},true)`;
+      return tx<{ stock_movements: number; payments: number; receivables: number }[]>`select
+        (select count(*)::int from stock_movements where sale_id=${saleId}) stock_movements,
+        (select count(*)::int from payments where sale_id=${saleId}) payments,
+        (select count(*)::int from receivables where sale_id=${saleId}) receivables`;
+    });
+    expect(proof).toEqual({ stock_movements: 0, payments: 0, receivables: 0 });
   });
 
   it('edits header and items while draft, blocks structural changes once confirmed, is idempotent on reconfirmation, and blocks confirming an empty or cancelled sale', async () => {
@@ -463,8 +488,35 @@ describe('VEN-01 sales API — autorização negativa RBAC', () => {
     expect((await app.inject({ method: 'POST', url: `/sales/${created.json().id}/confirm`, headers: { cookie: restrictedCookie } })).statusCode).toBe(403);
   });
 
-  it('granting sales.confirm completes full authorization, which then behaves like the fully authorized identity, without leaking cross-tenant data', async () => {
+  it('requires sales.cancel separately: a 403 leaves confirmed sale, balance, ledger and audit unchanged', async () => {
+    const partId = await makePartWithBalance(10);
+    const saleId = (await create()).json().id;
+    await addItem(saleId, { type: 'part', inventoryPartId: partId, description: 'Peça RBAC cancelamento', quantity: 3, unitPrice: 10 });
+    expect((await confirm(saleId)).statusCode).toBe(200);
+    const before = await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id',${tenantAlpha},true)`;
+      const [sale] = await tx<{ status: string }[]>`select status from sales where id=${saleId}`;
+      const [balance] = await tx<{ quantity: string }[]>`select quantity from stock_balances where branch_id=${branchAlpha} and part_id=${partId}`;
+      const [entries] = await tx<{ count: number }[]>`select count(*)::int count from stock_movements where sale_id=${saleId} and type='entry'`;
+      const [audits] = await tx<{ count: number }[]>`select count(*)::int count from audit_events where resource_id=${saleId} and action='sale.cancelled'`;
+      return { status: sale!.status, balance: Number(balance!.quantity), entries: entries!.count, audits: audits!.count };
+    });
+    expect((await app.inject({ method: 'POST', url: `/sales/${saleId}/cancel`, headers: { cookie: restrictedCookie } })).statusCode).toBe(403);
+    const after = await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id',${tenantAlpha},true)`;
+      const [sale] = await tx<{ status: string }[]>`select status from sales where id=${saleId}`;
+      const [balance] = await tx<{ quantity: string }[]>`select quantity from stock_balances where branch_id=${branchAlpha} and part_id=${partId}`;
+      const [entries] = await tx<{ count: number }[]>`select count(*)::int count from stock_movements where sale_id=${saleId} and type='entry'`;
+      const [audits] = await tx<{ count: number }[]>`select count(*)::int count from audit_events where resource_id=${saleId} and action='sale.cancelled'`;
+      return { status: sale!.status, balance: Number(balance!.quantity), entries: entries!.count, audits: audits!.count };
+    });
+    expect(before).toEqual({ status: 'confirmed', balance: 7, entries: 0, audits: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('granting sales.confirm and sales.cancel completes full authorization, which then behaves like the fully authorized identity, without leaking cross-tenant data', async () => {
     await grantRestrictedPermission(restrictedRoleId, 'sales.confirm');
+    await grantRestrictedPermission(restrictedRoleId, 'sales.cancel');
     const created = await app.inject({ method: 'POST', url: '/sales', headers: { cookie: restrictedCookie }, payload: {} });
     await app.inject({ method: 'POST', url: `/sales/${created.json().id}/items`, headers: { cookie: restrictedCookie }, payload: { type: 'service', description: 'x', quantity: 1, unitPrice: 1 } });
     expect((await app.inject({ method: 'POST', url: `/sales/${created.json().id}/confirm`, headers: { cookie: restrictedCookie } })).statusCode).toBe(200);
