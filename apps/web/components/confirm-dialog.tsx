@@ -14,6 +14,7 @@ export function ConfirmDialog({
   confirmLabel = 'Confirmar',
   tone = 'default',
   busy,
+  error,
   onConfirm,
   onCancel,
 }: {
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   confirmLabel?: string;
   tone?: 'default' | 'destructive';
   busy?: boolean;
+  error?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -78,6 +80,11 @@ export function ConfirmDialog({
         <p id={descriptionId} className="mt-2 text-sm text-emerald-100/70">
           {description}
         </p>
+        {error && (
+          <p role="alert" className="mt-3 rounded-xl border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-200">
+            {error}
+          </p>
+        )}
         <div className="mt-5 flex justify-end gap-3">
           <button ref={cancelRef} onClick={onCancel} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">
             Cancelar

@@ -39,7 +39,7 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
     ]);
     await expect(createDialog).toBeHidden();
     await expect(page.getByText('Carregando…')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: registerName })).toBeVisible();
+    await expect(page.getByRole('heading', { name: registerName, exact: true })).toBeVisible();
     await expect(statusBadge).toHaveText('Fechado');
 
     // 3) abre o caixa com um valor inicial
@@ -53,7 +53,7 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
     ]);
     await expect(openDialog).toBeHidden();
     await expect(page.getByText('Carregando…')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: registerName })).toBeVisible();
+    await expect(page.getByRole('heading', { name: registerName, exact: true })).toBeVisible();
     await expect(statusBadge).toHaveText('Aberto');
     const expectedBalance = page.getByText('Saldo esperado').locator('xpath=following-sibling::p[1]');
     await expect(expectedBalance).toHaveText('R$ 100,00');
@@ -133,19 +133,50 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
     const registerSelect = page.getByLabel('Caixa selecionado');
     await expect(registerSelect.locator('option', { hasText: registerName })).toHaveCount(1);
     await registerSelect.selectOption({ label: registerName });
-    await expect(page.getByRole('heading', { name: registerName })).toBeVisible();
+    await expect(page.getByRole('heading', { name: registerName, exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Fechar caixa' }).click();
     const closeDialog = page.getByRole('dialog');
     await expect(closeDialog).toBeVisible();
     await expect(closeDialog.getByRole('heading', { name: 'Fechar caixa' })).toBeVisible();
+    // CAI-03: uma divergência exige justificativa e permanece disponível na conferência
+    // histórica, sem alterar os movimentos que compõem o saldo esperado.
+    await closeDialog.getByLabel('Valor contado (R$)').fill('99');
+    await expect(closeDialog.getByLabel('Justificativa da divergência')).toBeVisible();
+    const closingJustification = `Diferença conferida no E2E ${suffix}`;
+    await closeDialog.getByLabel('Justificativa da divergência').fill(closingJustification);
     await Promise.all([
       page.waitForResponse((response) => response.url().includes('/close')),
       closeDialog.getByRole('button', { name: 'Fechar caixa', exact: true }).click(),
     ]);
     await expect(closeDialog).toBeHidden();
     await expect(page.getByText('Carregando…')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: registerName })).toBeVisible();
+    await expect(page.getByRole('heading', { name: registerName, exact: true })).toBeVisible();
     await expect(statusBadge).toHaveText('Fechado');
     await expect(page.getByRole('button', { name: 'Abrir caixa' })).toBeVisible();
+    await expect(page.getByText(closingJustification)).toBeVisible();
+
+    // CAI-04: o fechamento usa o mesmo detalhe canônico, traz a composição e oferece a
+    // impressão nativa do navegador sem gerar ou persistir um segundo documento financeiro.
+    await page.getByRole('button', { name: 'Ver fechamento' }).click();
+    await page.waitForURL(/\/app\/cash\/sessions\/[0-9a-f-]+$/);
+    const closedSessionId = page.url().split('/').at(-1)!;
+    await expect(page.getByRole('heading', { name: 'Resumo financeiro' })).toBeVisible();
+    await expect(page.getByText('Comprovante de fechamento de caixa')).toBeVisible();
+    await expect(page.getByText(closingJustification)).toBeVisible();
+    await expect(page.getByRole('cell', { name: /Dinheiro \(cash\)/ })).toBeVisible();
+    await page.evaluate(() => { window.print = () => { document.body.dataset.printInvoked = 'true'; }; });
+    await page.getByRole('button', { name: 'Imprimir fechamento' }).click();
+    await expect.poll(() => page.locator('body').getAttribute('data-print-invoked')).toBe('true');
+
+    // CAI-05: a referência estável localiza a sessão na consulta branch-scoped sem depender do
+    // caixa atualmente selecionado para operação.
+    await page.getByRole('button', { name: 'Voltar ao caixa' }).click();
+    await page.waitForURL('**/app/cash');
+    await expect(page.getByLabel('Caixa do histórico')).toHaveValue('');
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/cash-sessions?') && response.url().includes(`sessionReference=${closedSessionId}`)),
+      page.getByLabel('Referência da sessão').fill(closedSessionId),
+    ]);
+    await expect(page.getByTitle(closedSessionId)).toHaveText(closedSessionId.slice(0, 8));
   });
 });

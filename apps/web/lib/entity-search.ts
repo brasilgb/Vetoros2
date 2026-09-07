@@ -46,7 +46,7 @@ export async function searchConfirmedSales(term: string): Promise<SaleOption[]> 
   return (await response.json()).items;
 }
 
-export type ServiceOrderOption = { id: string; order_number: number; customer_name: string | null; status: string };
+export type ServiceOrderOption = { id: string; order_number: number; customer_id: string; asset_id: string | null; customer_name: string | null; status: string };
 export async function searchOpenServiceOrders(term: string): Promise<ServiceOrderOption[]> {
   const response = await api(`/service-orders?page=1&pageSize=8&search=${encodeURIComponent(term)}`);
   if (!response.ok) throw new Error('search_failed');

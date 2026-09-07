@@ -28,9 +28,20 @@ const registerUpdate = z.object({ name: z.string().trim().min(1).max(120).option
 const registerList = z.object({ status: z.enum(['active', 'inactive']).optional() }).strict();
 
 const openSchema = z.object({ cashRegisterId: id, openingAmount: z.coerce.number().min(0) }).strict();
-const closeSchema = z.object({ closingAmountInformed: z.coerce.number().min(0) }).strict();
-const sessionList = z.object({ cashRegisterId: id.optional(), status: z.enum(['open', 'closed']).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20) }).strict();
-const movementList = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20) }).strict();
+const closeSchema = z.object({ closingAmountInformed: z.coerce.number().min(0), justification: z.string().trim().max(2000).nullable().optional() }).strict();
+const sessionList = z.object({
+  cashRegisterId: id.optional(), sessionReference: id.optional(), status: z.enum(['open', 'closed']).optional(), operatorId: id.optional(),
+  openedFrom: z.string().trim().min(1).optional(), openedTo: z.string().trim().min(1).optional(),
+  closedFrom: z.string().trim().min(1).optional(), closedTo: z.string().trim().min(1).optional(),
+  divergence: z.enum(['with', 'without']).optional(),
+  page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20),
+}).strict();
+const movementList = z.object({
+  operatorId: id.optional(), type: z.enum(['opening', 'receipt', 'refund', 'supply', 'withdrawal']).optional(),
+  from: z.string().trim().min(1).optional(), to: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20),
+}).strict();
+const adjustmentSchema = z.object({ type: z.enum(['supply', 'withdrawal']), amount: z.coerce.number().positive(), reason: z.string().trim().min(1).max(1000) }).strict();
 
 const paymentCreate = z.object({
   cashSessionId: id,
@@ -124,11 +135,36 @@ export function registerCashRoutes(app: FastifyInstance, service: AuthService) {
     const s = await auth(req, reply); if (!s || !await allow(reply, s, 'cash.read')) return;
     const offset = (q.data.page - 1) * q.data.pageSize;
     const rows = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`
-      select cs.*, r.name as register_name, ${identityNameSubquery(s.activeTenantId!, 'cs.opened_by_identity_id')} as opened_by_name,
+      select cs.*,case when cs.status='closed' then cs.closing_amount_informed-cs.expected_amount_at_close end as difference,
+        (cs.closing_justification is not null and length(trim(cs.closing_justification))>0) as has_justification,
+        r.name as register_name,c.legal_name as company_legal_name,c.trade_name as company_trade_name,b.code as branch_code,b.name as branch_name,
+        totals.receipts,totals.refunds,totals.supplies,totals.withdrawals,totals.total_entries,totals.total_exits,totals.movement_count,
+        case when cs.status='closed' then cs.expected_amount_at_close else coalesce(totals.current_balance,cs.opening_amount) end as expected_amount,
+        ${identityNameSubquery(s.activeTenantId!, 'cs.opened_by_identity_id')} as opened_by_name,
         ${identityNameSubquery(s.activeTenantId!, 'cs.closed_by_identity_id')} as closed_by_name, count(*) over()::int as total
       from cash_sessions cs join cash_registers r on r.id=cs.cash_register_id
+      join companies c on c.id=cs.company_id join branches b on b.id=cs.branch_id
+      left join lateral (select
+        coalesce(sum(cm.amount) filter (where cm.type='receipt'),0) as receipts,
+        coalesce(sum(cm.amount) filter (where cm.type='refund'),0) as refunds,
+        coalesce(sum(cm.amount) filter (where cm.type='supply'),0) as supplies,
+        coalesce(sum(cm.amount) filter (where cm.type='withdrawal'),0) as withdrawals,
+        coalesce(sum(cm.amount) filter (where cm.type in ('receipt','supply')),0) as total_entries,
+        coalesce(sum(cm.amount) filter (where cm.type in ('refund','withdrawal')),0) as total_exits,
+        count(*)::int as movement_count,
+        (array_agg(cm.resulting_balance order by cm.created_at desc,cm.id desc))[1] as current_balance
+        from cash_movements cm where cm.cash_session_id=cs.id) totals on true
       where cs.branch_id=${s.activeBranchId!} and (${q.data.cashRegisterId ?? null}::uuid is null or cs.cash_register_id=${q.data.cashRegisterId ?? null})
+        and (${q.data.sessionReference ?? null}::uuid is null or cs.id=${q.data.sessionReference ?? null})
         and (${q.data.status ?? null}::text is null or cs.status=${q.data.status ?? null})
+        and (${q.data.operatorId ?? null}::uuid is null or cs.opened_by_identity_id=${q.data.operatorId ?? null} or cs.closed_by_identity_id=${q.data.operatorId ?? null})
+        and (${q.data.openedFrom ?? null}::timestamptz is null or cs.opened_at>=${q.data.openedFrom ?? null})
+        and (${q.data.openedTo ?? null}::timestamptz is null or cs.opened_at<(${q.data.openedTo ?? null}::date + 1))
+        and (${q.data.closedFrom ?? null}::timestamptz is null or cs.closed_at>=${q.data.closedFrom ?? null})
+        and (${q.data.closedTo ?? null}::timestamptz is null or cs.closed_at<(${q.data.closedTo ?? null}::date + 1))
+        and (${q.data.divergence ?? null}::text is null
+          or (${q.data.divergence ?? null}='with' and cs.status='closed' and cs.closing_amount_informed<>cs.expected_amount_at_close)
+          or (${q.data.divergence ?? null}='without' and cs.status='closed' and cs.closing_amount_informed=cs.expected_amount_at_close))
       order by cs.opened_at desc limit ${q.data.pageSize} offset ${offset}`));
     return { items: rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'total'))), page: q.data.page, pageSize: q.data.pageSize, total: Number(rows[0]?.total ?? 0) };
   });
@@ -142,14 +178,97 @@ export function registerCashRoutes(app: FastifyInstance, service: AuthService) {
       where cs.cash_register_id=${q.data.cashRegisterId} and cs.status='open' and r.branch_id=${s.activeBranchId!}`));
     return row ?? null;
   });
+  app.get('/cash-session-indicators', async (req, reply) => {
+    const q = z.object({ cashRegisterId: id.optional(), from: z.string().trim().min(1).optional(), to: z.string().trim().min(1).optional() }).strict().safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: 'invalid_request' });
+    const s = await auth(req, reply); if (!s || !await allow(reply, s, 'cash.read')) return;
+    const [row] = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select
+      count(*)::int as closed_sessions,
+      count(*) filter (where closing_amount_informed<>expected_amount_at_close)::int as divergent_sessions,
+      coalesce(sum(abs(closing_amount_informed-expected_amount_at_close)),0) as absolute_difference,
+      coalesce(sum(closing_amount_informed-expected_amount_at_close),0) as net_difference,
+      coalesce(max(abs(closing_amount_informed-expected_amount_at_close)),0) as largest_difference
+      from cash_sessions where branch_id=${s.activeBranchId!} and status='closed'
+        and (${q.data.cashRegisterId ?? null}::uuid is null or cash_register_id=${q.data.cashRegisterId ?? null})
+        and (${q.data.from ?? null}::timestamptz is null or closed_at>=${q.data.from ?? null})
+        and (${q.data.to ?? null}::timestamptz is null or closed_at<(${q.data.to ?? null}::date + 1))`));
+    return row;
+  });
   app.get('/cash-sessions/:id/movements', async (req, reply) => {
     const p = params.safeParse(req.params), q = movementList.safeParse(req.query); if (!p.success || !q.success) return reply.code(400).send({ error: 'invalid_request' });
     const s = await auth(req, reply); if (!s || !await allow(reply, s, 'cash.read')) return;
     const offset = (q.data.page - 1) * q.data.pageSize;
     const session = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select id from cash_sessions where id=${p.data.id} and branch_id=${s.activeBranchId!}`));
     if (!session.length) return reply.code(404).send({ error: 'not_found' });
-    const rows = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select m.*,${identityNameSubquery(s.activeTenantId!, 'm.actor_identity_id')} as actor_name,count(*) over()::int as total from cash_movements m where m.cash_session_id=${p.data.id} order by m.created_at desc, m.id desc limit ${q.data.pageSize} offset ${offset}`));
+    const rows = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`select m.*,pm.name as payment_method_name,${identityNameSubquery(s.activeTenantId!, 'm.actor_identity_id')} as actor_name,count(*) over()::int as total from cash_movements m left join payments pay on pay.id=m.payment_id left join payment_methods pm on pm.id=pay.payment_method_id where m.cash_session_id=${p.data.id}
+      and (${q.data.operatorId ?? null}::uuid is null or m.actor_identity_id=${q.data.operatorId ?? null})
+      and (${q.data.type ?? null}::text is null or m.type=${q.data.type ?? null})
+      and (${q.data.from ?? null}::timestamptz is null or m.created_at>=${q.data.from ?? null})
+      and (${q.data.to ?? null}::timestamptz is null or m.created_at<(${q.data.to ?? null}::date + 1))
+      order by m.created_at desc, m.id desc limit ${q.data.pageSize} offset ${offset}`));
     return { items: rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'total'))), page: q.data.page, pageSize: q.data.pageSize, total: Number(rows[0]?.total ?? 0) };
+  });
+  app.get('/cash-sessions/:id', async (req, reply) => {
+    const p = params.safeParse(req.params), q = z.object({ includeMovements: z.enum(['true']).optional() }).strict().safeParse(req.query);
+    if (!p.success || !q.success) return reply.code(400).send({ error: 'invalid_request' });
+    const s = await auth(req, reply); if (!s || !await allow(reply, s, 'cash.read')) return;
+    const [session] = await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`
+      select cs.*,r.name as register_name,c.legal_name as company_legal_name,c.trade_name as company_trade_name,
+        c.tax_id_type as company_tax_id_type,c.tax_id_normalized as company_tax_id_normalized,
+        b.code as branch_code,b.name as branch_name,b.timezone as branch_timezone,
+        ${identityNameSubquery(s.activeTenantId!, 'cs.opened_by_identity_id')} as opened_by_name,
+        ${identityNameSubquery(s.activeTenantId!, 'cs.closed_by_identity_id')} as closed_by_name
+      from cash_sessions cs join cash_registers r on r.id=cs.cash_register_id
+      join companies c on c.id=cs.company_id join branches b on b.id=cs.branch_id
+      where cs.id=${p.data.id} and cs.branch_id=${s.activeBranchId!}`));
+    if (!session) return reply.code(404).send({ error: 'not_found' });
+    const [totals, paymentMethods] = await service.withAuthenticatedTenant(s, async (tx) => Promise.all([
+      tx.execute(sql`select
+        coalesce(sum(amount) filter (where type='receipt'),0) as receipts,
+        coalesce(sum(amount) filter (where type='refund'),0) as refunds,
+        coalesce(sum(amount) filter (where type='supply'),0) as supplies,
+        coalesce(sum(amount) filter (where type='withdrawal'),0) as withdrawals,
+        coalesce(sum(amount) filter (where type in ('receipt','supply')),0) as total_entries,
+        coalesce(sum(amount) filter (where type in ('refund','withdrawal')),0) as total_exits,
+        count(*)::int as movement_count,
+        coalesce((array_agg(resulting_balance order by created_at desc,id desc))[1],${session.opening_amount}) as expected_amount
+        from cash_movements where cash_session_id=${p.data.id}`),
+      tx.execute(sql`select pm.id,pm.code,pm.name,
+        coalesce(sum(case when m.type='receipt' then m.amount when m.type='refund' then -m.amount else 0 end),0) as net_amount,
+        coalesce(sum(m.amount) filter (where m.type='receipt'),0) as received_amount,
+        coalesce(sum(m.amount) filter (where m.type='refund'),0) as refunded_amount
+        from cash_movements m join payments pay on pay.id=m.payment_id join payment_methods pm on pm.id=pay.payment_method_id
+        where m.cash_session_id=${p.data.id} and m.type in ('receipt','refund')
+        group by pm.id,pm.code,pm.name order by pm.name`),
+    ]));
+    const summary = totals[0]!;
+    const movements = q.data.includeMovements ? await service.withAuthenticatedTenant(s, (tx) => tx.execute(sql`
+      select m.id,m.type,m.amount,m.resulting_balance,m.reason,m.created_at,pm.code as payment_method_code,
+        pm.name as payment_method_name,${identityNameSubquery(s.activeTenantId!, 'm.actor_identity_id')} as actor_name
+      from cash_movements m left join payments pay on pay.id=m.payment_id left join payment_methods pm on pm.id=pay.payment_method_id
+      where m.cash_session_id=${p.data.id} order by m.created_at,m.id`)) : undefined;
+    return { ...session, summary: { ...summary, counted_amount: session.closing_amount_informed, difference: session.status === 'closed' ? Number(session.closing_amount_informed) - Number(session.expected_amount_at_close) : null }, payment_methods: paymentMethods, ...(movements ? { movements } : {}) };
+  });
+  app.post('/cash-sessions/:id/movements', async (req, reply) => {
+    const p = params.safeParse(req.params), b = adjustmentSchema.safeParse(req.body); if (!p.success || !b.success) return reply.code(400).send({ error: 'invalid_request' });
+    const s = await auth(req, reply); if (!s || !await allow(reply, s, 'cash.manage')) return;
+    try {
+      const result = await service.withAuthenticatedTenant(s, async (tx) => {
+        const found = await tx.execute(sql`select id from cash_sessions where id=${p.data.id} and branch_id=${s.activeBranchId!}`);
+        if (!found.length) return 'not_found';
+        const [row] = await tx.execute(sql`select * from record_cash_adjustment(${p.data.id},${b.data.type},${b.data.amount},${b.data.reason})`);
+        return row;
+      });
+      if (result === 'not_found') return reply.code(404).send({ error: 'not_found' });
+      await service.auditResource(s, `cash_movement.${b.data.type}`, 'cash_session', p.data.id, { amount: b.data.amount, reason: b.data.reason });
+      return reply.code(201).send(result);
+    } catch (e) {
+      const code = dbCode(e);
+      if (code === '55000') return reply.code(409).send({ error: 'session_not_open' });
+      if (code === '23514') return reply.code(409).send({ error: 'insufficient_cash_balance' });
+      if (code === '22023') return reply.code(400).send({ error: 'invalid_request' });
+      throw e;
+    }
   });
   app.post('/cash-sessions/open', async (req, reply) => {
     const b = openSchema.safeParse(req.body); if (!b.success) return reply.code(400).send({ error: 'invalid_request' });
@@ -179,15 +298,16 @@ export function registerCashRoutes(app: FastifyInstance, service: AuthService) {
       const result = await service.withAuthenticatedTenant(s, async (tx) => {
         const session = await tx.execute(sql`select id from cash_sessions where id=${p.data.id} and branch_id=${s.activeBranchId!}`);
         if (!session.length) return 'not_found';
-        const [row] = await tx.execute(sql`select * from close_cash_session(${p.data.id},${b.data.closingAmountInformed})`);
+        const [row] = await tx.execute(sql`select * from close_cash_session(${p.data.id},${b.data.closingAmountInformed},${b.data.justification ?? null})`);
         return row;
       });
       if (result === 'not_found') return reply.code(404).send({ error: 'not_found' });
-      await service.auditResource(s, 'cash_session.closed', 'cash_session', p.data.id, { closingAmountInformed: b.data.closingAmountInformed, difference: result.difference });
+      await service.auditResource(s, 'cash_session.closed', 'cash_session', p.data.id, { closingAmountInformed: b.data.closingAmountInformed, difference: result.difference, justification: result.closing_justification });
       return result;
     } catch (e) {
       const code = dbCode(e);
       if (code === '55000') return reply.code(409).send({ error: 'session_not_open' });
+      if (code === '23514') return reply.code(409).send({ error: 'closing_justification_required' });
       if (code === '22023') return reply.code(400).send({ error: 'invalid_request' });
       if (code === 'P0002') return reply.code(404).send({ error: 'not_found' });
       throw e;

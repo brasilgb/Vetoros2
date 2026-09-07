@@ -2,3 +2,17 @@
 
 :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #071510; color: #ecfdf5; }
 body { margin: 0; min-height: 100vh; }
+
+@media print {
+  :root { color-scheme: light; background: white; color: black; }
+  body { background: white; color: black; }
+  body:has(.cash-closing-report) aside,
+  body:has(.cash-closing-report) header,
+  .print-hidden { display: none !important; }
+  body:has(.cash-closing-report) main { max-width: none; padding: 0; }
+  .cash-closing-report { color: black; }
+  .cash-closing-report section { break-inside: avoid; border-color: #d1d5db; background: white; }
+  .cash-closing-report table { width: 100%; border-collapse: collapse; }
+  .cash-closing-report th,
+  .cash-closing-report td { border-bottom: 1px solid #d1d5db; padding: 0.4rem; color: black; }
+}

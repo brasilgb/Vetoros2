@@ -36,9 +36,10 @@ afterAll(async () => { await app.close(); await service.close(); await admin.end
 // ---- Helpers de fixture ----
 const createRegister = (name = `Caixa ${randomUUID()}`) => app.inject({ method: 'POST', url: '/cash-registers', headers: { cookie }, payload: { name } });
 const openSession = (cashRegisterId: string, openingAmount = 0) => app.inject({ method: 'POST', url: '/cash-sessions/open', headers: { cookie }, payload: { cashRegisterId, openingAmount } });
-const closeSession = (id: string, closingAmountInformed: number) => app.inject({ method: 'POST', url: `/cash-sessions/${id}/close`, headers: { cookie }, payload: { closingAmountInformed } });
+const closeSession = (id: string, closingAmountInformed: number, justification?: string) => app.inject({ method: 'POST', url: `/cash-sessions/${id}/close`, headers: { cookie }, payload: { closingAmountInformed, ...(justification ? { justification } : {}) } });
 const receive = (payload: Record<string, unknown>) => app.inject({ method: 'POST', url: '/payments', headers: { cookie }, payload });
 const refund = (paymentId: string, payload: Record<string, unknown>) => app.inject({ method: 'POST', url: `/payments/${paymentId}/refund`, headers: { cookie }, payload });
+const adjust = (sessionId: string, payload: Record<string, unknown>) => app.inject({ method: 'POST', url: `/cash-sessions/${sessionId}/movements`, headers: { cookie }, payload });
 
 async function registerAndOpen(openingAmount = 0) {
   const register = (await createRegister()).json();
@@ -84,6 +85,16 @@ async function insertBetaRegisterAndSession() {
     return tx<{ session_id: string }[]>`select * from open_cash_session(${registerId},0)`;
   });
   return { registerId, sessionId: session!.session_id };
+}
+async function insertOtherBranchSession() {
+  const branchId = randomUUID(), registerId = randomUUID();
+  const [session] = await admin.begin(async (tx) => {
+    await tx`select set_config('app.tenant_id',${tenantAlpha},true)`;
+    await tx`insert into branches(id,tenant_id,company_id,code,name) values(${branchId},${tenantAlpha},${companyAlpha},${`OTHER-${randomUUID()}`},'Outra filial CAI-05')`;
+    await tx`insert into cash_registers(id,tenant_id,company_id,branch_id,name) values(${registerId},${tenantAlpha},${companyAlpha},${branchId},${`Outro caixa ${randomUUID()}`})`;
+    return tx<{ session_id: string }[]>`select * from open_cash_session(${registerId},7)`;
+  });
+  return { branchId, registerId, sessionId: session!.session_id };
 }
 
 describe('FIN-01 cash registers', () => {
@@ -139,10 +150,10 @@ describe('FIN-01 cash sessions (opening/closing)', () => {
 
   it('closes an open session, computing the difference between informed and expected balance, and never lets a closed session reopen implicitly', async () => {
     const { register, sessionId } = await registerAndOpen(100);
-    const closed = await closeSession(sessionId, 90);
+    const closed = await closeSession(sessionId, 90, 'Falta identificada na conferência');
     expect(closed.statusCode).toBe(200);
     expect(closed.json()).toMatchObject({ expected_amount: '100.00', closing_amount_informed: '90', difference: '-10.00' });
-    expect((await closeSession(sessionId, 90)).statusCode).toBe(409);
+    expect((await closeSession(sessionId, 90, 'Repetição')).statusCode).toBe(409);
     // um segundo `open` no mesmo caixa cria uma sessão NOVA (a fechada não volta a ficar aberta)
     expect((await openSession(register.id, 5)).statusCode).toBe(201);
   });
@@ -159,7 +170,7 @@ describe('FIN-01 cash sessions (opening/closing)', () => {
   it('closing while a receipt is being processed leaves no corrupted state: exactly one of the two operations reflects the other consistently', async () => {
     const { sessionId } = await registerAndOpen(0);
     const [closeResult, receiveResult] = await Promise.all([
-      closeSession(sessionId, 0),
+      closeSession(sessionId, 0, 'Recebimento concorrente'),
       receive({ cashSessionId: sessionId, amount: 25, paymentMethodId: cashMethodId, idempotencyKey: `race-${randomUUID()}` }),
     ]);
     // a corrida é decidida pelo lock da linha da sessão (seção 18) — nunca os dois succeeds ao
@@ -327,6 +338,155 @@ describe('FIN-01 sale/service order cancellation guard', () => {
     const blocked = await app.inject({ method: 'PATCH', url: `/service-orders/${orderId}`, headers: { cookie }, payload: { status: 'canceled' } });
     expect(blocked.statusCode).toBe(409);
     expect(blocked.json().error).toBe('service_order_has_active_payments');
+  });
+});
+
+describe('CAI-02 session history, conference and manual movements', () => {
+  it('filters session history and movements and returns a derived conference summary', async () => {
+    const { register, sessionId } = await registerAndOpen(100);
+    await receive({ cashSessionId: sessionId, amount: 40, paymentMethodId: cashMethodId, idempotencyKey: `summary-${randomUUID()}` });
+    expect((await adjust(sessionId, { type: 'supply', amount: 20, reason: 'Troco adicional' })).statusCode).toBe(201);
+    expect((await adjust(sessionId, { type: 'withdrawal', amount: 10, reason: 'Depósito no cofre' })).statusCode).toBe(201);
+
+    const history = (await app.inject({ method: 'GET', url: `/cash-sessions?cashRegisterId=${register.id}&status=open&openedFrom=2020-01-01&openedTo=2099-01-01`, headers: { cookie } })).json();
+    expect(history.items.map((item: { id: string }) => item.id)).toContain(sessionId);
+    const supplies = (await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}/movements?type=supply&from=2020-01-01&to=2099-01-01`, headers: { cookie } })).json();
+    expect(supplies.items).toHaveLength(1);
+    expect(supplies.items[0]).toMatchObject({ reason: 'Troco adicional', resulting_balance: '160.00' });
+
+    const detail = (await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}`, headers: { cookie } })).json();
+    expect(detail.summary).toMatchObject({ receipts: '40.00', supplies: '20.00', withdrawals: '10.00', total_entries: '60.00', total_exits: '10.00', expected_amount: '150.00' });
+    expect(detail.payment_methods).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'Dinheiro', net_amount: '40.00' })]));
+  });
+
+  it('requires cash.manage, a reason and sufficient balance for supply/withdrawal', async () => {
+    const { sessionId } = await registerAndOpen(10);
+    expect((await adjust(sessionId, { type: 'withdrawal', amount: 11, reason: 'Valor alto' })).statusCode).toBe(409);
+    expect((await adjust(sessionId, { type: 'supply', amount: 1, reason: '' })).statusCode).toBe(400);
+    const restricted = await createRestrictedIdentity();
+    const restrictedCookie = await loginAs(restricted.email);
+    expect((await app.inject({ method: 'POST', url: `/cash-sessions/${sessionId}/movements`, headers: { cookie: restrictedCookie }, payload: { type: 'supply', amount: 1, reason: 'Troco' } })).statusCode).toBe(403);
+  });
+
+  it('serializes withdrawal against closing without corrupting the expected balance', async () => {
+    const { sessionId } = await registerAndOpen(20);
+    const [closed, withdrawal] = await Promise.all([closeSession(sessionId, 20, 'Sangria concorrente'), adjust(sessionId, { type: 'withdrawal', amount: 5, reason: 'Sangria concorrente' })]);
+    if (withdrawal.statusCode === 201) expect(Number(closed.json().expected_amount)).toBe(15);
+    else expect(withdrawal.statusCode).toBe(409);
+  });
+});
+
+describe('CAI-03 managerial closing', () => {
+  it('closes without justification when balanced and requires it for shortage or surplus', async () => {
+    const balanced = await registerAndOpen(10);
+    expect((await closeSession(balanced.sessionId, 10)).statusCode).toBe(200);
+
+    const shortage = await registerAndOpen(10);
+    const rejected = await closeSession(shortage.sessionId, 9);
+    expect(rejected.statusCode).toBe(409);
+    expect(rejected.json().error).toBe('closing_justification_required');
+    const closed = await closeSession(shortage.sessionId, 9, 'Falta de R$ 1 na contagem');
+    expect(closed.statusCode).toBe(200);
+    expect(closed.json()).toMatchObject({ difference: '-1.00', closing_justification: 'Falta de R$ 1 na contagem' });
+
+    const surplus = await registerAndOpen(10);
+    expect((await closeSession(surplus.sessionId, 12, 'Sobra encontrada')).json().difference).toBe('2.00');
+  });
+
+  it('filters divergences and derives managerial indicators without mutating the ledger', async () => {
+    const { register, sessionId } = await registerAndOpen(20);
+    await closeSession(sessionId, 15, 'Falta na conferência');
+    const history = (await app.inject({ method: 'GET', url: `/cash-sessions?cashRegisterId=${register.id}&divergence=with`, headers: { cookie } })).json();
+    expect(history.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: sessionId, difference: '-5.00', closing_justification: 'Falta na conferência' })]));
+    const indicators = (await app.inject({ method: 'GET', url: `/cash-session-indicators?cashRegisterId=${register.id}`, headers: { cookie } })).json();
+    expect(indicators).toMatchObject({ closed_sessions: 1, divergent_sessions: 1, absolute_difference: '5.00', net_difference: '-5.00', largest_difference: '5.00' });
+    expect((await adjust(sessionId, { type: 'supply', amount: 1, reason: 'Após fechamento' })).statusCode).toBe(409);
+  });
+});
+
+describe('CAI-04 closing report contract', () => {
+  it('reuses the canonical detail totals and adds identification plus chronological movements', async () => {
+    const { register, sessionId } = await registerAndOpen(25);
+    await receive({ cashSessionId: sessionId, amount: 12, paymentMethodId: cashMethodId, idempotencyKey: `report-${randomUUID()}` });
+    await adjust(sessionId, { type: 'withdrawal', amount: 2, reason: 'Cofre' });
+    await closeSession(sessionId, 34, 'Falta de R$ 1 conferida');
+
+    const canonical = (await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}`, headers: { cookie } })).json();
+    const response = await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}?includeMovements=true`, headers: { cookie } });
+    expect(response.statusCode).toBe(200);
+    const report = response.json();
+    expect(report).toMatchObject({ id: sessionId, status: 'closed', register_name: register.name, company_legal_name: expect.any(String), branch_name: expect.any(String), closing_justification: 'Falta de R$ 1 conferida' });
+    expect(report.summary).toEqual(canonical.summary);
+    expect(report.payment_methods).toEqual(canonical.payment_methods);
+    expect(report.payment_methods).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'cash', received_amount: '12.00', refunded_amount: '0', net_amount: '12.00' })]));
+    expect(report.movements.map((movement: { type: string }) => movement.type)).toEqual(['opening', 'receipt', 'withdrawal']);
+    expect(report.movements[1]).toMatchObject({ payment_method_name: 'Dinheiro', actor_name: expect.any(String) });
+  });
+
+  it('marks an open session as open and preserves branch, tenant and RBAC boundaries', async () => {
+    const { sessionId } = await registerAndOpen(5);
+    const open = await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}?includeMovements=true`, headers: { cookie } });
+    expect(open.statusCode).toBe(200);
+    expect(open.json()).toMatchObject({ status: 'open', closed_at: null, closing_amount_informed: null });
+
+    const betaSession = await insertBetaRegisterAndSession();
+    expect((await app.inject({ method: 'GET', url: `/cash-sessions/${betaSession.sessionId}?includeMovements=true`, headers: { cookie } })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: `/cash-sessions/${randomUUID()}?includeMovements=true`, headers: { cookie } })).statusCode).toBe(404);
+
+    const restricted = await createRestrictedIdentity();
+    const restrictedCookie = await loginAs(restricted.email);
+    expect((await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}?includeMovements=true`, headers: { cookie: restrictedCookie } })).statusCode).toBe(403);
+  });
+});
+
+describe('CAI-05 operational cash history', () => {
+  it('paginates newest first and filters by reference, register, status, period and divergence', async () => {
+    const register = (await createRegister()).json();
+    const first = (await openSession(register.id, 10)).json().session_id as string;
+    await closeSession(first, 10);
+    const second = (await openSession(register.id, 20)).json().session_id as string;
+    await closeSession(second, 19, 'Falta na auditoria');
+    const third = (await openSession(register.id, 30)).json().session_id as string;
+
+    const page1 = (await app.inject({ method: 'GET', url: `/cash-sessions?cashRegisterId=${register.id}&page=1&pageSize=2`, headers: { cookie } })).json();
+    const page2 = (await app.inject({ method: 'GET', url: `/cash-sessions?cashRegisterId=${register.id}&page=2&pageSize=2`, headers: { cookie } })).json();
+    expect(page1).toMatchObject({ page: 1, pageSize: 2, total: 3 });
+    expect(page1.items.map((item: { id: string }) => item.id)).toEqual([third, second]);
+    expect(page2.items.map((item: { id: string }) => item.id)).toEqual([first]);
+
+    const filtered = (await app.inject({ method: 'GET', url: `/cash-sessions?sessionReference=${second}&cashRegisterId=${register.id}&status=closed&closedFrom=2020-01-01&closedTo=2099-01-01&divergence=with`, headers: { cookie } })).json();
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.items[0]).toMatchObject({ id: second, status: 'closed', difference: '-1.00', has_justification: true, movement_count: 1, company_legal_name: expect.any(String), branch_name: expect.any(String) });
+  });
+
+  it('returns consolidated values consistent with detail for open and closed sessions without N+1 requests', async () => {
+    const { register, sessionId } = await registerAndOpen(40);
+    await receive({ cashSessionId: sessionId, amount: 8, paymentMethodId: cashMethodId, idempotencyKey: `history-${randomUUID()}` });
+    await adjust(sessionId, { type: 'withdrawal', amount: 3, reason: 'Cofre' });
+    const openList = (await app.inject({ method: 'GET', url: `/cash-sessions?sessionReference=${sessionId}`, headers: { cookie } })).json().items[0];
+    const openDetail = (await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}`, headers: { cookie } })).json();
+    expect(openList).toMatchObject({ register_name: register.name, status: 'open', receipts: '8.00', withdrawals: '3.00', total_entries: '8.00', total_exits: '3.00', expected_amount: openDetail.summary.expected_amount, movement_count: openDetail.summary.movement_count });
+
+    await closeSession(sessionId, 45);
+    const closedList = (await app.inject({ method: 'GET', url: `/cash-sessions?sessionReference=${sessionId}`, headers: { cookie } })).json().items[0];
+    const closedDetail = (await app.inject({ method: 'GET', url: `/cash-sessions/${sessionId}`, headers: { cookie } })).json();
+    expect(closedList).toMatchObject({ status: 'closed', expected_amount: closedDetail.summary.expected_amount, closing_amount_informed: closedDetail.summary.counted_amount, difference: '0.00', has_justification: false });
+  });
+
+  it('requires cash.read and hides known session UUIDs from other tenants and branches', async () => {
+    const own = await registerAndOpen(1);
+    const foreignTenant = await insertBetaRegisterAndSession();
+    const foreignBranch = await insertOtherBranchSession();
+    const list = (await app.inject({ method: 'GET', url: '/cash-sessions?pageSize=100', headers: { cookie } })).json();
+    expect(list.items.map((item: { id: string }) => item.id)).toContain(own.sessionId);
+    expect(list.items.map((item: { id: string }) => item.id)).not.toContain(foreignTenant.sessionId);
+    expect(list.items.map((item: { id: string }) => item.id)).not.toContain(foreignBranch.sessionId);
+    expect((await app.inject({ method: 'GET', url: `/cash-sessions?sessionReference=${foreignTenant.sessionId}`, headers: { cookie } })).json().items).toHaveLength(0);
+    expect((await app.inject({ method: 'GET', url: `/cash-sessions/${foreignBranch.sessionId}`, headers: { cookie } })).statusCode).toBe(404);
+
+    const restricted = await createRestrictedIdentity();
+    const restrictedCookie = await loginAs(restricted.email);
+    expect((await app.inject({ method: 'GET', url: '/cash-sessions', headers: { cookie: restrictedCookie } })).statusCode).toBe(403);
   });
 });
 

@@ -24,6 +24,7 @@ export default function SuppliersPage() {
   const [status, setStatus] = useState('');
   const [toggleTarget, setToggleTarget] = useState<Supplier>();
   const [toggling, setToggling] = useState(false);
+  const [toggleError, setToggleError] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
   const load = useCallback(async () => {
@@ -43,11 +44,12 @@ export default function SuppliersPage() {
   async function confirmToggle() {
     if (!toggleTarget) return;
     setToggling(true);
+    setToggleError('');
     const nextStatus = toggleTarget.status === 'active' ? 'inactive' : 'active';
     const response = await api(`/suppliers/${toggleTarget.id}`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) });
     setToggling(false);
     if (response.status === 401) return router.replace('/login');
-    if (!response.ok) return alert(friendlyError((await response.json().catch(() => ({}))).error));
+    if (!response.ok) return setToggleError(friendlyError((await response.json().catch(() => ({}))).error));
     setToggleTarget(undefined);
     await load();
   }
@@ -84,7 +86,7 @@ export default function SuppliersPage() {
       render: (row) => (
         <RowActionsMenu label={`Ações de ${row.legal_name}`}>
           <RowActionItem onClick={() => router.push(`/app/suppliers/${row.id}`)}>Editar</RowActionItem>
-          <RowActionItem onClick={() => setToggleTarget(row)}>{row.status === 'active' ? 'Inativar' : 'Ativar'}</RowActionItem>
+          <RowActionItem onClick={() => { setToggleError(''); setToggleTarget(row); }}>{row.status === 'active' ? 'Inativar' : 'Ativar'}</RowActionItem>
         </RowActionsMenu>
       ),
     },
@@ -141,8 +143,9 @@ export default function SuppliersPage() {
         description={`${toggleTarget?.trade_name || toggleTarget?.legal_name || ''} ficará ${toggleTarget?.status === 'active' ? 'inativo' : 'ativo'} no cadastro.`}
         confirmLabel={toggleTarget?.status === 'active' ? 'Inativar' : 'Ativar'}
         busy={toggling}
+        error={toggleError}
         onConfirm={confirmToggle}
-        onCancel={() => setToggleTarget(undefined)}
+        onCancel={() => { setToggleError(''); setToggleTarget(undefined); }}
       />
     </div>
   );

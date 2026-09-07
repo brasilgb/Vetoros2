@@ -21,6 +21,8 @@ import { registerCashRoutes } from './cash/routes.js';
 import { registerReceivableRoutes } from './receivables/routes.js';
 import { registerPayableRoutes } from './payables/routes.js';
 import { registerFinancialAccountRoutes } from './financial-accounts/routes.js';
+import { registerScheduleRoutes } from './schedules/routes.js';
+import { registerReportRoutes } from './reports/routes.js';
 
 export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string }) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -57,6 +59,8 @@ export function buildApp(options?: { authService?: AuthService; secureCookie?: b
     registerReceivableRoutes(app, options.authService);
     registerPayableRoutes(app, options.authService);
     registerFinancialAccountRoutes(app, options.authService);
+    registerScheduleRoutes(app, options.authService);
+    registerReportRoutes(app, options.authService);
   }
   return app;
 }

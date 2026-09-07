@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  BarChart3,
   Banknote,
   Building,
   Building2,
@@ -43,6 +44,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', href: '/app', icon: LayoutDashboard },
       { label: 'Ordens de Serviço', href: '/app/service-orders', icon: Wrench, requiresOperationalContext: true },
+      { label: 'Agenda', href: '/app/schedules', icon: CalendarClock, requiresOperationalContext: true },
       { label: 'Orçamentos', href: '/app/quotes', icon: FileText, requiresOperationalContext: true },
     ],
   },
@@ -73,6 +75,7 @@ export const navGroups: NavGroup[] = [
     label: 'Vendas',
     items: [{ label: 'Vendas', href: '/app/sales', icon: ShoppingCart, requiresOperationalContext: true }],
   },
+  { label: 'Relatórios', items: [{ label: 'Visão operacional', href: '/app/reports', icon: BarChart3 }] },
   {
     // FIN-01, seção 15 do correio.md: agrupamento sugerido literalmente ("Financeiro: Caixa,
     // Recebimentos"). O rótulo "Recebimentos" também existe em Compras (recebimento de

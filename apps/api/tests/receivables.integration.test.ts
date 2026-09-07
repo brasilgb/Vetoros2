@@ -321,8 +321,12 @@ describe('FIN-02 cancellation', () => {
 describe('FIN-02 listing, overdue, RBAC and tenant isolation', () => {
   it('lists receivables scoped to the active branch with derived status filters', async () => {
     const { saleId } = await makeSale(55);
-    const receivable = (await generate({ saleId, installments: [{ amount: 55, dueDate: '2026-12-01' }] })).json().items[0];
-    const list = await listReceivables(`status=open&pageSize=100`);
+    // Data exclusiva desta fixture: a suíte roda em paralelo e o banco de desenvolvimento pode
+    // conservar mais de 100 títulos de outras suítes. Consultar apenas `status=open&pageSize=100`
+    // tornava a assertion dependente da posição do registro na paginação global da filial.
+    const dueDate = '2088-07-19';
+    const receivable = (await generate({ saleId, installments: [{ amount: 55, dueDate }] })).json().items[0];
+    const list = await listReceivables(`status=open&from=${dueDate}&to=${dueDate}&pageSize=100`);
     expect(list.statusCode).toBe(200);
     expect(list.json().items.map((i: { id: string }) => i.id)).toContain(receivable.id);
   });
