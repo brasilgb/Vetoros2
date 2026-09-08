@@ -3,13 +3,14 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuthService } from '../src/auth/service.js';
 import { buildApp } from '../src/app.js';
-import { csvCell } from '../src/reports/routes.js';
+import { csvCell, toCsv } from '../src/reports/routes.js';
 
 const password = process.env.DEV_SEED_PASSWORD ?? 'change-me-local-only';
 const service = new AuthService(process.env.AUTH_DATABASE_URL ?? 'postgresql://vetoros_auth:local_auth_only@127.0.0.1:5432/vetoros', process.env.DATABASE_URL ?? 'postgresql://vetoros_runtime:local_runtime_only@127.0.0.1:5432/vetoros', 3600);
 const app = buildApp({ authService: service, loginRateLimitMax: 100 });
 const admin = postgres(process.env.MIGRATION_DATABASE_URL ?? 'postgresql://vetoros_migration:local_migration_only@127.0.0.1:5432/vetoros');
 let cookie = '';
+const fixtureOrders: string[] = [];
 
 beforeAll(async () => {
   await app.ready();
@@ -17,7 +18,15 @@ beforeAll(async () => {
   cookie = String(login.headers['set-cookie']).split(';')[0]!;
   await app.inject({ method: 'POST', url: '/auth/operational-context', headers: { cookie }, payload: { companyId: '01992ea1-1250-7000-8000-000000000012', branchId: '01992ea1-1250-7000-8000-000000000013' } });
 });
-afterAll(async () => { await app.close(); await service.close(); await admin.end(); });
+afterAll(async () => {
+  for (const tenant of ['01992ea1-1250-7000-8000-000000000010', '01992ea1-1250-7000-8000-000000000020']) {
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id',${tenant},true)`;
+      for (const id of fixtureOrders) await tx`delete from service_orders where id=${id}`;
+    });
+  }
+  await app.close(); await service.close(); await admin.end();
+});
 
 describe('REL-01 reports summary', () => {
   it('requires authentication and validates the half-open period', async () => {
@@ -31,6 +40,7 @@ describe('REL-01 reports summary', () => {
 
   it('uses the same filters and isolates tenant, company and branch in JSON and CSV', async () => {
     const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()] as const;
+    fixtureOrders.push(...ids);
     const numberBase = Number(String(Date.now()).slice(-8)) * 10;
     await admin.begin(async (tx) => {
       await tx`select set_config('app.tenant_id','01992ea1-1250-7000-8000-000000000010',true)`;
@@ -55,6 +65,8 @@ describe('REL-01 reports summary', () => {
     expect(csv.body).not.toContain('REL-02 outra filial');
     expect(csv.body).not.toContain('REL-02 outra empresa');
     expect(csv.body).not.toContain('REL-02 outro tenant');
+    const excluded = await app.inject({ method: 'GET', url: '/reports/export.csv?from=2086-06-02&to=2086-06-03', headers: { cookie } });
+    expect(excluded.body).toContain('"ordens_servico","total","Total de OS","0"');
   });
 
   it('exports the same empty period as a valid deterministic UTF-8 CSV', async () => {
@@ -72,6 +84,44 @@ describe('REL-01 reports summary', () => {
     expect(csvCell('+SUM(A1)')).toBe('"\'+SUM(A1)"');
     expect(csvCell('-1')).toBe('"\'-1"');
     expect(csvCell('@cmd')).toBe('"\'@cmd"');
+    expect(csvCell('  =2+2')).toBe('"\'  =2+2"');
+    expect(csvCell('\t=2+2')).toBe('"\'\t=2+2"');
+    const fixture = toCsv({
+      period: { from: '2026-01-01', to: '2026-02-01' },
+      serviceOrders: { total: 1, completed: 0, canceled: 0, amount: '-12.50', byStatus: [{ status: 'texto, "citado"\nlinha', total: 1 }] },
+      sales: { total: 0, canceled: 0, amount: 0 },
+      customers: { total: 0, individuals: 0, companies: 0 },
+      stockMovements: [{ type: '=2+2', quantity: -3, movements: 1 }],
+    });
+    expect(fixture).toContain('"texto, ""citado""\nlinha"');
+    expect(fixture).toContain('"\'=2+2","-3"');
+    expect(fixture).toContain('"Valor canônico das OS","-12.50"');
+  });
+
+  it('rejects scope injection and invalid operational context', async () => {
+    for (const key of ['tenantId', 'companyId', 'branchId']) {
+      expect((await app.inject({ method: 'GET', url: `/reports/export.csv?${key}=01992ea1-1250-7000-8000-000000000020`, headers: { cookie } })).statusCode).toBe(400);
+    }
+    const branchId = randomUUID(), code = `QA-${randomUUID()}`;
+    const setBranchStatus = (status: string) => admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id','01992ea1-1250-7000-8000-000000000010',true)`;
+      await tx`update branches set status=${status} where id=${branchId}`;
+    });
+    try {
+      await admin.begin(async (tx) => {
+        await tx`select set_config('app.tenant_id','01992ea1-1250-7000-8000-000000000010',true)`;
+        await tx`insert into branches(id,tenant_id,company_id,code,name) values(${branchId},'01992ea1-1250-7000-8000-000000000010','01992ea1-1250-7000-8000-000000000012',${code},'QA-01 reports')`;
+      });
+      const login = await app.inject({ method: 'POST', url: '/auth/login', payload: { email: 'single@vetoros.local', password } });
+      const isolatedCookie = String(login.headers['set-cookie']).split(';')[0]!;
+      await app.inject({ method: 'POST', url: '/auth/operational-context', headers: { cookie: isolatedCookie }, payload: { companyId: '01992ea1-1250-7000-8000-000000000012', branchId } });
+      await setBranchStatus('inactive');
+      for (const route of ['summary', 'export.csv']) {
+        expect((await app.inject({ method: 'GET', url: `/reports/${route}`, headers: { cookie: isolatedCookie } })).statusCode).toBe(409);
+      }
+    } finally {
+      await setBranchStatus('active');
+    }
   });
 
   it('returns a stable zero-safe structure for an empty period', async () => {

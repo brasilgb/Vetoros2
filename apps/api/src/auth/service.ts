@@ -24,6 +24,8 @@ export class AuthService {
 
   async close() { await Promise.all([this.auth.end(), this.runtime.client.end()]); }
 
+  async readiness() { await Promise.all([this.auth`select 1`, this.runtime.client`select 1`]); }
+
   private async tenantOptions(identityId: string): Promise<TenantOption[]> {
     return this.auth.begin(async (tx) => {
       await tx`select set_config('app.actor_identity_id', ${identityId}, true)`;

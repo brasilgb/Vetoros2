@@ -20,7 +20,7 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
     // 1) abre a tela de Caixa a partir do grupo "Financeiro" da sidebar
     await page.locator('a[href="/app/cash"]').first().click();
     await page.waitForURL('**/app/cash');
-    await expect(page.getByRole('heading', { name: 'Caixa' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Caixa', exact: true })).toBeVisible();
 
     // 2) cria um novo caixa
     const registerName = `Caixa E2E ${suffix}`;
@@ -124,15 +124,17 @@ test.describe('FIN-01 — caixa e recebimentos', () => {
     // antes da resposta chegar, `isVisible()` via `false` e o teste pulava a reseleção
     // inteira — sem re-selecionar, o `<select>` (que carrega segundos depois) assume o primeiro
     // caixa em ordem alfabética entre todos os cadastrados, quase nunca o deste teste. A correção
-    // espera pela PRÓPRIA opção deste caixa aparecer no `<select>` (o que só acontece depois que
-    // a lista carrega) antes de selecionar — sem essa corrida, o `<select>` está sempre visível
-    // na prática (basta mais de um caixa existir, o que é sempre verdade aqui).
+    // espera o carregamento terminar antes de verificar o seletor. Em banco limpo, este é o único
+    // caixa e a UI omite corretamente o `<select>`; com mais de um, o teste reseleciona o seu.
     await page.locator('a[href="/app/cash"]').first().click();
     await page.waitForURL('**/app/cash');
     await expect(page.getByText('Carregando…')).toHaveCount(0);
+    await expect(page.getByRole('cell', { name: registerName, exact: true }).first()).toBeVisible();
     const registerSelect = page.getByLabel('Caixa selecionado');
-    await expect(registerSelect.locator('option', { hasText: registerName })).toHaveCount(1);
-    await registerSelect.selectOption({ label: registerName });
+    if (await registerSelect.count()) {
+      await expect(registerSelect.locator('option', { hasText: registerName })).toHaveCount(1);
+      await registerSelect.selectOption({ label: registerName });
+    }
     await expect(page.getByRole('heading', { name: registerName, exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Fechar caixa' }).click();
     const closeDialog = page.getByRole('dialog');

@@ -1,11 +1,11 @@
 export type StatusTone = 'success' | 'neutral' | 'info' | 'warning' | 'danger';
 
 const toneClasses: Record<StatusTone, string> = {
-  success: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30',
-  neutral: 'bg-white/8 text-emerald-100/70 ring-1 ring-inset ring-white/10',
-  info: 'bg-sky-500/15 text-sky-300 ring-1 ring-inset ring-sky-500/30',
-  warning: 'bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30',
-  danger: 'bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30',
+  success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
+  neutral: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
+  info: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
+  warning: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
+  danger: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
 };
 
 // Padrão único de badge (seção 20 do correio.md): cor nunca é a única

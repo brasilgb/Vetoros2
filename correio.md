@@ -1,297 +1,416 @@
-# NOVA DECISÃO DE ROADMAP — AUTORIZAR REL-02
+Você é o responsável por consolidar a UX/UI do VetorOS2.
 
-Data: 2026-09-07
+O sistema já possui arquitetura, módulos e regras de negócio implementados. Seu trabalho agora é elevar a interface para um padrão profissional, consistente, clean, moderno e extremamente fácil de usar por clientes que trabalham diariamente com assistência técnica, ordens de serviço, estoque, compras, vendas, caixa e financeiro.
 
-O roadmap atual está integralmente concluído até `REL-01` e não possui marco `NEXT`.
+## Objetivo principal
 
-Esta instrução constitui a nova decisão explícita necessária para continuar o desenvolvimento.
+Criar uma linguagem visual única para todo o VetorOS2, preservando os fluxos existentes e melhorando:
 
-## 1. Novo marco autorizado
+* clareza;
+* velocidade de operação;
+* consistência;
+* hierarquia visual;
+* legibilidade;
+* previsibilidade dos fluxos;
+* responsividade;
+* sensação de produto maduro.
 
-Adicionar ao `docs/ROADMAP.md`:
+A interface deve lembrar um ERP/SaaS profissional moderno, mas sem excesso de elementos visuais ou efeitos decorativos.
 
-**REL-02 — Exportação CSV de Relatórios**
+## Direção visual
 
-Status inicial:
+Adote uma identidade visual clean baseada em azul tecnológico.
 
-`NEXT`
+Paleta sugerida:
 
-Não iniciar nenhum marco posterior.
+* Primary: `#2563EB`
+* Primary hover/active: `#1D4ED8`
+* Sidebar / superfícies escuras opcionais: `#0F172A`
+* Background principal: `#F8FAFC`
+* Cards/superfícies: `#FFFFFF`
+* Bordas: tons frios próximos a `#E2E8F0`
+* Texto principal: tons próximos a `#0F172A`
+* Texto secundário: tons próximos a `#64748B`
 
----
+Cores semânticas:
 
-## 2. Objetivo
+* sucesso: verde;
+* atenção: âmbar;
+* erro/perigo: vermelho;
+* informação: azul.
 
-Permitir a exportação em CSV dos dados já disponibilizados pelo núcleo de relatórios implementado em `REL-01`.
+Não espalhar a cor primária por todos os elementos. O azul deve ser usado principalmente em:
 
-O objetivo é exportação operacional dos relatórios existentes.
+* CTA principal;
+* item ativo;
+* foco;
+* links;
+* indicadores importantes;
+* elementos selecionados.
 
-Não adicionar novas métricas.
+Evitar:
 
-Não criar novos agregados.
+* gradientes desnecessários;
+* sombras exageradas;
+* glassmorphism;
+* excesso de bordas;
+* componentes muito arredondados;
+* ícones decorativos;
+* animações supérfluas;
+* aparência de landing page dentro do ERP.
 
-Não criar novo ledger.
+## Sidebar
 
-Não implementar PDF neste marco.
-
-Não criar infraestrutura genérica de BI/exportação além do necessário.
-
----
-
-## 3. Descoberta obrigatória antes da implementação
-
-Antes de alterar código funcional, analisar o estado atual de Reports e registrar:
-
-1. endpoints existentes;
-2. filtros aceitos atualmente;
-3. formato dos dados retornados;
-4. agregados existentes;
-5. permission `reports.read`;
-6. aplicação atual de tenant/company/branch;
-7. implementação da página `/app/reports`;
-8. contratos compartilhados existentes;
-9. bibliotecas CSV já presentes no monorepo, se houver;
-10. convenção existente no projeto para downloads HTTP.
-
-Verificar se a exportação pode reutilizar diretamente a mesma camada de consulta do REL-01.
-
-**Não duplicar a lógica SQL do relatório** se for possível compartilhar a mesma função/query.
-
----
-
-## 4. Regra arquitetural principal
-
-A visualização e a exportação devem consumir a **mesma fonte lógica dos dados**.
-
-Os filtros de:
-
-* tenant;
-* company;
-* branch;
-* período;
-* demais filtros já existentes no REL-01
-
-devem produzir exatamente o mesmo conjunto lógico de dados tanto na tela quanto no CSV.
-
-Não criar uma segunda implementação independente do relatório.
-
----
-
-## 5. API
-
-Criar o endpoint de exportação seguindo as convenções existentes do projeto.
-
-Sugestão conceitual:
-
-`GET /reports/export.csv`
-
-ou outra rota consistente com a arquitetura já existente.
-
-O endpoint deve:
-
-* exigir autenticação;
-* exigir contexto operacional ativo quando REL-01 assim exigir;
-* exigir `reports.read`;
-* aplicar tenant/company/branch;
-* aceitar os mesmos filtros relevantes do relatório;
-* retornar CSV válido;
-* utilizar headers HTTP adequados para download;
-* possuir nome de arquivo previsível e seguro.
-
-Não criar uma nova permission somente para exportar CSV nesta fase, salvo se a arquitetura existente demonstrar uma necessidade concreta e isso for justificado na descoberta.
-
-Por padrão, quem pode ler o relatório pode exportar os mesmos dados.
-
----
-
-## 6. Segurança
-
-Provar que exportação não permite escapar dos controles do REL-01.
-
-Obrigatório:
-
-* isolamento por tenant;
-* isolamento por empresa;
-* isolamento por filial;
-* `403` para usuário autenticado sem `reports.read`;
-* `401` para acesso anônimo;
-* rejeição de contexto inválido.
-
-Não confiar em tenant/company/branch fornecidos livremente por query string caso o REL-01 derive esses valores do contexto da sessão.
-
----
-
-## 7. CSV
-
-Definir formato determinístico.
+Criar uma sidebar retrátil e extremamente funcional.
 
 Requisitos:
 
-* `UTF-8`;
-* cabeçalho explícito;
-* escaping correto de vírgulas, aspas, quebras de linha e campos textuais;
-* datas em formato inequívoco;
-* números não devem sofrer formatação visual que prejudique processamento posterior;
-* resultado vazio deve gerar CSV válido com cabeçalhos, sem erro;
-* nenhuma fórmula ou conteúdo potencialmente perigoso deve ser interpretável por planilhas quando proveniente de campos textuais.
+* modo expandido com ícone + nome;
+* modo recolhido somente com ícones;
+* tooltip no modo recolhido;
+* item ativo claramente identificável;
+* grupos funcionais bem separados;
+* preservar estado expandido/recolhido quando apropriado;
+* excelente comportamento em telas menores;
+* navegação rápida e sem menus confusos.
 
-Investigar e proteger contra **CSV Injection / Formula Injection** em campos iniciados por caracteres como:
+Organizar os módulos de forma lógica, por exemplo:
 
-`=`, `+`, `-`, `@`
+### Operação
 
-quando aplicável aos valores exportados.
+* Dashboard
+* Clientes
+* Equipamentos
+* Ordens de Serviço
+* Agenda
 
----
+### Comercial
 
-## 8. Volume e memória
+* Orçamentos
+* Vendas
 
-Não introduzir arquitetura de streaming complexa sem necessidade.
+### Suprimentos
 
-Porém, avaliar o volume potencial da consulta atual.
+* Produtos
+* Estoque
+* Compras
+* Fornecedores, caso exista
 
-Se a implementação atual puder exportar uma quantidade razoável de registros com segurança usando a infraestrutura existente, manter simples.
+### Financeiro
 
-Caso haja risco real de carregar volumes ilimitados em memória, implementar o mínimo necessário para tornar o endpoint seguro e documentar a decisão.
+* Caixa
+* Recebimentos
+* Financeiro
 
-Não criar filas/background jobs neste marco.
+### Gestão
 
----
+* Relatórios
+* Empresas / Filiais
+* Usuários / Permissões
+* Configurações
 
-## 9. Interface Web
+Adapte os nomes apenas ao que realmente existe no projeto.
 
-Na página:
+Não invente módulos.
 
-`/app/reports`
+## Cabeçalho
 
-adicionar ação clara de:
+O cabeçalho deve ser simples e funcional.
 
-**Exportar CSV**
+Deve acomodar de forma limpa:
 
-Ela deve respeitar os filtros atualmente selecionados.
+* título/contexto da página;
+* empresa e filial ativas;
+* ações globais relevantes;
+* usuário logado;
+* menu de conta/logout.
 
-UX esperada:
+Evitar duplicação de informações entre sidebar e header.
 
-* botão claramente identificável;
-* estado de processamento;
-* tratamento de erro;
-* impedir cliques duplicados enquanto a exportação estiver sendo solicitada;
-* manter a interface consistente com o padrão atual do VetorOS2.
+## Padrão de páginas CRUD
 
-Não redesenhar a página inteira.
+Quando o cadastro possuir quantidade relevante de campos ou uso frequente, adotar o padrão:
 
----
+1. listagem;
+2. página de criação;
+3. página de edição/detalhe.
 
-## 10. Testes específicos obrigatórios
+Exemplos esperados:
 
-Cobrir pelo menos:
+* Clientes
+* Equipamentos
+* Ordens de Serviço
+* Produtos
+* Compras
+* Vendas
+* Usuários
 
-### Exportação válida
+Não transformar CRUDs grandes em modais.
 
-Usuário autorizado exporta CSV e recebe:
+Para entidades pequenas ou auxiliares, modais podem ser usados quando melhorarem o fluxo.
 
-* status `200`;
-* content-type apropriado;
-* content-disposition apropriado;
-* cabeçalhos corretos;
-* conteúdo esperado.
+## Listagens
 
-### Filtros
+Padronizar todas as tabelas.
 
-Os mesmos filtros usados pelo relatório devem refletir corretamente na exportação.
+Cada listagem deve ter, quando aplicável:
 
-### Período vazio
+* título;
+* descrição curta;
+* CTA principal;
+* busca;
+* filtros;
+* ordenação;
+* paginação;
+* estado vazio;
+* loading;
+* erro;
+* menu de ações por linha;
+* indicação visual de status.
 
-Exportação de período sem movimentos deve ser válida e zero-safe.
+Manter espaçamento confortável sem desperdiçar área útil.
 
-### RBAC negativo
+Tabelas precisam funcionar bem em resolução de notebook.
 
-Usuário autenticado sem:
+Priorizar densidade de informação equilibrada.
 
-`reports.read`
+Não usar cards no lugar de tabela quando a informação for naturalmente tabular.
 
-recebe:
+## Formulários
 
-`403`.
+Padronizar formulários com:
 
-### Anônimo
+* labels claras;
+* ajuda contextual somente quando necessária;
+* mensagens de erro próximas ao campo;
+* agrupamento lógico de informações;
+* espaçamento consistente;
+* ações Salvar / Cancelar previsíveis;
+* indicação clara de campos obrigatórios;
+* máscaras e formatos quando existentes.
 
-Recebe:
+Em formulários longos, utilizar seções.
 
-`401`.
+Evitar páginas com dezenas de inputs soltos em uma única coluna.
 
-### Multi-tenant
+Não modificar validações de negócio sem necessidade.
 
-Dados de outro tenant não aparecem no CSV.
+## Ordem de Serviço
 
-### Company/Branch
+A Ordem de Serviço é um dos fluxos centrais do produto.
 
-Dados fora da empresa/filial ativa não aparecem.
+Dar atenção especial à sua usabilidade.
 
-### CSV escaping
+A tela de detalhe/edição deve organizar informações de forma clara, considerando o que já existe no sistema:
 
-Adicionar fixture que prove tratamento correto de pelo menos:
+* identificação da OS;
+* cliente;
+* equipamento;
+* situação/status;
+* descrição/problema;
+* itens/serviços/peças;
+* valores;
+* histórico;
+* ações relevantes.
 
-* vírgula;
-* aspas;
-* quebra de linha, caso campos exportáveis permitam;
-* possível formula injection em conteúdo textual.
+Não inventar dados ou regras.
 
----
+Se houver muitas informações, usar seções, tabs ou estrutura equivalente, desde que não esconda ações essenciais.
 
-## 11. Validação final
+## Dashboard
 
-Depois da implementação executar:
+O dashboard deve ser informativo, não decorativo.
 
-1. testes específicos de REL-02;
-2. testes de REL-01;
-3. suíte DB completa;
-4. suíte API completa;
-5. testes Web relevantes, se existentes;
-6. lint;
-7. typecheck;
-8. build de produção;
-9. `git diff --check`.
+Priorizar indicadores que já existam e sejam úteis à operação.
 
-Não mascarar eventuais regressões.
+Evitar:
 
----
+* gráficos vazios;
+* KPIs fictícios;
+* números inventados;
+* visualização apenas para “encher espaço”.
 
-## 12. Roadmap
+## Estados visuais
 
-Somente com todos os gates verdes:
+Criar padrões reutilizáveis para:
 
-* mudar `REL-02` de `NEXT` para `DONE`.
+* loading;
+* skeleton;
+* vazio;
+* erro;
+* sucesso;
+* acesso negado;
+* registro não encontrado;
+* ações destrutivas;
+* confirmações.
 
-Não definir automaticamente outro marco `NEXT`.
+## Componentização
 
-O marco posterior dependerá de nova decisão explícita.
+Antes de duplicar padrões, avaliar componentes reutilizáveis.
 
----
+Exemplos:
 
-## 13. Entrega
+* PageHeader;
+* DataTable;
+* EmptyState;
+* StatusBadge;
+* FilterBar;
+* FormSection;
+* ConfirmDialog;
+* EntityCombobox;
+* MetricCard;
+* SidebarNavGroup.
 
-No `executed.md`, registrar:
+Use os componentes e convenções já existentes no projeto quando forem adequados.
 
-1. descoberta do estado anterior;
-2. arquitetura escolhida para reutilizar a consulta do REL-01;
-3. endpoint criado;
-4. formato do CSV;
-5. proteção contra CSV Injection;
-6. comportamento com resultado vazio;
-7. RBAC;
-8. isolamento tenant/company/branch;
-9. alterações Web;
-10. arquivos alterados;
-11. testes específicos e resultados;
-12. resultado REL-01;
-13. DB global;
-14. API global;
-15. lint/typecheck/build/diff-check;
-16. eventuais limitações;
-17. confirmação se `REL-02` pôde ser marcado como `DONE`.
+Não introduza uma nova biblioteca visual pesada sem justificativa.
 
-Não implementar PDF.
+## Design tokens
 
-Não iniciar REL-03.
+Centralizar, sempre que possível:
 
-Não criar commit.
+* cores;
+* espaçamentos;
+* radius;
+* tipografia;
+* estados;
+* dimensões recorrentes.
+
+Evitar estilos arbitrários repetidos página por página.
+
+## Responsividade
+
+O foco principal é desktop e notebook, mas a aplicação deve continuar utilizável em telas menores.
+
+Não sacrificar a experiência desktop tentando transformar tudo em interface mobile.
+
+## Acessibilidade
+
+Garantir:
+
+* contraste adequado;
+* foco visível;
+* labels associadas;
+* navegação por teclado onde aplicável;
+* botões com significado claro;
+* não depender apenas de cor para indicar estados.
+
+## Preservação funcional
+
+Esta é uma consolidação UX/UI.
+
+Não alterar:
+
+* regras de negócio;
+* RLS;
+* RBAC;
+* multitenancy;
+* contratos da API;
+* migrations;
+* comportamento financeiro;
+* regras de estoque;
+* regras de vendas;
+* regras de OS;
+
+a menos que um erro real de integração da UI obrigue a correção.
+
+Se encontrar problema funcional fora de UX/UI, registre a pendência em vez de expandir o escopo.
+
+## Estratégia de execução
+
+Primeiro faça um inventário das telas atuais.
+
+Identifique:
+
+* inconsistências;
+* componentes repetidos;
+* padrões conflitantes;
+* problemas de navegação;
+* CRUDs que deveriam usar páginas;
+* cadastros que podem permanecer em modal;
+* pontos onde a interface atual diverge desnecessariamente do padrão desejado.
+
+Depois estabeleça o padrão visual base e aplique-o progressivamente.
+
+Não redesenhe uma única página isoladamente e deixe as demais inconsistentes.
+
+Priorize primeiro:
+
+1. shell geral;
+2. sidebar;
+3. header;
+4. tipografia;
+5. buttons;
+6. inputs;
+7. tabelas;
+8. formulários;
+9. páginas principais;
+10. refinamentos.
+
+## VetorOS1
+
+Os usuários atuais já estão acostumados com o VetorOS1.
+
+Quando houver equivalência clara entre funcionalidades, preserve conceitos de navegação e organização que reduzam a curva de aprendizado.
+
+Não copie limitações visuais antigas apenas por fidelidade.
+
+O objetivo é:
+
+**familiaridade funcional + qualidade visual moderna.**
+
+## Critério final
+
+O produto deve transmitir:
+
+* confiança;
+* estabilidade;
+* tecnologia;
+* organização;
+* velocidade;
+* profissionalismo.
+
+A interface deve parecer um sistema comercial pronto para ser utilizado diariamente por empresas, e não um painel administrativo genérico ou um protótipo.
+
+Faça todas as alterações de UX/UI necessárias dentro desse escopo.
+
+Não faça commit.
+
+Ao final, entregue um relatório contendo:
+
+* diagnóstico inicial;
+* padrão visual adotado;
+* componentes criados ou consolidados;
+* páginas alteradas;
+* decisões de UX;
+* diferenças relevantes em relação ao padrão antigo;
+* validações realizadas;
+* pendências que ficaram fora do escopo.
+
+Execute sem solicitar autorização intermediária.
+
+
+## Adendo obrigatório — largura e responsividade dos formulários
+
+Todos os formulários devem utilizar a largura disponível de forma adequada.
+
+Regras:
+
+* containers de formulário devem trabalhar com `width: 100%`;
+* inputs, selects, textareas, comboboxes e componentes equivalentes devem ocupar `width: 100%` dentro de sua coluna;
+* evitar campos com larguras fixas arbitrárias;
+* o layout deve ser totalmente responsivo;
+* usar grid responsivo para distribuir campos conforme a largura da tela;
+* em telas largas, campos relacionados podem ficar em duas, três ou mais colunas quando fizer sentido;
+* em telas menores, o grid deve reduzir automaticamente até uma única coluna;
+* campos longos, como nome, razão social, descrição, endereço e observações, podem ocupar a linha inteira;
+* campos curtos, como número, UF, CEP, quantidade e datas, podem compartilhar colunas em desktop;
+* não limitar todo formulário a uma coluna estreita centralizada quando houver espaço útil disponível;
+* manter margens laterais e `max-width` apenas quando isso melhorar a leitura, sem desperdiçar excessivamente a área disponível;
+* páginas de CRUD devem aproveitar bem a largura de notebooks e monitores;
+* nenhuma tela deve gerar scroll horizontal por causa do formulário;
+* ações como Salvar e Cancelar também precisam se adaptar corretamente em telas pequenas.
+
+Objetivo visual:
+
+**formulários largos, organizados, fluidos e responsivos, aproveitando 100% da área útil sem parecerem esticados ou desorganizados.**

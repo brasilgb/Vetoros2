@@ -20,4 +20,7 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN corepack pnpm build
 
+RUN chown -R node:node /app
+USER node
+
 EXPOSE 3000 3001

@@ -24,21 +24,35 @@ import { registerFinancialAccountRoutes } from './financial-accounts/routes.js';
 import { registerScheduleRoutes } from './schedules/routes.js';
 import { registerReportRoutes } from './reports/routes.js';
 
-export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string }) {
-  const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
+export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string; trustProxy?: boolean; readinessCheck?: () => Promise<void> }) {
+  const app = Fastify({ logger: process.env.NODE_ENV !== 'test', trustProxy: options?.trustProxy ?? false, requestIdHeader: 'x-request-id' });
   void app.register(cors, { origin: options?.webOrigin ?? 'http://localhost:3000', credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE'] });
+  app.addHook('onRequest', (request, reply, done) => {
+    reply.header('x-request-id', request.id);
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'no-referrer');
+    reply.header('x-frame-options', 'DENY');
+    done();
+  });
   // ADM-01: "inativar usuário" torna MEMBERSHIP_INACTIVE (lançado por withAuthenticatedTenant
   // quando a sessão corrente pertence a um profile/membership que acabou de ser inativado) um
   // caminho real pela primeira vez — antes disso era um caso de borda raro. Sem este handler,
   // qualquer rota que não passe pelo `authorize()`/hasPermission (que já absorve esse erro)
   // devolveria um 500 cru vazando `error.message`. TENANT_REQUIRED é a mesma ideia para sessões
   // sem tenant ativo chegando a withAuthenticatedTenant.
-  app.setErrorHandler((error: Error, _request, reply) => {
+  app.setErrorHandler((error: Error, request, reply) => {
     if (error.message === 'MEMBERSHIP_INACTIVE') return reply.code(403).send({ error: 'membership_inactive', message: 'Seu acesso a este tenant foi desativado.' });
     if (error.message === 'TENANT_REQUIRED') return reply.code(409).send({ error: 'tenant_required' });
-    reply.send(error);
+    const statusCode = 'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
+    if (statusCode < 500) return reply.code(statusCode).send({ error: 'invalid_request', requestId: request.id });
+    request.log.error({ requestId: request.id, method: request.method, url: request.url, errorType: error.name }, 'unhandled request error');
+    return reply.code(500).send({ error: 'internal_server_error', requestId: request.id });
   });
   app.get('/health', async () => healthResponseSchema.parse({ status: 'ok' }));
+  app.get('/ready', async (_request, reply) => {
+    try { await options?.readinessCheck?.(); return healthResponseSchema.parse({ status: 'ok' }); }
+    catch { return reply.code(503).send({ status: 'unavailable' }); }
+  });
   if (options?.authService) {
     registerAuthRoutes(app, options.authService, { secureCookie: options.secureCookie ?? false, ttlSeconds: options.sessionTtlSeconds ?? 28_800, loginRateLimitMax: options.loginRateLimitMax ?? 5 });
     registerCoreRoutes(app, options.authService);

@@ -16,7 +16,8 @@ type ReportSummary = {
 
 export function csvCell(value: unknown) {
   let text = String(value ?? '');
-  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  const prefix = [...text].findIndex((character) => character.charCodeAt(0) > 32 && character.trim() !== '');
+  if (/^[=+\-@]/.test(text.slice(Math.max(0, prefix))) || /^[\t\r\n]/.test(text)) text = `'${text}`;
   return `"${text.replaceAll('"', '""')}"`;
 }
 
@@ -32,7 +33,7 @@ function reportLoader(service: AuthService) {
   });
 }
 
-function toCsv(report: ReportSummary) {
+export function toCsv(report: ReportSummary) {
   const rows: unknown[][] = [['secao', 'metrica', 'rotulo', 'valor', 'from', 'to']];
   const add = (section: string, metric: string, label: string, value: unknown) => rows.push([section, metric, label, value, report.period.from, report.period.to]);
   add('ordens_servico', 'total', 'Total de OS', report.serviceOrders.total);
@@ -50,7 +51,7 @@ function toCsv(report: ReportSummary) {
     add('estoque', 'quantidade', item.type, item.quantity);
     add('estoque', 'movimentos', item.type, item.movements);
   }
-  return `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`;
+  return `\uFEFF${rows.map((row) => row.map((cell, index) => index === 3 && /^-?\d+(?:\.\d+)?$/.test(String(cell)) ? `"${String(cell)}"` : csvCell(cell)).join(',')).join('\r\n')}\r\n`;
 }
 
 export function registerReportRoutes(app: FastifyInstance, service: AuthService) {
@@ -60,7 +61,15 @@ export function registerReportRoutes(app: FastifyInstance, service: AuthService)
     if (!session) { reply.code(401).send({ error: 'unauthorized' }); return; }
     if (!session.activeTenantId) { reply.code(409).send({ error: 'tenant_required' }); return; }
     if (!session.activeCompanyId || !session.activeBranchId) { reply.code(409).send({ error: 'operational_context_required' }); return; }
-    try { await requirePermission(service, session, 'reports.read'); return session; } catch { reply.code(403).send({ error: 'forbidden' }); }
+    try {
+      await requirePermission(service, session, 'reports.read', { companyId: session.activeCompanyId, branchId: session.activeBranchId });
+      const valid = await service.withAuthenticatedTenant(session, async (tx) => {
+        const rows = await tx.execute(sql`select c.id from companies c join branches b on b.tenant_id=c.tenant_id and b.company_id=c.id where c.id=${session.activeCompanyId} and b.id=${session.activeBranchId} and c.status='active' and b.status='active' limit 1`);
+        return rows.length > 0;
+      });
+      if (!valid) { reply.code(409).send({ error: 'invalid_operational_context' }); return; }
+      return session;
+    } catch { reply.code(403).send({ error: 'forbidden' }); }
   }
   function parse(query: unknown, reply: FastifyReply): ReportFilters | undefined {
     const parsed = filters.safeParse(query);

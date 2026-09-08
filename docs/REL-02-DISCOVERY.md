@@ -26,3 +26,14 @@ O formato será UTF-8 com BOM, cabeçalho explícito e células escapadas segund
 CSV. Valores textuais iniciados por `=`, `+`, `-` ou `@` receberão apóstrofo para
 impedir formula injection; atualmente os labels exportados são controlados pelo
 servidor, mas a proteção permanece na fronteira de serialização.
+
+## Revisão de 2026-09-08 antes das correções
+
+A revisão edc32a9 já inclui implementação preliminar de REL-02, mas o registro
+executed.md está vazio. O correio anterior (HEAD^) estava vazio.
+Clientes são globais ao tenant no REL-01; OS, vendas e estoque são filtrados
+também por company/branch. Preservaremos esse comportamento nas duas rotas.
+Decimais retornam como strings ou números: negativos devem continuar numéricos
+no CSV. A proteção textual incluirá espaços e controles antes de fórmulas.
+A autorização será vinculada ao escopo operacional e o par company/branch
+será revalidado quanto à associação e status ativo nas duas rotas.

@@ -27,7 +27,7 @@ export function Menu({
       <DropdownMenuPrimitive.Trigger asChild>
         <button
           aria-label={triggerLabel}
-          className={`inline-flex cursor-pointer items-center justify-center rounded-lg text-emerald-100/60 outline-none hover:text-emerald-100 focus-visible:ring-2 focus-visible:ring-emerald-500 data-[state=open]:bg-emerald-900/60 data-[state=open]:text-emerald-100 ${triggerClassName ?? ''}`}
+          className={`inline-flex cursor-pointer items-center justify-center rounded-lg text-slate-500 outline-none hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500 data-[state=open]:bg-slate-100 data-[state=open]:text-slate-900 ${triggerClassName ?? ''}`}
         >
           {trigger}
         </button>
@@ -36,7 +36,7 @@ export function Menu({
         <DropdownMenuPrimitive.Content
           align={align}
           sideOffset={6}
-          className="z-50 w-48 overflow-hidden rounded-xl border border-emerald-800 bg-emerald-950 py-1 shadow-xl outline-none"
+          className="z-50 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg outline-none"
         >
           {children}
         </DropdownMenuPrimitive.Content>
@@ -49,8 +49,8 @@ export function MenuItem({ onSelect, icon: Icon, destructive, children }: { onSe
   return (
     <DropdownMenuPrimitive.Item
       onSelect={onSelect}
-      className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 text-sm outline-none data-[highlighted]:bg-emerald-900/60 ${
-        destructive ? 'text-red-300 data-[highlighted]:text-red-200' : 'text-emerald-100'
+      className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 text-sm outline-none data-[highlighted]:bg-slate-100 ${
+        destructive ? 'text-red-600 data-[highlighted]:text-red-700' : 'text-slate-700'
       }`}
     >
       {Icon && <Icon className="h-4 w-4" />}

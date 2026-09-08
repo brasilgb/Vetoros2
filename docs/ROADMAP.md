@@ -37,6 +37,8 @@ Este documento define a sequência canônica dos marcos. `DONE` identifica escop
 | DONE | VEN-03.1 | Fechamento RBAC de `sales.cancel` |
 | DONE | AGD-01 | Agendamentos Operacionais vinculados à Ordem de Serviço |
 | DONE | REL-01 | Relatórios Operacionais Essenciais |
-| NEXT | REL-02 | Exportação CSV de Relatórios |
+| DONE | REL-02 | Exportação CSV de Relatórios |
+| DONE | QA-01 | Isolamento e paralelismo determinístico das suítes de integração |
+| DONE | PRD-01 | Production Readiness & Operational Hardening |
 
-REL-01 foi concluído. REL-02 é o único marco `NEXT` autorizado.
+PRD-01 foi concluído. Não há próximo marco autorizado neste documento.

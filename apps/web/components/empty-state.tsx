@@ -14,10 +14,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-emerald-900 px-6 py-14 text-center">
-      <Icon className="h-9 w-9 text-emerald-100/30" aria-hidden />
-      <p className="text-base font-medium text-emerald-100">{title}</p>
-      {description && <p className="max-w-sm text-sm text-emerald-100/60">{description}</p>}
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
+      <Icon className="h-9 w-9 text-slate-300" aria-hidden />
+      <p className="text-base font-medium text-slate-900">{title}</p>
+      {description && <p className="max-w-sm text-sm text-slate-500">{description}</p>}
       {action}
     </div>
   );

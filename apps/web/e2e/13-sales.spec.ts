@@ -10,10 +10,13 @@ test.describe('VEN-01/VEN-02/VEN-03 — vendas', () => {
     await page.goto('/app/sales/new');
 
     await expect(page.getByLabel('Data da venda')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
-    await page.getByLabel('Cliente (opcional)').fill(SEED_CUSTOMER);
-    await expect(page.getByRole('option', { name: SEED_CUSTOMER })).toHaveCount(1);
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/customers?') && response.url().includes(`search=${encodeURIComponent(SEED_CUSTOMER)}`)),
+      page.getByLabel('Cliente (opcional)').fill(SEED_CUSTOMER),
+    ]);
+    const customerOption = page.getByRole('listbox').getByText(SEED_CUSTOMER, { exact: true });
+    await expect(customerOption).toBeVisible();
+    await customerOption.click();
     await Promise.all([
       page.waitForResponse((response) => response.url().endsWith('/sales') && response.request().method() === 'POST' && response.status() === 201),
       page.getByRole('button', { name: 'Criar venda' }).click(),

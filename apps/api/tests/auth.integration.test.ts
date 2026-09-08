@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { AuthService } from '../src/auth/service.js';
+import { createTestIdentity } from './helpers/identity-fixture.js';
 
 const authUrl = process.env.AUTH_DATABASE_URL ?? 'postgresql://vetoros_auth:local_auth_only@127.0.0.1:5432/vetoros';
 const runtimeUrl = process.env.DATABASE_URL ?? 'postgresql://vetoros_runtime:local_runtime_only@127.0.0.1:5432/vetoros';
@@ -67,10 +68,12 @@ describe('tenant selection and trusted context', () => {
     expect(response.statusCode).toBe(400);
   });
   it('excludes an inactive membership', async () => {
-    const login = await service.login('shared@vetoros.local', password, {}); expect(login).not.toBeNull();
-    await admin.begin(async (tx) => { await tx`select set_config('app.tenant_id', ${beta}, true)`; await tx`update tenant_memberships set status='suspended' where tenant_id=${beta} and identity_id=${login!.session.identityId}`; });
+    const fixture = await createTestIdentity(admin, [alpha, beta], 'auth-inactive');
+    const login = await service.login(fixture.email, password, {}); expect(login).not.toBeNull();
+    const betaMembership = fixture.memberships.find((item) => item.tenantId === beta)!;
+    await admin.begin(async (tx) => { await tx`select set_config('app.tenant_id', ${beta}, true)`; await tx`update tenant_memberships set status='suspended' where id=${betaMembership.membershipId}`; });
     expect(await service.tenants(login!.session)).toHaveLength(1);
-    await admin.begin(async (tx) => { await tx`select set_config('app.tenant_id', ${beta}, true)`; await tx`update tenant_memberships set status='active' where tenant_id=${beta} and identity_id=${login!.session.identityId}`; });
+    await admin.begin(async (tx) => { await tx`select set_config('app.tenant_id', ${beta}, true)`; await tx`update tenant_memberships set status='active' where id=${betaMembership.membershipId}`; });
   });
   it('derives all PostgreSQL context values from the persisted session', async () => {
     const login = await service.login('single@vetoros.local', password, {}); expect(login).not.toBeNull();

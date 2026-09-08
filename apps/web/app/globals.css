@@ -1,6 +1,31 @@
 @import "tailwindcss";
 
-:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #071510; color: #ecfdf5; }
+/*
+ * Design tokens do VetorOS2 (correio.md — "Direção visual"): identidade clean baseada em azul
+ * tecnológico, fundo claro (#F8FAFC), superfícies brancas e texto em tons de slate. A sidebar é
+ * a única superfície escura permitida pela paleta ("Sidebar / superfícies escuras opcionais:
+ * #0F172A") — ver components/app-sidebar.tsx. Os valores abaixo batem exatamente com a escala
+ * padrão do Tailwind (blue-600/700, slate-50/200/500/900), então o restante do app usa essas
+ * classes utilitárias diretamente; as variáveis aqui existem para o que não é Tailwind (ex.:
+ * impressão, favicon, meta theme-color) e como referência única da paleta.
+ */
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #2563eb; /* blue-600 */
+  --color-primary-hover: #1d4ed8; /* blue-700 */
+  --color-surface-dark: #0f172a; /* slate-900 — sidebar */
+  --color-background: #f8fafc; /* slate-50 */
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-text: #0f172a; /* slate-900 */
+  --color-text-muted: #64748b; /* slate-500 */
+
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
 body { margin: 0; min-height: 100vh; }
 
 @media print {
