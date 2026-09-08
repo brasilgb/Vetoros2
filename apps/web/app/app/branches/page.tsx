@@ -44,7 +44,7 @@ export default function BranchesPage() {
   }, [load]);
 
   const columns: DataTableColumn<Branch>[] = [
-    { key: 'name', header: 'Filial', render: (row) => <span className="font-medium text-emerald-50">{row.name}</span> },
+    { key: 'name', header: 'Filial', render: (row) => <span className="font-medium text-slate-900">{row.name}</span> },
     { key: 'code', header: 'Código', render: (row) => row.code, hideBelow: 'sm' },
     { key: 'company', header: 'Empresa', render: (row) => companies[row.company_id] ?? '—' },
     { key: 'status', header: 'Status', render: (row) => { const { label, tone } = commonStatus(row.status); return <StatusBadge tone={tone}>{label}</StatusBadge>; } },
@@ -56,7 +56,7 @@ export default function BranchesPage() {
         title="Filiais"
         description="Filiais das empresas deste tenant."
         action={
-          <Link href="/app/branches/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/branches/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Nova filial
           </Link>
         }
@@ -79,7 +79,7 @@ export default function BranchesPage() {
               title="Nenhuma filial cadastrada"
               description="Cadastre a primeira filial para começar a operar."
               action={
-                <Link href="/app/branches/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                <Link href="/app/branches/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                   Nova filial
                 </Link>
               }

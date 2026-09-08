@@ -89,7 +89,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     router.push(`/app/service-orders/${(await response.json()).id}`);
   }
 
-  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-emerald-100/60">Carregando…</p></RequireOperationalContext>;
+  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-slate-500">Carregando…</p></RequireOperationalContext>;
   if (state === 'error' || !quote) return <RequireOperationalContext><ErrorState message="Não foi possível carregar este orçamento." onRetry={load} /></RequireOperationalContext>;
 
   const { label, tone } = commonStatus(quote.status);
@@ -102,7 +102,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     { key: 'total', header: 'Total', align: 'right', render: (row) => formatCurrency(row.total_amount) },
     ...(editable
       ? [{ key: 'actions', header: '', align: 'right' as const, render: (row: Item) => (
-          <button onClick={() => removeItem(row.id)} aria-label="Excluir item" className="rounded-lg p-1.5 text-emerald-100/50 hover:bg-red-950/40 hover:text-red-300">
+          <button onClick={() => removeItem(row.id)} aria-label="Excluir item" className="rounded-lg p-1.5 text-slate-500 hover:bg-red-100 hover:text-red-800">
             <Trash2 className="h-4 w-4" />
           </button>
         ) }]
@@ -138,14 +138,14 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         ))}
         {quote.status === 'approved' && !quote.converted_service_order_id && <AsyncButton tone="primary" label="Converter em OS" onClick={() => setPendingConvert(true)} />}
         {quote.converted_service_order_id && (
-          <a href={`/app/service-orders/${quote.converted_service_order_id}`} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+          <a href={`/app/service-orders/${quote.converted_service_order_id}`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
             Ver OS gerada
           </a>
         )}
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-emerald-100">Itens</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">Itens</h2>
         <DataTable columns={columns} rows={quote.items} rowKey={(row) => row.id} state="ready" emptyState={<EmptyState icon={FileText} title="Nenhum item adicionado" description="Adicione serviços ou peças a este orçamento." />} />
       </div>
 
@@ -171,7 +171,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <input id="item-discount" type="number" min="0" step="0.01" className={formFieldClass} value={itemForm.discountAmount} onChange={(e) => setItemForm({ ...itemForm, discountAmount: e.target.value })} />
             </FormField>
             <div className="sm:col-span-2">
-              <button type="submit" disabled={addingItem} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+              <button type="submit" disabled={addingItem} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
                 <PlusCircle className="h-4 w-4" /> {addingItem ? 'Adicionando…' : 'Adicionar item'}
               </button>
             </div>
@@ -180,13 +180,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}
 
-      <p className="text-right text-sm text-emerald-100/70">
-        Subtotal: {formatCurrency(quote.subtotal)} · Descontos: {formatCurrency(quote.discounts)} · <span className="font-semibold text-emerald-50">Total: {formatCurrency(quote.total)}</span>
+      <p className="text-right text-sm text-slate-600">
+        Subtotal: {formatCurrency(quote.subtotal)} · Descontos: {formatCurrency(quote.discounts)} · <span className="font-semibold text-slate-900">Total: {formatCurrency(quote.total)}</span>
       </p>
 
       <ConfirmDialog

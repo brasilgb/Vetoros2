@@ -172,7 +172,7 @@ export default function FinancialAccountDetailPage({ params }: { params: Promise
     { key: 'description', header: 'Descrição', render: (row) => (
       <span>
         {row.description}
-        {row.counterparty_account_name ? <span className="text-emerald-100/50"> · {row.type === 'debit' ? 'para' : 'de'} {row.counterparty_account_name}</span> : null}
+        {row.counterparty_account_name ? <span className="text-slate-500"> · {row.type === 'debit' ? 'para' : 'de'} {row.counterparty_account_name}</span> : null}
       </span>
     ) },
     { key: 'origin', header: 'Origem', render: (row) => originLabels[row.origin], hideBelow: 'sm' },
@@ -180,7 +180,7 @@ export default function FinancialAccountDetailPage({ params }: { params: Promise
     { key: 'amount', header: 'Valor', align: 'right', render: (row) => formatCurrency(row.amount) },
     { key: 'actions', header: '', render: (row) => (
       row.origin !== 'reversal' && !row.reversed ? (
-        <button onClick={() => openReverseDialog(row)} className="rounded-lg border border-red-800 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/40">Estornar</button>
+        <button onClick={() => openReverseDialog(row)} className="rounded-lg border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-100">Estornar</button>
       ) : row.reversed ? <StatusBadge tone="neutral">Estornado</StatusBadge> : null
     ) },
   ];
@@ -193,12 +193,12 @@ export default function FinancialAccountDetailPage({ params }: { params: Promise
           description={account.bank_name ?? 'Sem instituição informada'}
           action={
             <div className="flex gap-2">
-              <button onClick={() => void toggleStatus()} disabled={statusBusy} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950 disabled:opacity-40">
+              <button onClick={() => void toggleStatus()} disabled={statusBusy} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40">
                 {account.status === 'active' ? 'Desativar' : 'Ativar'}
               </button>
-              <button onClick={() => openTxDialog('credit')} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">Lançar crédito</button>
-              <button onClick={() => openTxDialog('debit')} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">Lançar débito</button>
-              <button onClick={openTransferDialog} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">Transferir</button>
+              <button onClick={() => openTxDialog('credit')} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Lançar crédito</button>
+              <button onClick={() => openTxDialog('debit')} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Lançar débito</button>
+              <button onClick={openTransferDialog} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">Transferir</button>
             </div>
           }
         >
@@ -206,26 +206,26 @@ export default function FinancialAccountDetailPage({ params }: { params: Promise
         </PageHeader>
 
         <FormSection title="Dados da conta">
-          <FormField label="Saldo atual" htmlFor="d-balance"><p id="d-balance" className="mt-1 text-lg font-semibold text-emerald-50">{formatCurrency(account.balance)}</p></FormField>
+          <FormField label="Saldo atual" htmlFor="d-balance"><p id="d-balance" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(account.balance)}</p></FormField>
           <FormField label="Banco" htmlFor="d-bank"><p id="d-bank" className={formFieldClass}>{account.bank_name ?? '—'}{account.bank_code ? ` (${account.bank_code})` : ''}</p></FormField>
           <FormField label="Agência / Conta" htmlFor="d-account"><p id="d-account" className={formFieldClass}>{account.branch_number || account.account_number ? `${account.branch_number ?? '—'} / ${account.account_number ?? '—'}${account.account_digit ? `-${account.account_digit}` : ''}` : '—'}</p></FormField>
           <FormField label="Chave PIX" htmlFor="d-pix"><p id="d-pix" className={formFieldClass}>{account.pix_key ?? '—'}</p></FormField>
           {!account.has_opening_balance && (
             <FormField label="Saldo inicial" htmlFor="d-opening" span="full">
-              <button type="button" onClick={openOpeningDialog} className="mt-1 rounded-xl border border-emerald-800 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-950">Definir saldo inicial</button>
-              <p className="mt-1 text-xs text-emerald-100/50">Registrado como uma movimentação de abertura — não é um campo editável da conta.</p>
+              <button type="button" onClick={openOpeningDialog} className="mt-1 rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Definir saldo inicial</button>
+              <p className="mt-1 text-xs text-slate-500">Registrado como uma movimentação de abertura — não é um campo editável da conta.</p>
             </FormField>
           )}
         </FormSection>
 
         <FormSection title="Movimentações" description="Histórico append-only — um estorno nunca apaga ou edita o lançamento original, é sempre um novo lançamento de natureza inversa.">
           <div className="sm:col-span-2 flex flex-wrap gap-2">
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm text-emerald-100">
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
               <option value="">Todos os tipos</option>
               <option value="credit">Crédito</option>
               <option value="debit">Débito</option>
             </select>
-            <select value={originFilter} onChange={(e) => setOriginFilter(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2 text-sm text-emerald-100">
+            <select value={originFilter} onChange={(e) => setOriginFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
               <option value="">Todas as origens</option>
               <option value="opening_balance">Saldo inicial</option>
               <option value="manual">Lançamento manual</option>
@@ -235,7 +235,7 @@ export default function FinancialAccountDetailPage({ params }: { params: Promise
           </div>
           <div className="sm:col-span-2">
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} state={txState} onRetry={() => loadTransactions(page)} errorMessage={txError}
-              emptyState={<p className="p-6 text-sm text-emerald-100/60">Nenhuma movimentação registrada ainda.</p>} />
+              emptyState={<p className="p-6 text-sm text-slate-500">Nenhuma movimentação registrada ainda.</p>} />
             <div className="mt-3">
               <DataTablePagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={loadTransactions} />
             </div>

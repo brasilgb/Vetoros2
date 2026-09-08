@@ -56,7 +56,7 @@ export default function PurchaseReceiptsPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Receipt>[] = [
-    { key: 'number', header: 'Recebimento', render: (row) => <span className="font-medium text-emerald-50">#{row.receipt_number}</span> },
+    { key: 'number', header: 'Recebimento', render: (row) => <span className="font-medium text-slate-900">#{row.receipt_number}</span> },
     { key: 'order', header: 'Pedido', render: (row) => `#${row.purchase_order_number}`, hideBelow: 'sm' },
     { key: 'supplier', header: 'Fornecedor', render: (row) => row.supplier_name },
     { key: 'date', header: 'Data', render: (row) => formatDate(row.received_at), hideBelow: 'md' },
@@ -68,7 +68,7 @@ export default function PurchaseReceiptsPage() {
       <div className="flex flex-col gap-6">
         <PageHeader title="Recebimentos" description="Recebimentos de mercadoria a partir de pedidos de compra aprovados.">
           <SearchToolbar value={search} onChange={setSearch} placeholder="Número do recebimento, pedido ou fornecedor">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               {statuses.map((s) => (
                 <option key={s} value={s}>
@@ -89,7 +89,7 @@ export default function PurchaseReceiptsPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={PackageCheck} title="Nenhum recebimento encontrado" description="Nenhum recebimento corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={PackageCheck} title="Nenhum recebimento encontrado" description="Nenhum recebimento corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState icon={PackageCheck} title="Nenhum recebimento registrado" description="Os recebimentos são iniciados a partir de um pedido de compra aprovado." />
             )

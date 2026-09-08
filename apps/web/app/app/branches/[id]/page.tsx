@@ -34,11 +34,11 @@ export default function BranchDetailPage({ params }: { params: Promise<{ id: str
 
   useSetBreadcrumb(branch ? branch.name : undefined);
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !branch) return <ErrorState message="Não foi possível carregar esta filial." onRetry={load} />;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={branch.name} description={`Código: ${branch.code}`} />
 
       <FormSection title="Identificação">
@@ -66,7 +66,7 @@ export default function BranchDetailPage({ params }: { params: Promise<{ id: str
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

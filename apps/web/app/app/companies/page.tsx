@@ -39,7 +39,7 @@ export default function CompaniesPage() {
   }, [load]);
 
   const columns: DataTableColumn<Company>[] = [
-    { key: 'name', header: 'Empresa', render: (row) => <span className="font-medium text-emerald-50">{row.trade_name || row.legal_name}</span> },
+    { key: 'name', header: 'Empresa', render: (row) => <span className="font-medium text-slate-900">{row.trade_name || row.legal_name}</span> },
     { key: 'document', header: 'CNPJ/CPF', render: (row) => row.tax_id_normalized, hideBelow: 'sm' },
     { key: 'status', header: 'Status', render: (row) => { const { label, tone } = commonStatus(row.status); return <StatusBadge tone={tone}>{label}</StatusBadge>; } },
   ];
@@ -50,7 +50,7 @@ export default function CompaniesPage() {
         title="Empresas"
         description="Empresas (pessoas jurídicas) deste tenant."
         action={
-          <Link href="/app/companies/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/companies/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Nova empresa
           </Link>
         }
@@ -73,7 +73,7 @@ export default function CompaniesPage() {
               title="Nenhuma empresa cadastrada"
               description="Cadastre a primeira empresa para começar a operar."
               action={
-                <Link href="/app/companies/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                <Link href="/app/companies/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                   Nova empresa
                 </Link>
               }

@@ -69,10 +69,10 @@ export default function CustomersPage() {
       header: 'Cliente',
       render: (row) => (
         <div>
-          <p className="font-medium text-emerald-50">
+          <p className="font-medium text-slate-900">
             #{row.customer_number} · {row.trade_name || row.legal_name}
           </p>
-          {row.trade_name && <p className="text-xs text-emerald-100/50">{row.legal_name}</p>}
+          {row.trade_name && <p className="text-xs text-slate-500">{row.legal_name}</p>}
         </div>
       ),
     },
@@ -105,7 +105,7 @@ export default function CustomersPage() {
         title="Clientes"
         description="Cadastro base de clientes do tenant."
         action={
-          <Link href="/app/customers/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/customers/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <UserPlus className="h-4 w-4" /> Novo cliente
           </Link>
         }
@@ -126,14 +126,14 @@ export default function CustomersPage() {
             onRetry={() => load(page, debouncedSearch)}
             emptyState={
               debouncedSearch ? (
-                <EmptyState icon={Users} title="Nenhum cliente encontrado" description="Nenhum cliente corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar busca</button>} />
+                <EmptyState icon={Users} title="Nenhum cliente encontrado" description="Nenhum cliente corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar busca</button>} />
               ) : (
                 <EmptyState
                   icon={Users}
                   title="Nenhum cliente cadastrado"
                   description="Cadastre seu primeiro cliente para começar a registrar atendimentos."
                   action={
-                    <Link href="/app/customers/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                    <Link href="/app/customers/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                       Adicionar cliente
                     </Link>
                   }

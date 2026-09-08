@@ -57,7 +57,7 @@ export default function SalesPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Sale>[] = [
-    { key: 'number', header: 'Venda', render: (row) => <span className="font-medium text-emerald-50">#{row.sale_number}</span> },
+    { key: 'number', header: 'Venda', render: (row) => <span className="font-medium text-slate-900">#{row.sale_number}</span> },
     { key: 'date', header: 'Data', render: (row) => formatDate(row.sale_date), hideBelow: 'md' },
     { key: 'customer', header: 'Cliente', render: (row) => row.customer_name ?? 'Consumidor não identificado' },
     { key: 'total', header: 'Total', align: 'right', render: (row) => formatCurrency(row.total), hideBelow: 'sm' },
@@ -71,13 +71,13 @@ export default function SalesPage() {
           title="Vendas"
           description="Vendas de peças e serviços ao balcão."
           action={
-            <Link href="/app/sales/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+            <Link href="/app/sales/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Nova venda
             </Link>
           }
         >
           <SearchToolbar value={search} onChange={setSearch} placeholder="Número ou cliente">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               {statuses.map((s) => (
                 <option key={s} value={s}>
@@ -98,14 +98,14 @@ export default function SalesPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={ShoppingCart} title="Nenhuma venda encontrada" description="Nenhuma venda corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={ShoppingCart} title="Nenhuma venda encontrada" description="Nenhuma venda corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState
                 icon={ShoppingCart}
                 title="Nenhuma venda registrada"
                 description="Registre a primeira venda para começar."
                 action={
-                  <Link href="/app/sales/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                  <Link href="/app/sales/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                     Nova venda
                   </Link>
                 }

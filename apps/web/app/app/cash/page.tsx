@@ -195,13 +195,13 @@ export default function CashPage() {
           title="Caixa"
           description="Abertura, fechamento e acompanhamento do saldo do caixa da filial ativa."
           action={
-            <button onClick={() => setCreateDialog(true)} className="flex items-center gap-2 rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100">
+            <button onClick={() => setCreateDialog(true)} className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700">
               <PlusCircle className="h-4 w-4" /> Novo caixa
             </button>
           }
         >
           {registers.length > 1 && (
-            <select aria-label="Caixa selecionado" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="w-full max-w-xs rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select aria-label="Caixa selecionado" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="w-full max-w-xs rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               {registers.map((r) => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
@@ -210,56 +210,56 @@ export default function CashPage() {
         </PageHeader>
 
         {state === 'error' && (
-          <EmptyState icon={Banknote} title="Não foi possível carregar" description={errorMessage} action={<button onClick={() => void loadRegisters()} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Tentar novamente</button>} />
+          <EmptyState icon={Banknote} title="Não foi possível carregar" description={errorMessage} action={<button onClick={() => void loadRegisters()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Tentar novamente</button>} />
         )}
         {state === 'ready' && registers.length === 0 && (
-          <EmptyState icon={Banknote} title="Nenhum caixa cadastrado" description="Cadastre o primeiro caixa desta filial para começar a abrir sessões e registrar recebimentos." action={<button onClick={() => setCreateDialog(true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">Novo caixa</button>} />
+          <EmptyState icon={Banknote} title="Nenhum caixa cadastrado" description="Cadastre o primeiro caixa desta filial para começar a abrir sessões e registrar recebimentos." action={<button onClick={() => setCreateDialog(true)} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Novo caixa</button>} />
         )}
         {state === 'ready' && selected && (
           <>
-            <div className="rounded-2xl border border-emerald-900 p-5">
+            <div className="rounded-2xl border border-slate-200 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-emerald-50">{selected.name}</h2>
+                    <h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>
                     <StatusBadge tone={selected.current_session_id ? 'info' : 'neutral'}>{selected.current_session_id ? 'Aberto' : 'Fechado'}</StatusBadge>
                     {selected.status === 'inactive' && <StatusBadge tone="neutral">Caixa inativo</StatusBadge>}
                   </div>
                   {selected.current_session_id ? (
-                    <p className="mt-1 text-sm text-emerald-100/60">
+                    <p className="mt-1 text-sm text-slate-500">
                       Aberto por {selected.current_session_opened_by_name ?? '—'} em {formatDateTime(selected.current_session_opened_at)} · valor inicial {formatCurrency(selected.current_session_opening_amount)}
                     </p>
                   ) : (
-                    <p className="mt-1 text-sm text-emerald-100/60">Este caixa está fechado no momento.</p>
+                    <p className="mt-1 text-sm text-slate-500">Este caixa está fechado no momento.</p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {selected.current_session_id ? (
                     <>
-                      <button onClick={() => router.push(`/app/payments?new=1&cashSessionId=${selected.current_session_id}`)} className="flex items-center gap-2 rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100">
+                      <button onClick={() => router.push(`/app/payments?new=1&cashSessionId=${selected.current_session_id}`)} className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700">
                         <ReceiptIcon className="h-4 w-4" /> Registrar recebimento
                       </button>
-                      <button onClick={() => { setAdjustmentType('supply'); setDialogError(''); setAdjustmentDialog(true); }} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100">Suprimento / sangria</button>
+                      <button onClick={() => { setAdjustmentType('supply'); setDialogError(''); setAdjustmentDialog(true); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700">Suprimento / sangria</button>
                       <AsyncButton tone="destructive" label="Fechar caixa" onClick={() => { setClosingAmount(String(selected.current_session_expected_balance ?? '0')); setClosingJustification(''); setDialogError(''); setCloseDialog(true); }} />
                     </>
                   ) : (
                     <AsyncButton tone="primary" label="Abrir caixa" disabled={selected.status === 'inactive'} onClick={() => { setOpeningAmount('0'); setDialogError(''); setOpenDialog(true); }} />
                   )}
-                  <button onClick={() => { setEditName(selected.name); setEditStatus(selected.status); setDialogError(''); setEditDialog(true); }} className="flex items-center gap-2 rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100">
+                  <button onClick={() => { setEditName(selected.name); setEditStatus(selected.status); setDialogError(''); setEditDialog(true); }} className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700">
                     <Settings2 className="h-4 w-4" /> Editar
                   </button>
                 </div>
               </div>
               {selected.current_session_id && sessionDetail?.id === selected.current_session_id && (
-                <div className="mt-5 grid grid-cols-2 gap-4 border-t border-emerald-900 pt-4 md:grid-cols-4">
-                  {[['Saldo esperado', sessionDetail.summary.expected_amount], ['Entradas', sessionDetail.summary.total_entries], ['Saídas', sessionDetail.summary.total_exits], ['Saldo inicial', sessionDetail.opening_amount]].map(([label, value]) => <div key={label}><p className="text-xs uppercase tracking-wide text-emerald-100/50">{label}</p><p className="mt-1 text-xl font-semibold text-emerald-50">{formatCurrency(value)}</p></div>)}
+                <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 md:grid-cols-4">
+                  {[['Saldo esperado', sessionDetail.summary.expected_amount], ['Entradas', sessionDetail.summary.total_entries], ['Saídas', sessionDetail.summary.total_exits], ['Saldo inicial', sessionDetail.opening_amount]].map(([label, value]) => <div key={label}><p className="text-xs uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-xl font-semibold text-slate-900">{formatCurrency(value)}</p></div>)}
                 </div>
               )}
             </div>
 
             {selected.current_session_id && (
               <div className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-emerald-100">Movimentações recentes</h3>
+                <h3 className="text-sm font-semibold text-slate-700">Movimentações recentes</h3>
                 <DataTable
                   columns={movementColumns}
                   rows={movements}
@@ -273,7 +273,7 @@ export default function CashPage() {
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-end justify-between gap-3">
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-emerald-100"><History className="h-4 w-4" /> Histórico de sessões</h3>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700"><History className="h-4 w-4" /> Histórico de sessões</h3>
                 <div className="flex flex-wrap gap-2">
                   <select aria-label="Caixa do histórico" value={historyRegisterId} onChange={(e) => { setHistoryRegisterId(e.target.value); setHistoryPage(1); }} className={formFieldClass}><option value="">Todos os caixas</option>{registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}</select>
                   <select aria-label="Status da sessão" value={historyStatus} onChange={(e) => { setHistoryStatus(e.target.value); setHistoryPage(1); }} className={formFieldClass}><option value="">Todos os status</option><option value="open">Abertas</option><option value="closed">Fechadas</option></select>
@@ -284,7 +284,7 @@ export default function CashPage() {
                   <input aria-label="Referência da sessão" type="text" placeholder="UUID da sessão" value={historyReference} onChange={(e) => { setHistoryReference(e.target.value.trim()); setHistoryPage(1); }} className={formFieldClass} />
                 </div>
               </div>
-              {indicators && <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{[['Sessões fechadas', indicators.closed_sessions], ['Com divergência', indicators.divergent_sessions], ['Divergência absoluta', formatCurrency(indicators.absolute_difference)], ['Diferença líquida', formatCurrency(indicators.net_difference)], ['Maior divergência', formatCurrency(indicators.largest_difference)]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-emerald-900 p-3"><p className="text-xs text-emerald-100/50">{label}</p><p className="mt-1 font-semibold text-emerald-50">{value}</p></div>)}</div>}
+              {indicators && <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{[['Sessões fechadas', indicators.closed_sessions], ['Com divergência', indicators.divergent_sessions], ['Divergência absoluta', formatCurrency(indicators.absolute_difference)], ['Diferença líquida', formatCurrency(indicators.net_difference)], ['Maior divergência', formatCurrency(indicators.largest_difference)]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-200 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-900">{value}</p></div>)}</div>}
               <DataTable columns={[
                 { key: 'reference', header: 'Referência', render: (row: Session) => <span title={row.id} className="font-mono text-xs">{row.id.slice(0, 8)}</span> },
                 { key: 'register', header: 'Caixa', render: (row: Session) => row.register_name },
@@ -294,15 +294,15 @@ export default function CashPage() {
                 { key: 'flow', header: 'Entradas / saídas', align: 'right', render: (row: Session) => <span>{formatCurrency(row.total_entries)} / {formatCurrency(row.total_exits)}</span>, hideBelow: 'md' },
                 { key: 'expected', header: 'Esperado', align: 'right', render: (row: Session) => formatCurrency(row.expected_amount) },
                 { key: 'counted', header: 'Contado', align: 'right', render: (row: Session) => row.closing_amount_informed === null ? '—' : formatCurrency(row.closing_amount_informed) },
-                { key: 'difference', header: 'Diferença', align: 'right', render: (row: Session) => row.difference === null ? '—' : <span className={Number(row.difference) === 0 ? '' : 'font-semibold text-amber-300'}>{formatCurrency(row.difference)}</span> },
+                { key: 'difference', header: 'Diferença', align: 'right', render: (row: Session) => row.difference === null ? '—' : <span className={Number(row.difference) === 0 ? '' : 'font-semibold text-amber-600'}>{formatCurrency(row.difference)}</span> },
               ]} rows={sessions} rowKey={(row) => row.id} state="ready" onRowClick={(row) => { void loadDetail(row.id); void loadMovements(row.id); }} emptyState={<EmptyState icon={History} title="Nenhuma sessão encontrada" description="Ajuste os filtros ou abra uma sessão neste caixa." />} />
               <DataTablePagination page={historyPage} pageSize={20} total={historyTotal} onPageChange={setHistoryPage} />
-              {sessionDetail && <div className="rounded-2xl border border-emerald-900 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold text-emerald-50">Conferência — {sessionDetail.register_name}</h3><p className="mt-1 text-sm text-emerald-100/60">Aberta por {sessionDetail.opened_by_name ?? '—'} em {formatDateTime(sessionDetail.opened_at)}{sessionDetail.closed_at ? ` · fechada por ${sessionDetail.closed_by_name ?? '—'} em ${formatDateTime(sessionDetail.closed_at)}` : ' · sessão atual aberta'}</p></div>{sessionDetail.status === 'closed' && <button onClick={() => router.push(`/app/cash/sessions/${sessionDetail.id}`)} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm text-emerald-100">Ver fechamento</button>}</div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{[['Recebimentos', sessionDetail.summary.receipts], ['Estornos', sessionDetail.summary.refunds], ['Suprimentos', sessionDetail.summary.supplies], ['Sangrias', sessionDetail.summary.withdrawals], ['Esperado', sessionDetail.summary.expected_amount], ['Contado', sessionDetail.summary.counted_amount], ['Diferença', sessionDetail.summary.difference], ['Movimentos', sessionDetail.summary.movement_count]].map(([label, value]) => <div key={String(label)}><p className="text-xs text-emerald-100/50">{label}</p><p className="font-medium text-emerald-50">{value === null ? '—' : label === 'Movimentos' ? String(value) : formatCurrency(value as string | number)}</p></div>)}</div>{sessionDetail.closing_justification && <p className="mt-4 rounded-xl bg-amber-950/30 p-3 text-sm text-amber-100"><span className="font-semibold">Justificativa:</span> {sessionDetail.closing_justification}</p>}{sessionDetail.payment_methods.length > 0 && <div className="mt-4 border-t border-emerald-900 pt-3"><p className="text-xs uppercase tracking-wide text-emerald-100/50">Totais líquidos por forma de pagamento</p><div className="mt-2 flex flex-wrap gap-3">{sessionDetail.payment_methods.map((method) => <span key={method.id} className="rounded-lg bg-emerald-950 px-3 py-2 text-sm text-emerald-100">{method.name}: {formatCurrency(method.net_amount)}</span>)}</div></div>}</div>}
+              {sessionDetail && <div className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold text-slate-900">Conferência — {sessionDetail.register_name}</h3><p className="mt-1 text-sm text-slate-500">Aberta por {sessionDetail.opened_by_name ?? '—'} em {formatDateTime(sessionDetail.opened_at)}{sessionDetail.closed_at ? ` · fechada por ${sessionDetail.closed_by_name ?? '—'} em ${formatDateTime(sessionDetail.closed_at)}` : ' · sessão atual aberta'}</p></div>{sessionDetail.status === 'closed' && <button onClick={() => router.push(`/app/cash/sessions/${sessionDetail.id}`)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700">Ver fechamento</button>}</div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{[['Recebimentos', sessionDetail.summary.receipts], ['Estornos', sessionDetail.summary.refunds], ['Suprimentos', sessionDetail.summary.supplies], ['Sangrias', sessionDetail.summary.withdrawals], ['Esperado', sessionDetail.summary.expected_amount], ['Contado', sessionDetail.summary.counted_amount], ['Diferença', sessionDetail.summary.difference], ['Movimentos', sessionDetail.summary.movement_count]].map(([label, value]) => <div key={String(label)}><p className="text-xs text-slate-500">{label}</p><p className="font-medium text-slate-900">{value === null ? '—' : label === 'Movimentos' ? String(value) : formatCurrency(value as string | number)}</p></div>)}</div>{sessionDetail.closing_justification && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800"><span className="font-semibold">Justificativa:</span> {sessionDetail.closing_justification}</p>}{sessionDetail.payment_methods.length > 0 && <div className="mt-4 border-t border-slate-200 pt-3"><p className="text-xs uppercase tracking-wide text-slate-500">Totais líquidos por forma de pagamento</p><div className="mt-2 flex flex-wrap gap-3">{sessionDetail.payment_methods.map((method) => <span key={method.id} className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700">{method.name}: {formatCurrency(method.net_amount)}</span>)}</div></div>}</div>}
             </div>
 
             {registers.length > 0 && (
               <div className="flex flex-col gap-3">
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-emerald-100"><Settings2 className="h-4 w-4" /> Caixas cadastrados</h3>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700"><Settings2 className="h-4 w-4" /> Caixas cadastrados</h3>
                 <DataTable
                   columns={[
                     { key: 'name', header: 'Nome', render: (row: Register) => row.name },
@@ -335,16 +335,16 @@ export default function CashPage() {
         </FormDialog>
 
         <FormDialog open={closeDialog} title="Fechar caixa" description="Informe o valor contado fisicamente no caixa. A diferença em relação ao saldo esperado fica registrada." submitLabel="Fechar caixa" busy={dialogBusy} error={dialogError} onSubmit={handleClose} onCancel={() => setCloseDialog(false)}>
-          {sessionDetail && sessionDetail.id === selected?.current_session_id && <div className="grid grid-cols-2 gap-2 rounded-xl bg-emerald-950/60 p-3 text-sm"><span>Saldo inicial: {formatCurrency(sessionDetail.opening_amount)}</span><span>Recebimentos: {formatCurrency(sessionDetail.summary.receipts)}</span><span>Estornos: {formatCurrency(sessionDetail.summary.refunds)}</span><span>Suprimentos: {formatCurrency(sessionDetail.summary.supplies)}</span><span>Sangrias: {formatCurrency(sessionDetail.summary.withdrawals)}</span><span>Movimentos: {sessionDetail.summary.movement_count}</span>{sessionDetail.payment_methods.map((method) => <span key={method.id}>{method.name}: {formatCurrency(method.net_amount)}</span>)}</div>}
+          {sessionDetail && sessionDetail.id === selected?.current_session_id && <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-sm"><span>Saldo inicial: {formatCurrency(sessionDetail.opening_amount)}</span><span>Recebimentos: {formatCurrency(sessionDetail.summary.receipts)}</span><span>Estornos: {formatCurrency(sessionDetail.summary.refunds)}</span><span>Suprimentos: {formatCurrency(sessionDetail.summary.supplies)}</span><span>Sangrias: {formatCurrency(sessionDetail.summary.withdrawals)}</span><span>Movimentos: {sessionDetail.summary.movement_count}</span>{sessionDetail.payment_methods.map((method) => <span key={method.id}>{method.name}: {formatCurrency(method.net_amount)}</span>)}</div>}
           <FormField label="Saldo esperado" htmlFor="expected-readonly">
             <input id="expected-readonly" disabled value={formatCurrency(selected?.current_session_expected_balance)} className={formFieldClass} />
           </FormField>
           <FormField label="Valor contado (R$)" htmlFor="closing-amount">
             <input id="closing-amount" type="number" min="0" step="0.01" required value={closingAmount} onChange={(e) => setClosingAmount(e.target.value)} className={formFieldClass} />
           </FormField>
-          <p className={`text-sm font-semibold ${Number(closingAmount) === Number(selected?.current_session_expected_balance ?? 0) ? 'text-emerald-300' : 'text-amber-300'}`}>Diferença: {formatCurrency(Number(closingAmount || 0) - Number(selected?.current_session_expected_balance ?? 0))}</p>
+          <p className={`text-sm font-semibold ${Number(closingAmount) === Number(selected?.current_session_expected_balance ?? 0) ? 'text-emerald-600' : 'text-amber-600'}`}>Diferença: {formatCurrency(Number(closingAmount || 0) - Number(selected?.current_session_expected_balance ?? 0))}</p>
           {Number(closingAmount) !== Number(selected?.current_session_expected_balance ?? 0) && <FormField label="Justificativa da divergência" htmlFor="closing-justification"><textarea id="closing-justification" required maxLength={2000} value={closingJustification} onChange={(e) => setClosingJustification(e.target.value)} className={formFieldClass} /></FormField>}
-          <p className="text-xs text-emerald-100/60">Ao confirmar, a sessão será encerrada e não poderá ser reaberta ou alterada.</p>
+          <p className="text-xs text-slate-500">Ao confirmar, a sessão será encerrada e não poderá ser reaberta ou alterada.</p>
         </FormDialog>
 
         <FormDialog open={editDialog} title="Editar caixa" description="Alterar nome ou status do caixa." submitLabel="Salvar" busy={dialogBusy} error={dialogError} onSubmit={handleEdit} onCancel={() => setEditDialog(false)}>

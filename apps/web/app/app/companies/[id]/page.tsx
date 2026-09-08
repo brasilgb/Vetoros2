@@ -34,11 +34,11 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
 
   useSetBreadcrumb(company ? company.trade_name || company.legal_name : undefined);
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !company) return <ErrorState message="Não foi possível carregar esta empresa." onRetry={load} />;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={company.trade_name || company.legal_name} description={`${company.tax_id_type === 'cpf' ? 'CPF' : company.tax_id_type === 'cnpj' ? 'CNPJ' : 'Documento'}: ${company.tax_id_normalized}`} />
 
       <FormSection title="Identificação">
@@ -81,7 +81,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

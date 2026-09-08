@@ -52,17 +52,17 @@ function NewPurchaseReceiptForm() {
   }
 
   if (!purchaseOrderId) return <EmptyState icon={PackageCheck} title="Nenhum pedido informado" description="Inicie um recebimento a partir da tela do pedido de compra aprovado." />;
-  if (!order) return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (!order) return <p className="text-sm text-slate-500">Carregando…</p>;
   const pending = order.items.filter((item) => item.pending_quantity > 0);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={`Receber mercadorias — Pedido #${order.purchase_order_number}`} description={`Fornecedor: ${order.supplier_name} · Filial: ${order.branch_name}`} />
       <form onSubmit={submit} className="flex flex-col gap-5">
-        <div className="overflow-x-auto rounded-2xl border border-emerald-900">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200">
           <table className="w-full min-w-max border-collapse text-sm">
             <thead>
-              <tr className="border-b border-emerald-900 bg-emerald-950/60 text-xs uppercase tracking-wide text-emerald-100/50">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3 text-left font-medium">Peça</th>
                 <th className="px-4 py-3 text-right font-medium">Pedido</th>
                 <th className="px-4 py-3 text-right font-medium">Já recebido</th>
@@ -72,11 +72,11 @@ function NewPurchaseReceiptForm() {
             </thead>
             <tbody>
               {pending.map((item) => (
-                <tr key={item.id} className="border-b border-emerald-900/60 last:border-0">
-                  <td className="px-4 py-3 text-emerald-100">{item.part_sku} — {item.description}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{Number(item.quantity)}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{item.received_quantity}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{item.pending_quantity}</td>
+                <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-3 text-slate-700">{item.part_sku} — {item.description}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{Number(item.quantity)}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{item.received_quantity}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{item.pending_quantity}</td>
                   <td className="px-4 py-3 text-right">
                     <input
                       type="number"
@@ -93,17 +93,17 @@ function NewPurchaseReceiptForm() {
             </tbody>
           </table>
         </div>
-        <label className="text-sm text-emerald-100/80">
+        <label className="text-sm text-slate-600">
           Observações
           <textarea className={`${formFieldClass} min-h-24`} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
         {error && (
-          <p role="alert" className="text-sm text-red-300">
+          <p role="alert" className="text-sm text-red-700">
             {error}
           </p>
         )}
         <div className="flex justify-end">
-          <button type="submit" disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             {saving ? 'Criando…' : 'Criar recebimento'}
           </button>
         </div>
@@ -115,7 +115,7 @@ function NewPurchaseReceiptForm() {
 export default function NewPurchaseReceiptPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <NewPurchaseReceiptForm />
       </Suspense>
     </RequireOperationalContext>

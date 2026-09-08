@@ -69,7 +69,7 @@ export function FormDialog({
       onClick={(event) => {
         if (event.target === ref.current) onCancel();
       }}
-      className="rounded-2xl border border-emerald-800 bg-emerald-950 p-0 text-emerald-50 backdrop:bg-black/60"
+      className="rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/60"
     >
       <form onSubmit={handleSubmit} className="w-80 sm:w-96">
         <div className="p-5">
@@ -77,22 +77,22 @@ export function FormDialog({
             {title}
           </h2>
           {description && (
-            <p id={descriptionId} className="mt-1 text-sm text-emerald-100/70">
+            <p id={descriptionId} className="mt-1 text-sm text-slate-500">
               {description}
             </p>
           )}
           <div className="mt-4 flex flex-col gap-4">{children}</div>
           {error && (
-            <p role="alert" className="mt-3 text-sm text-red-300">
+            <p role="alert" className="mt-3 text-sm text-red-600">
               {error}
             </p>
           )}
         </div>
-        <div className="flex justify-end gap-3 border-t border-emerald-900 p-4">
-          <button type="button" onClick={onCancel} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">
+        <div className="flex justify-end gap-3 border-t border-slate-200 p-4">
+          <button type="button" onClick={onCancel} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
             Cancelar
           </button>
-          <button type="submit" disabled={busy} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+          <button type="submit" disabled={busy} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
             {busy ? 'Aguarde…' : submitLabel}
           </button>
         </div>

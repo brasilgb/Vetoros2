@@ -52,7 +52,7 @@ export default function AssetsPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Asset>[] = [
-    { key: 'identifier', header: 'Equipamento', render: (row) => <span className="font-medium text-emerald-50">{row.internal_identifier}</span> },
+    { key: 'identifier', header: 'Equipamento', render: (row) => <span className="font-medium text-slate-900">{row.internal_identifier}</span> },
     { key: 'category', header: 'Categoria', render: (row) => row.category, hideBelow: 'sm' },
     { key: 'brand_model', header: 'Marca / Modelo', render: (row) => [row.brand, row.model].filter(Boolean).join(' ') || '—', hideBelow: 'md' },
     { key: 'customer', header: 'Cliente', render: (row) => row.customer_name },
@@ -65,13 +65,13 @@ export default function AssetsPage() {
         title="Equipamentos"
         description="Equipamentos dos clientes atendidos."
         action={
-          <Link href="/app/assets/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/assets/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Novo equipamento
           </Link>
         }
       >
         <SearchToolbar value={search} onChange={setSearch} placeholder="Identificador, marca, modelo, série, cliente…">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todos os status</option>
             <option value="active">Ativo</option>
             <option value="inactive">Inativo</option>
@@ -94,14 +94,14 @@ export default function AssetsPage() {
             errorMessage={errorMessage}
             emptyState={
               hasFilters ? (
-                <EmptyState icon={Cpu} title="Nenhum equipamento encontrado" description="Nenhum equipamento corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+                <EmptyState icon={Cpu} title="Nenhum equipamento encontrado" description="Nenhum equipamento corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
               ) : (
                 <EmptyState
                   icon={Cpu}
                   title="Nenhum equipamento cadastrado"
                   description="Cadastre o primeiro equipamento para começar a abrir OS e orçamentos para ele."
                   action={
-                    <Link href="/app/assets/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                    <Link href="/app/assets/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                       Novo equipamento
                     </Link>
                   }

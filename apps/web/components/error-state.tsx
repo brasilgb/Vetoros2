@@ -3,11 +3,11 @@ import { AlertTriangle } from 'lucide-react';
 // Estados de erro compreensíveis (seção 18 do correio.md): nunca expor SQLSTATE, stack trace ou mensagem interna crua.
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: (() => void) | undefined }) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-3 rounded-2xl border border-red-900/60 bg-red-950/20 px-6 py-14 text-center">
-      <AlertTriangle className="h-9 w-9 text-red-400/70" aria-hidden />
-      <p className="max-w-sm text-sm text-red-200">{message}</p>
+    <div role="alert" className="flex flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-6 py-14 text-center">
+      <AlertTriangle className="h-9 w-9 text-red-500" aria-hidden />
+      <p className="max-w-sm text-sm text-red-700">{message}</p>
       {onRetry && (
-        <button onClick={onRetry} className="rounded-xl border border-red-800 px-4 py-2 text-sm text-red-200 hover:bg-red-900/30">
+        <button onClick={onRetry} className="rounded-xl border border-red-300 px-4 py-2 text-sm text-red-700 hover:bg-red-100">
           Tentar novamente
         </button>
       )}

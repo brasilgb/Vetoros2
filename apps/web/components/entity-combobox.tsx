@@ -110,7 +110,7 @@ export function EntityCombobox<T>({
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Anchor asChild>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-100/40" aria-hidden />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
           <input
             id={id}
             ref={inputRef}
@@ -130,9 +130,9 @@ export function EntityCombobox<T>({
               setOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            className={`w-full rounded-xl border bg-emerald-950 py-2.5 pl-9 text-sm text-emerald-50 placeholder:text-emerald-100/40 disabled:opacity-50 ${
+            className={`w-full rounded-xl border bg-white py-2.5 pl-9 text-sm text-slate-900 placeholder:text-slate-400 disabled:opacity-50 ${
               allowClear && value ? 'pr-9' : 'pr-3'
-            } ${hasError ? 'border-red-700' : 'border-emerald-800'}`}
+            } ${hasError ? 'border-red-400' : 'border-slate-300'}`}
           />
           {allowClear && value && !open && (
             <button
@@ -143,7 +143,7 @@ export function EntityCombobox<T>({
                 setQuery('');
                 inputRef.current?.focus();
               }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-emerald-100/40 hover:text-emerald-100"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-700"
             >
               <X className="h-4 w-4" />
             </button>
@@ -156,16 +156,16 @@ export function EntityCombobox<T>({
           onCloseAutoFocus={(event) => event.preventDefault()}
           align="start"
           sideOffset={4}
-          className="z-50 w-[var(--radix-popover-trigger-width,20rem)] overflow-hidden rounded-xl border border-emerald-800 bg-emerald-950 shadow-xl"
+          className="z-50 w-[var(--radix-popover-trigger-width,20rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
         >
           <ul id={listId} role="listbox" className="max-h-64 overflow-y-auto py-1">
             {status === 'loading' && (
-              <li className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-100/50">
+              <li className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" /> Buscando…
               </li>
             )}
-            {status === 'error' && <li className="px-3 py-2 text-sm text-red-300">Não foi possível buscar. Tente novamente.</li>}
-            {status === 'ready' && results.length === 0 && <li className="px-3 py-2 text-sm text-emerald-100/50">{emptyMessage}</li>}
+            {status === 'error' && <li className="px-3 py-2 text-sm text-red-600">Não foi possível buscar. Tente novamente.</li>}
+            {status === 'ready' && results.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">{emptyMessage}</li>}
             {status === 'ready' &&
               results.map((item, index) => (
                 <li key={getId(item)} id={`${listId}-${getId(item)}`} role="option" aria-selected={index === highlighted}>
@@ -173,7 +173,7 @@ export function EntityCombobox<T>({
                     type="button"
                     onMouseEnter={() => setHighlighted(index)}
                     onClick={() => selectItem(item)}
-                    className={`block w-full px-3 py-2 text-left text-sm ${index === highlighted ? 'bg-emerald-900/60 text-emerald-100' : 'text-emerald-100/80'}`}
+                    className={`block w-full px-3 py-2 text-left text-sm ${index === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-700'}`}
                   >
                     {renderOption(item)}
                   </button>

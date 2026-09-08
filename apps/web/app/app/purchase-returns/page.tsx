@@ -56,7 +56,7 @@ export default function PurchaseReturnsPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Return>[] = [
-    { key: 'number', header: 'Devolução', render: (row) => <span className="font-medium text-emerald-50">#{row.return_number}</span> },
+    { key: 'number', header: 'Devolução', render: (row) => <span className="font-medium text-slate-900">#{row.return_number}</span> },
     { key: 'receipt', header: 'Recebimento', render: (row) => `#${row.receipt_number}`, hideBelow: 'sm' },
     { key: 'supplier', header: 'Fornecedor', render: (row) => row.supplier_name },
     { key: 'date', header: 'Data', render: (row) => formatDate(row.returned_at), hideBelow: 'md' },
@@ -68,7 +68,7 @@ export default function PurchaseReturnsPage() {
       <div className="flex flex-col gap-6">
         <PageHeader title="Devoluções ao Fornecedor" description="Devoluções de mercadorias efetivamente recebidas.">
           <SearchToolbar value={search} onChange={setSearch} placeholder="Número da devolução, recebimento ou fornecedor">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               {statuses.map((s) => (
                 <option key={s} value={s}>
@@ -89,7 +89,7 @@ export default function PurchaseReturnsPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={Undo2} title="Nenhuma devolução encontrada" description="Nenhuma devolução corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={Undo2} title="Nenhuma devolução encontrada" description="Nenhuma devolução corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState icon={Undo2} title="Nenhuma devolução registrada" description="As devoluções são iniciadas a partir de um recebimento confirmado." />
             )

@@ -57,7 +57,7 @@ export default function PurchaseOrdersPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<PurchaseOrder>[] = [
-    { key: 'number', header: 'Pedido', render: (row) => <span className="font-medium text-emerald-50">#{row.purchase_order_number}</span> },
+    { key: 'number', header: 'Pedido', render: (row) => <span className="font-medium text-slate-900">#{row.purchase_order_number}</span> },
     { key: 'supplier', header: 'Fornecedor', render: (row) => row.supplier_name },
     { key: 'issue', header: 'Emissão', render: (row) => formatDate(row.issue_date), hideBelow: 'md' },
     { key: 'total', header: 'Total', align: 'right', render: (row) => formatCurrency(row.total), hideBelow: 'sm' },
@@ -71,13 +71,13 @@ export default function PurchaseOrdersPage() {
           title="Pedidos de Compra"
           description="Pedidos de compra junto a fornecedores."
           action={
-            <Link href="/app/purchase-orders/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+            <Link href="/app/purchase-orders/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Novo pedido
             </Link>
           }
         >
           <SearchToolbar value={search} onChange={setSearch} placeholder="Número, fornecedor ou referência">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               {statuses.map((s) => (
                 <option key={s} value={s}>
@@ -98,14 +98,14 @@ export default function PurchaseOrdersPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={ClipboardList} title="Nenhum pedido encontrado" description="Nenhum pedido de compra corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={ClipboardList} title="Nenhum pedido encontrado" description="Nenhum pedido de compra corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState
                 icon={ClipboardList}
                 title="Nenhum pedido de compra cadastrado"
                 description="Crie o primeiro pedido para começar a comprar de um fornecedor."
                 action={
-                  <Link href="/app/purchase-orders/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                  <Link href="/app/purchase-orders/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                     Novo pedido
                   </Link>
                 }

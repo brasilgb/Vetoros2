@@ -75,7 +75,7 @@ export default function InventoryMovementsPage() {
     <RequireOperationalContext>
       <div className="flex flex-col gap-6">
         <PageHeader title="Movimentações" description="Histórico de entradas, saídas e ajustes de estoque na filial ativa.">
-          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todos os tipos</option>
             {Object.entries(movementTypeInfo).map(([value, info]) => (
               <option key={value} value={value}>
@@ -94,7 +94,7 @@ export default function InventoryMovementsPage() {
           errorMessage={errorMessage}
           emptyState={
             type ? (
-              <EmptyState icon={ArrowLeftRight} title="Nenhuma movimentação encontrada" description="Nenhuma movimentação corresponde ao filtro atual." action={<button onClick={() => setType('')} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtro</button>} />
+              <EmptyState icon={ArrowLeftRight} title="Nenhuma movimentação encontrada" description="Nenhuma movimentação corresponde ao filtro atual." action={<button onClick={() => setType('')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtro</button>} />
             ) : (
               <EmptyState icon={ArrowLeftRight} title="Nenhuma movimentação registrada" description="Movimentações aparecem aqui conforme peças são recebidas, vendidas ou ajustadas." />
             )

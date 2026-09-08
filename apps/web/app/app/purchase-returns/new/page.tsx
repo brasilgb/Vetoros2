@@ -52,17 +52,17 @@ function NewPurchaseReturnForm() {
   }
 
   if (!purchaseReceiptId) return <EmptyState icon={Undo2} title="Nenhum recebimento informado" description="Inicie uma devolução a partir da tela de um recebimento confirmado." />;
-  if (!receipt) return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (!receipt) return <p className="text-sm text-slate-500">Carregando…</p>;
   const returnable = receipt.items.filter((item) => item.returnable_quantity > 0);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={`Devolver mercadorias — Recebimento #${receipt.receipt_number}`} description={`Pedido #${receipt.purchase_order_number} · Fornecedor: ${receipt.supplier_name} · Filial: ${receipt.branch_name}`} />
       <form onSubmit={submit} className="flex flex-col gap-5">
-        <div className="overflow-x-auto rounded-2xl border border-emerald-900">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200">
           <table className="w-full min-w-max border-collapse text-sm">
             <thead>
-              <tr className="border-b border-emerald-900 bg-emerald-950/60 text-xs uppercase tracking-wide text-emerald-100/50">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3 text-left font-medium">Peça</th>
                 <th className="px-4 py-3 text-right font-medium">Recebido</th>
                 <th className="px-4 py-3 text-right font-medium">Já devolvido</th>
@@ -72,11 +72,11 @@ function NewPurchaseReturnForm() {
             </thead>
             <tbody>
               {returnable.map((item) => (
-                <tr key={item.id} className="border-b border-emerald-900/60 last:border-0">
-                  <td className="px-4 py-3 text-emerald-100">{item.part_sku} — {item.description}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{Number(item.quantity)}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{item.returned_quantity}</td>
-                  <td className="px-4 py-3 text-right text-emerald-100">{item.returnable_quantity}</td>
+                <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-3 text-slate-700">{item.part_sku} — {item.description}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{Number(item.quantity)}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{item.returned_quantity}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{item.returnable_quantity}</td>
                   <td className="px-4 py-3 text-right">
                     <input
                       type="number"
@@ -93,17 +93,17 @@ function NewPurchaseReturnForm() {
             </tbody>
           </table>
         </div>
-        <label className="text-sm text-emerald-100/80">
+        <label className="text-sm text-slate-600">
           Motivo da devolução
           <textarea className={`${formFieldClass} min-h-24`} value={reason} onChange={(e) => setReason(e.target.value)} />
         </label>
         {error && (
-          <p role="alert" className="text-sm text-red-300">
+          <p role="alert" className="text-sm text-red-700">
             {error}
           </p>
         )}
         <div className="flex justify-end">
-          <button type="submit" disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             {saving ? 'Criando…' : 'Criar devolução'}
           </button>
         </div>
@@ -115,7 +115,7 @@ function NewPurchaseReturnForm() {
 export default function NewPurchaseReturnPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <NewPurchaseReturnForm />
       </Suspense>
     </RequireOperationalContext>

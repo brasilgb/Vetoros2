@@ -53,7 +53,7 @@ export default function NewRolePage() {
   const groups = groupPermissions(permissions);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title="Novo papel" description="Papéis personalizados aparecem automaticamente no cadastro de usuários." />
       <form onSubmit={submit} className="flex flex-col gap-5">
         <FormSection title="Identificação">
@@ -64,16 +64,16 @@ export default function NewRolePage() {
 
         <FormSection title="Permissões" description="Marque o que este papel pode fazer, agrupado por módulo." columns={1}>
           {groups.length === 0 ? (
-            <p className="text-sm text-emerald-100/50">Carregando permissões…</p>
+            <p className="text-sm text-slate-500">Carregando permissões…</p>
           ) : (
             <div className="flex flex-col gap-4">
               {groups.map((group) => (
                 <div key={group.module}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-100/60">{group.label}</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h3>
                   <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
                     {group.items.map((permission) => (
-                      <label key={permission.id} className="flex items-center gap-2 py-0.5 text-sm text-emerald-100">
-                        <input type="checkbox" checked={selected.has(permission.id)} onChange={() => toggle(permission.id)} className="h-4 w-4 rounded border-emerald-700 bg-emerald-950 text-emerald-500 focus-visible:outline-2 focus-visible:outline-emerald-500" />
+                      <label key={permission.id} className="flex items-center gap-2 py-0.5 text-sm text-slate-700">
+                        <input type="checkbox" checked={selected.has(permission.id)} onChange={() => toggle(permission.id)} className="h-4 w-4 rounded border-slate-300 bg-white text-slate-9000 focus-visible:outline-2 focus-visible:outline-blue-500" />
                         {permissionLabel(permission.code)}
                       </label>
                     ))}
@@ -85,7 +85,7 @@ export default function NewRolePage() {
         </FormSection>
 
         {error && (
-          <p role="alert" className="text-sm text-red-300">
+          <p role="alert" className="text-sm text-red-700">
             {error}
           </p>
         )}

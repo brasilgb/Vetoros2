@@ -130,13 +130,13 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
         <PageHeader
           title={payable.description}
           description={`${payable.origin === 'purchase_order' ? `Pedido #${payable.purchase_order_number}` : 'Origem manual'} · ${payable.supplier_display_name ?? 'Sem fornecedor vinculado'}`}
-          action={payable.status === 'active' ? <button onClick={() => setCancelDialog(true)} disabled={!canCancel} title={!canCancel ? 'Só é possível cancelar sem pagamento ativo' : undefined} className="rounded-xl border border-red-800 px-4 py-2.5 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-40" >Cancelar</button> : undefined}
+          action={payable.status === 'active' ? <button onClick={() => setCancelDialog(true)} disabled={!canCancel} title={!canCancel ? 'Só é possível cancelar sem pagamento ativo' : undefined} className="rounded-xl border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-100 disabled:opacity-40" >Cancelar</button> : undefined}
         >
           <StatusBadge tone={statusLabels[payable.derived_status].tone}>{statusLabels[payable.derived_status].label}</StatusBadge>
         </PageHeader>
 
         <FormSection title="Dados do título">
-          <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-emerald-50">{formatCurrency(payable.original_amount)}</p></FormField>
+          <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(payable.original_amount)}</p></FormField>
           <FormField label="Pago" htmlFor="d-paid"><p id="d-paid" className={formFieldClass}>{formatCurrency(payable.paid_amount)}</p></FormField>
           <FormField label="Saldo" htmlFor="d-balance"><p id="d-balance" className={formFieldClass}>{formatCurrency(payable.balance)}</p></FormField>
           <FormField label="Documento" htmlFor="d-doc"><p id="d-doc" className={formFieldClass}>{payable.document_number ?? '—'}</p></FormField>
@@ -148,9 +148,9 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
         </FormSection>
 
         <FormSection title="Parcelas">
-          <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-emerald-900">
+          <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-emerald-900 text-xs uppercase tracking-wide text-emerald-100/50">
+              <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2 text-left font-medium">Parcela</th><th className="px-3 py-2 text-left font-medium">Vencimento</th>
                 <th className="px-3 py-2 text-right font-medium">Valor</th><th className="px-3 py-2 text-right font-medium">Saldo</th>
                 <th className="px-3 py-2 text-left font-medium">Situação</th><th className="px-3 py-2" />
@@ -159,7 +159,7 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
                 {payable.installments.map((installment) => {
                   const paid = Number(installment.balance) <= 0;
                   return (
-                    <tr key={installment.id} className="border-b border-emerald-900/60 last:border-0">
+                    <tr key={installment.id} className="border-b border-slate-100 last:border-0">
                       <td className="px-3 py-2">{installment.installment_number}/{installment.installment_count}</td>
                       <td className="px-3 py-2">{formatDate(installment.due_date)}</td>
                       <td className="px-3 py-2 text-right">{formatCurrency(installment.original_amount)}</td>
@@ -169,7 +169,7 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
                       </td>
                       <td className="px-3 py-2 text-right">
                         {!paid && payable.status === 'active' && (
-                          <button onClick={() => openPayDialog(installment)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-950">Pagar</button>
+                          <button onClick={() => openPayDialog(installment)} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white">Pagar</button>
                         )}
                       </td>
                     </tr>
@@ -182,18 +182,18 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
 
         <FormSection title="Pagamentos" description="Um pagamento nunca é apagado — um estorno é sempre um novo lançamento, preservando o histórico.">
           {payable.payments.length === 0 ? (
-            <p className="sm:col-span-2 text-sm text-emerald-100/60">Nenhum pagamento registrado ainda.</p>
+            <p className="sm:col-span-2 text-sm text-slate-500">Nenhum pagamento registrado ainda.</p>
           ) : (
-            <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-emerald-900">
+            <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-sm">
-                <thead><tr className="border-b border-emerald-900 text-xs uppercase tracking-wide text-emerald-100/50">
+                <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-2 text-left font-medium">Data</th><th className="px-3 py-2 text-left font-medium">Parcela</th>
                   <th className="px-3 py-2 text-right font-medium">Valor</th><th className="px-3 py-2 text-left font-medium">Tipo</th>
                   <th className="px-3 py-2 text-left font-medium">Operador</th><th className="px-3 py-2" />
                 </tr></thead>
                 <tbody>
                   {payable.payments.map((payment) => (
-                    <tr key={payment.id} className="border-b border-emerald-900/60 last:border-0">
+                    <tr key={payment.id} className="border-b border-slate-100 last:border-0">
                       <td className="px-3 py-2">{formatDateTime(payment.paid_at)}</td>
                       <td className="px-3 py-2">{payment.installment_number}/{payable.installments.length}</td>
                       <td className="px-3 py-2 text-right">{formatCurrency(payment.amount)}</td>
@@ -203,7 +203,7 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
                       <td className="px-3 py-2">{payment.created_by_name ?? '—'}</td>
                       <td className="px-3 py-2 text-right">
                         {payment.type === 'payment' && !payment.reversed && (
-                          <button onClick={() => openReverseDialog(payment)} className="rounded-lg border border-red-800 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/40">Estornar</button>
+                          <button onClick={() => openReverseDialog(payment)} className="rounded-lg border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-100">Estornar</button>
                         )}
                       </td>
                     </tr>

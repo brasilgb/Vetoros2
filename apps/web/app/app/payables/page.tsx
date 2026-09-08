@@ -37,7 +37,7 @@ const originLabel = (row: Payable) => (row.origin === 'purchase_order' ? `Pedido
 export default function PayablesPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <PayablesPageContent />
       </Suspense>
     </RequireOperationalContext>
@@ -104,13 +104,13 @@ function PayablesPageContent() {
         title="Contas a Pagar"
         description="Obrigações financeiras da empresa perante fornecedores e outros credores."
         action={
-          <Link href="/app/payables/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/payables/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Nova conta a pagar
           </Link>
         }
       >
         <SearchToolbar value={q} onChange={setQ} placeholder="Descrição, documento, fornecedor, pedido…">
-          <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Qualquer vencimento</option>
             <option value="overdue">Até hoje</option>
             <option value="7d">Próximos 7 dias</option>
@@ -119,17 +119,17 @@ function PayablesPageContent() {
           </select>
           {period === 'custom' && (
             <>
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
             </>
           )}
           <div className="w-52"><EntityCombobox value={supplier} onChange={setSupplier} search={searchSuppliers} getId={(s) => s.id} getLabel={supplierLabel} renderOption={(s) => <SupplierOptionRow item={s} />} id="payables-supplier" placeholder="Fornecedor…" /></div>
-          <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todas as origens</option>
             <option value="purchase_order">Pedido de compra</option>
             <option value="manual">Manual</option>
           </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todas as situações</option>
             <option value="open">Em aberto</option>
             <option value="partial">Parcial</option>
@@ -138,7 +138,7 @@ function PayablesPageContent() {
             <option value="canceled">Cancelado</option>
           </select>
           {activeFilterCount > 0 && (
-            <button type="button" onClick={clearFilters} className="rounded-xl border border-emerald-800 px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+            <button type="button" onClick={clearFilters} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
               Limpar {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
             </button>
           )}
@@ -155,9 +155,9 @@ function PayablesPageContent() {
         errorMessage={errorMessage}
         emptyState={
           activeFilterCount > 0 ? (
-            <EmptyState icon={Landmark} title="Nenhuma conta encontrada" description="Nenhuma conta a pagar corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+            <EmptyState icon={Landmark} title="Nenhuma conta encontrada" description="Nenhuma conta a pagar corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
           ) : (
-            <EmptyState icon={Landmark} title="Nenhuma conta a pagar" description="Crie uma conta manual ou a partir de um pedido de compra aprovado." action={<Link href="/app/payables/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">Nova conta a pagar</Link>} />
+            <EmptyState icon={Landmark} title="Nenhuma conta a pagar" description="Crie uma conta manual ou a partir de um pedido de compra aprovado." action={<Link href="/app/payables/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Nova conta a pagar</Link>} />
           )
         }
       />

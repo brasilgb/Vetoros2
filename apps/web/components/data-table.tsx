@@ -47,10 +47,10 @@ export function DataTable<T>({
   const alignClass = { left: 'text-left', right: 'text-right', center: 'text-center' } as const;
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-emerald-900">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table className="w-full min-w-max border-collapse text-sm">
         <thead>
-          <tr className="border-b border-emerald-900 bg-emerald-950/60 text-xs uppercase tracking-wide text-emerald-100/50">
+          <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             {columns.map((column) => (
               <th
                 key={column.key}
@@ -65,10 +65,10 @@ export function DataTable<T>({
         <tbody>
           {state === 'loading'
             ? Array.from({ length: skeletonRows }).map((_, index) => (
-                <tr key={index} className="border-b border-emerald-900/60 last:border-0">
+                <tr key={index} className="border-b border-slate-100 last:border-0">
                   {columns.map((column) => (
                     <td key={column.key} className={`px-4 py-3.5 ${column.hideBelow ? hideBelowClass[column.hideBelow] : ''}`}>
-                      <div className="h-4 animate-pulse rounded bg-emerald-900/50" />
+                      <div className="h-4 animate-pulse rounded bg-slate-200" />
                     </td>
                   ))}
                 </tr>
@@ -77,12 +77,12 @@ export function DataTable<T>({
                 <tr
                   key={rowKey(row)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`border-b border-emerald-900/60 last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-emerald-950/60' : ''}`}
+                  className={`border-b border-slate-100 last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                 >
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={`px-4 py-3.5 text-emerald-100 ${alignClass[column.align ?? 'left']} ${column.hideBelow ? hideBelowClass[column.hideBelow] : ''} ${column.className ?? ''}`}
+                      className={`px-4 py-3.5 text-slate-700 ${alignClass[column.align ?? 'left']} ${column.hideBelow ? hideBelowClass[column.hideBelow] : ''} ${column.className ?? ''}`}
                     >
                       {column.render(row)}
                     </td>
@@ -100,7 +100,7 @@ export function DataTablePagination({ page, pageSize, total, onPageChange }: { p
   if (total <= pageSize) return null;
   const lastPage = Math.ceil(total / pageSize);
   return (
-    <nav aria-label="Paginação" className="flex items-center justify-between gap-3 text-sm text-emerald-100/70">
+    <nav aria-label="Paginação" className="flex items-center justify-between gap-3 text-sm text-slate-500">
       <p>
         Página {page} de {lastPage} · {total} registros
       </p>
@@ -108,14 +108,14 @@ export function DataTablePagination({ page, pageSize, total, onPageChange }: { p
         <button
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="rounded-lg border border-emerald-800 px-3 py-1.5 disabled:opacity-40"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
         >
           Anterior
         </button>
         <button
           disabled={page >= lastPage}
           onClick={() => onPageChange(page + 1)}
-          className="rounded-lg border border-emerald-800 px-3 py-1.5 disabled:opacity-40"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
         >
           Próxima
         </button>

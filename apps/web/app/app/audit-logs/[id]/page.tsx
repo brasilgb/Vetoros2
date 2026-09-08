@@ -36,7 +36,7 @@ export default function AuditEventDetailPage({ params }: { params: Promise<{ id:
 
   useSetBreadcrumb(event ? actionLabel(event.action, event.metadata) : undefined);
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !event) return <ErrorState message="Não foi possível carregar este evento." />;
 
   const view = friendlyMetadata(event.metadata, permissionLabel);
@@ -48,55 +48,55 @@ export default function AuditEventDetailPage({ params }: { params: Promise<{ id:
 
       <FormSection title="Identificação">
         <div>
-          <p className="text-sm text-emerald-100/80">Usuário</p>
-          <p className="mt-1 text-sm text-emerald-50">{event.actor?.name ?? 'Sistema'}</p>
-          {event.actor?.email && <p className="text-xs text-emerald-100/50">{event.actor.email}</p>}
+          <p className="text-sm text-slate-600">Usuário</p>
+          <p className="mt-1 text-sm text-slate-900">{event.actor?.name ?? 'Sistema'}</p>
+          {event.actor?.email && <p className="text-xs text-slate-500">{event.actor.email}</p>}
         </div>
         <div>
-          <p className="text-sm text-emerald-100/80">Módulo</p>
-          <p className="mt-1 text-sm text-emerald-50">{moduleLabelForResourceType(event.resourceType)}</p>
+          <p className="text-sm text-slate-600">Módulo</p>
+          <p className="mt-1 text-sm text-slate-900">{moduleLabelForResourceType(event.resourceType)}</p>
         </div>
         <div className="sm:col-span-2">
-          <p className="text-sm text-emerald-100/80">Entidade</p>
-          <p className="mt-1 text-sm text-emerald-50">{event.entityLabel ?? `${moduleLabelForResourceType(event.resourceType)} · ${event.resourceId?.slice(0, 8) ?? '—'}`}</p>
+          <p className="text-sm text-slate-600">Entidade</p>
+          <p className="mt-1 text-sm text-slate-900">{event.entityLabel ?? `${moduleLabelForResourceType(event.resourceType)} · ${event.resourceId?.slice(0, 8) ?? '—'}`}</p>
         </div>
       </FormSection>
 
       <FormSection title="Alterações realizadas" columns={1}>
         {!view.changedFields && !view.permissionsAdded && !view.permissionsRemoved && view.fields.length === 0 ? (
-          <p className="text-sm text-emerald-100/50">Nenhuma informação adicional registrada para este evento.</p>
+          <p className="text-sm text-slate-500">Nenhuma informação adicional registrada para este evento.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {view.changedFields && (
               <div>
-                <p className="text-sm text-emerald-100/80">Campos alterados</p>
-                <p className="mt-1 text-sm text-emerald-50">{view.changedFields.join(', ')}</p>
+                <p className="text-sm text-slate-600">Campos alterados</p>
+                <p className="mt-1 text-sm text-slate-900">{view.changedFields.join(', ')}</p>
               </div>
             )}
             {view.permissionsAdded && view.permissionsAdded.length > 0 && (
               <div>
-                <p className="text-sm text-emerald-100/80">Permissões adicionadas</p>
+                <p className="text-sm text-slate-600">Permissões adicionadas</p>
                 <ul className="mt-1 flex flex-wrap gap-2">
                   {view.permissionsAdded.map((label) => (
-                    <li key={label} className="rounded-lg border border-emerald-900 px-2.5 py-1 text-xs text-emerald-100/80">{label}</li>
+                    <li key={label} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600">{label}</li>
                   ))}
                 </ul>
               </div>
             )}
             {view.permissionsRemoved && view.permissionsRemoved.length > 0 && (
               <div>
-                <p className="text-sm text-emerald-100/80">Permissões removidas</p>
+                <p className="text-sm text-slate-600">Permissões removidas</p>
                 <ul className="mt-1 flex flex-wrap gap-2">
                   {view.permissionsRemoved.map((label) => (
-                    <li key={label} className="rounded-lg border border-red-900 px-2.5 py-1 text-xs text-red-200/80">{label}</li>
+                    <li key={label} className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600">{label}</li>
                   ))}
                 </ul>
               </div>
             )}
             {view.fields.map((field) => (
               <div key={field.label}>
-                <p className="text-sm text-emerald-100/80">{field.label}</p>
-                <p className="mt-1 text-sm text-emerald-50">{field.value}</p>
+                <p className="text-sm text-slate-600">{field.label}</p>
+                <p className="mt-1 text-sm text-slate-900">{field.value}</p>
               </div>
             ))}
           </div>

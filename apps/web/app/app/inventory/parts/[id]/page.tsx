@@ -57,12 +57,12 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
     await load();
   }
 
-  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-emerald-100/60">Carregando…</p></RequireOperationalContext>;
+  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-slate-500">Carregando…</p></RequireOperationalContext>;
   if (state === 'error' || !part) return <RequireOperationalContext><ErrorState message="Não foi possível carregar esta peça." onRetry={load} /></RequireOperationalContext>;
 
   return (
     <RequireOperationalContext>
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={part.sku} description={`Saldo atual: ${Number(part.balance)} ${part.unit}`} />
 
       <FormSection title="Cadastro">
@@ -107,7 +107,7 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
             <input id="move-reason" required className={formFieldClass} value={move.reason} onChange={(e) => setMove({ ...move, reason: e.target.value })} />
           </FormField>
           <div className="sm:col-span-2">
-            <button type="submit" disabled={registering} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+            <button type="submit" disabled={registering} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
               {registering ? 'Registrando…' : 'Registrar movimentação'}
             </button>
           </div>
@@ -115,7 +115,7 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

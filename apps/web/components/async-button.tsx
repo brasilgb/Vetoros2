@@ -4,9 +4,9 @@ import type { ReactNode } from 'react';
 
 type Tone = 'primary' | 'secondary' | 'destructive';
 const toneClass: Record<Tone, string> = {
-  primary: 'bg-emerald-600 text-emerald-950 hover:bg-emerald-500',
-  secondary: 'border border-emerald-800 text-emerald-100 hover:bg-emerald-950',
-  destructive: 'border border-red-800 text-red-300 hover:bg-red-950/40',
+  primary: 'bg-blue-600 text-white hover:bg-blue-700',
+  secondary: 'border border-slate-300 text-slate-700 hover:bg-slate-50',
+  destructive: 'border border-red-300 text-red-700 hover:bg-red-50',
 };
 
 // Estados de operação padronizados (seção 8 do correio.md UX-02): todo botão de ação

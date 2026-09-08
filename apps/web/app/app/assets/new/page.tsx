@@ -33,7 +33,7 @@ export default function NewAssetPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title="Novo equipamento" />
       <form onSubmit={submit} className="flex flex-col gap-5">
         <FormSection title="Cliente e identificação">

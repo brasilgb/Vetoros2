@@ -11,8 +11,8 @@ export function CustomerOptionRow({ item }: { item: CustomerOption }) {
   const secondary = [item.document_normalized, item.mobile || item.email].filter(Boolean).join(' · ');
   return (
     <div>
-      <p className="font-medium text-emerald-50">{customerLabel(item)}</p>
-      <p className="text-xs text-emerald-100/50">{secondary || 'Sem documento cadastrado'}</p>
+      <p className="font-medium text-slate-900">{customerLabel(item)}</p>
+      <p className="text-xs text-slate-500">{secondary || 'Sem documento cadastrado'}</p>
     </div>
   );
 }
@@ -23,8 +23,8 @@ export function supplierLabel(item: SupplierOption): string {
 export function SupplierOptionRow({ item }: { item: SupplierOption }) {
   return (
     <div>
-      <p className="font-medium text-emerald-50">{supplierLabel(item)}</p>
-      <p className="text-xs text-emerald-100/50">{item.document_normalized || 'Sem documento cadastrado'}</p>
+      <p className="font-medium text-slate-900">{supplierLabel(item)}</p>
+      <p className="text-xs text-slate-500">{item.document_normalized || 'Sem documento cadastrado'}</p>
     </div>
   );
 }
@@ -35,8 +35,8 @@ export function partLabel(item: PartOption): string {
 export function PartOptionRow({ item }: { item: PartOption }) {
   return (
     <div>
-      <p className="font-medium text-emerald-50">{item.sku}</p>
-      <p className="text-xs text-emerald-100/50">
+      <p className="font-medium text-slate-900">{item.sku}</p>
+      <p className="text-xs text-slate-500">
         {item.description}
         {item.balance !== undefined ? ` · saldo ${Number(item.balance)} ${item.unit}` : ''}
       </p>
@@ -51,8 +51,8 @@ export function AssetOptionRow({ item }: { item: AssetOption }) {
   const secondary = [item.brand, item.model].filter(Boolean).join(' ');
   return (
     <div>
-      <p className="font-medium text-emerald-50">{assetLabel(item)}</p>
-      <p className="text-xs text-emerald-100/50">{secondary || 'Sem marca/modelo cadastrados'}</p>
+      <p className="font-medium text-slate-900">{assetLabel(item)}</p>
+      <p className="text-xs text-slate-500">{secondary || 'Sem marca/modelo cadastrados'}</p>
     </div>
   );
 }

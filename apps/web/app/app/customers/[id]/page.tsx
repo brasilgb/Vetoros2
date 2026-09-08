@@ -26,8 +26,8 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
   }, [id, router]);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      {state === 'loading' && <p className="text-sm text-emerald-100/60">Carregando…</p>}
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      {state === 'loading' && <p className="text-sm text-slate-500">Carregando…</p>}
       {state === 'denied' && <EmptyState icon={Users} title="Acesso negado" description="Você não tem permissão para visualizar este cliente." />}
       {state === 'missing' && <EmptyState icon={Users} title="Cliente não encontrado" description="Ele pode ter sido removido ou o link está incorreto." />}
       {state === 'error' && <ErrorState message="Não foi possível carregar este cliente." />}

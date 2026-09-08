@@ -19,11 +19,11 @@ export function RequireOperationalContext({ children }: { children: ReactNode })
 
   if (!hasFullContext) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-800/60 bg-amber-950/20 px-6 py-14 text-center">
-        <Building2 className="h-9 w-9 text-amber-400/70" aria-hidden />
-        <p className="text-base font-medium text-amber-100">Selecione uma empresa e uma filial</p>
-        <p className="max-w-sm text-sm text-amber-100/70">Este módulo depende do contexto operacional. Escolha Empresa e Filial para continuar.</p>
-        <button onClick={focusContextSelectors} className="rounded-xl border border-amber-700 px-4 py-2 text-sm text-amber-100 hover:bg-amber-900/30">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-14 text-center">
+        <Building2 className="h-9 w-9 text-amber-500" aria-hidden />
+        <p className="text-base font-medium text-amber-900">Selecione uma empresa e uma filial</p>
+        <p className="max-w-sm text-sm text-amber-700">Este módulo depende do contexto operacional. Escolha Empresa e Filial para continuar.</p>
+        <button onClick={focusContextSelectors} className="rounded-xl border border-amber-300 px-4 py-2 text-sm text-amber-800 hover:bg-amber-100">
           Selecionar Empresa/Filial
         </button>
       </div>

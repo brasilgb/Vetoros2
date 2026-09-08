@@ -61,14 +61,14 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     await load();
   }
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !user) return <ErrorState message="Não foi possível carregar este usuário." onRetry={load} />;
 
   const groups = groupPermissions(user.permissions);
   const statusTone = commonStatus(user.status);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={user.name} {...(user.email ? { description: user.email } : {})} />
 
       <FormSection title="Dados">
@@ -81,7 +81,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         <FormField label="Status" htmlFor="status">
           <div className="mt-1 flex items-center gap-3">
             <StatusBadge tone={statusTone.tone}>{statusTone.label}</StatusBadge>
-            <button type="button" onClick={() => { setToggleError(''); setConfirmToggleOpen(true); }} className="rounded-xl border border-emerald-800 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-950">
+            <button type="button" onClick={() => { setToggleError(''); setConfirmToggleOpen(true); }} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">
               {user.status === 'active' ? 'Inativar' : 'Ativar'}
             </button>
           </div>
@@ -125,15 +125,15 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
       <FormSection title="Permissões efetivas" description="Somente leitura — reflete o que o papel atual permite; não é possível ajustar permission por permission nesta versão." columns={1}>
         {groups.length === 0 ? (
-          <p className="text-sm text-emerald-100/50">Este usuário não tem nenhuma permissão efetiva no momento.</p>
+          <p className="text-sm text-slate-500">Este usuário não tem nenhuma permissão efetiva no momento.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {groups.map((group) => (
               <div key={group.module}>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-100/60">{group.label}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h3>
                 <ul className="mt-1 flex flex-wrap gap-2">
                   {group.items.map((permission) => (
-                    <li key={permission.code} className="rounded-lg border border-emerald-900 px-2.5 py-1 text-xs text-emerald-100/80">
+                    <li key={permission.code} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600">
                       {permissionLabel(permission.code)}
                     </li>
                   ))}
@@ -145,7 +145,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

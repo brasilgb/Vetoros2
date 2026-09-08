@@ -36,7 +36,7 @@ const originLabel = (row: Payment) => (row.origin === 'sale' ? `Venda #${row.sal
 export default function PaymentsPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <PaymentsPageContent />
       </Suspense>
     </RequireOperationalContext>
@@ -154,13 +154,13 @@ function PaymentsPageContent() {
           title="Recebimentos"
           description="Recebimentos de dinheiro, PIX, cartão e outras formas de pagamento na filial ativa."
           action={
-            <button onClick={() => void openDialog()} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+            <button onClick={() => void openDialog()} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Novo recebimento
             </button>
           }
         >
           <SearchToolbar value={q} onChange={setQ} placeholder="Número, cliente, observação…">
-            <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Qualquer período</option>
               <option value="today">Hoje</option>
               <option value="7d">Últimos 7 dias</option>
@@ -169,27 +169,27 @@ function PaymentsPageContent() {
             </select>
             {period === 'custom' && (
               <>
-                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
-                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
+                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
               </>
             )}
-            <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todas as formas</option>
               {methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-            <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todas as origens</option>
               <option value="sale">Venda</option>
               <option value="service_order">Ordem de Serviço</option>
               <option value="none">Avulso</option>
             </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               <option value="active">Ativo</option>
               <option value="refunded">Estornado</option>
             </select>
             {activeFilterCount > 0 && (
-              <button type="button" onClick={clearFilters} className="rounded-xl border border-emerald-800 px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+              <button type="button" onClick={clearFilters} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                 Limpar {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
               </button>
             )}
@@ -206,9 +206,9 @@ function PaymentsPageContent() {
           errorMessage={errorMessage}
           emptyState={
             activeFilterCount > 0 ? (
-              <EmptyState icon={Receipt} title="Nenhum recebimento encontrado" description="Nenhum recebimento corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={Receipt} title="Nenhum recebimento encontrado" description="Nenhum recebimento corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
-              <EmptyState icon={Receipt} title="Nenhum recebimento registrado" description="Registre o primeiro recebimento com um caixa aberto." action={<button onClick={() => void openDialog()} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">Novo recebimento</button>} />
+              <EmptyState icon={Receipt} title="Nenhum recebimento registrado" description="Registre o primeiro recebimento com um caixa aberto." action={<button onClick={() => void openDialog()} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Novo recebimento</button>} />
             )
           }
         />
@@ -216,7 +216,7 @@ function PaymentsPageContent() {
 
         <FormDialog open={dialogOpen} title="Novo recebimento" submitLabel="Registrar" busy={dialogBusy} error={dialogError} onSubmit={handleSubmit} onCancel={() => setDialogOpen(false)}>
           {openSessions.length === 0 ? (
-            <p className="text-sm text-amber-200">
+            <p className="text-sm text-amber-800">
               Nenhum caixa aberto nesta filial. <button type="button" onClick={() => router.push('/app/cash')} className="underline">Abra um caixa</button> antes de registrar um recebimento.
             </p>
           ) : (

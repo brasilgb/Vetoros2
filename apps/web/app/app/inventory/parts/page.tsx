@@ -57,7 +57,7 @@ export default function InventoryPartsPage() {
 
   const hasFilters = Boolean(debouncedSearch || status);
   const columns: DataTableColumn<Part>[] = [
-    { key: 'sku', header: 'Peça', render: (row) => <span className="font-medium text-emerald-50">{row.sku}</span> },
+    { key: 'sku', header: 'Peça', render: (row) => <span className="font-medium text-slate-900">{row.sku}</span> },
     { key: 'description', header: 'Descrição', render: (row) => row.description },
     { key: 'balance', header: 'Saldo', align: 'right', render: (row) => `${Number(row.balance)} ${row.unit}` },
     { key: 'status', header: 'Status', render: (row) => { const { label, tone } = commonStatus(row.status); return <StatusBadge tone={tone}>{label}</StatusBadge>; } },
@@ -70,13 +70,13 @@ export default function InventoryPartsPage() {
           title="Peças / Produtos"
           description="Cadastro de peças e saldo na filial ativa."
           action={
-            <Link href="/app/inventory/parts/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+            <Link href="/app/inventory/parts/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Nova peça
             </Link>
           }
         >
           <SearchToolbar value={search} onChange={setSearch} placeholder="SKU ou descrição">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               <option value="active">Ativos</option>
               <option value="inactive">Inativos</option>
@@ -94,14 +94,14 @@ export default function InventoryPartsPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={Package} title="Nenhuma peça encontrada" description="Nenhuma peça corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={Package} title="Nenhuma peça encontrada" description="Nenhuma peça corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState
                 icon={Package}
                 title="Nenhuma peça cadastrada"
                 description="Cadastre a primeira peça para começar a controlar o estoque."
                 action={
-                  <Link href="/app/inventory/parts/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                  <Link href="/app/inventory/parts/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                     Nova peça
                   </Link>
                 }

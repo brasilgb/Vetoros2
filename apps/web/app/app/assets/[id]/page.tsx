@@ -52,11 +52,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     await load();
   }
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !asset) return <ErrorState message="Não foi possível carregar este equipamento." onRetry={load} />;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={asset.internal_identifier} description={`Cliente: ${asset.customer_name}`} />
 
       <FormSection title="Identificação">
@@ -119,10 +119,10 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       </FormSection>
 
       <FormSection title="Identificadores adicionais" columns={1}>
-        <ul className="flex flex-col gap-2 text-sm text-emerald-100">
-          {asset.identifiers.length === 0 && <li className="text-emerald-100/50">Nenhum identificador adicional cadastrado.</li>}
+        <ul className="flex flex-col gap-2 text-sm text-slate-700">
+          {asset.identifiers.length === 0 && <li className="text-slate-500">Nenhum identificador adicional cadastrado.</li>}
           {asset.identifiers.map((entry) => (
-            <li key={entry.id} className="rounded-xl border border-emerald-900 px-3 py-2">
+            <li key={entry.id} className="rounded-xl border border-slate-200 px-3 py-2">
               {entry.identifier_type}: {entry.value}
             </li>
           ))}
@@ -130,14 +130,14 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         <form onSubmit={addIdentifier} className="grid gap-3 sm:grid-cols-2">
           <input required placeholder="Tipo (ex.: número de patrimônio)" className={formFieldClass} value={identifier.identifierType} onChange={(e) => setIdentifier({ ...identifier, identifierType: e.target.value })} />
           <input required placeholder="Valor" className={formFieldClass} value={identifier.value} onChange={(e) => setIdentifier({ ...identifier, value: e.target.value })} />
-          <button type="submit" disabled={addingIdentifier} className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-medium text-emerald-100 hover:bg-emerald-950 sm:col-span-2">
+          <button type="submit" disabled={addingIdentifier} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-2">
             {addingIdentifier ? 'Adicionando…' : 'Adicionar identificador'}
           </button>
         </form>
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

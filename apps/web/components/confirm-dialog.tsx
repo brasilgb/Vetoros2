@@ -71,29 +71,29 @@ export function ConfirmDialog({
       onClick={(event) => {
         if (event.target === ref.current) onCancel();
       }}
-      className="rounded-2xl border border-emerald-800 bg-emerald-950 p-0 text-emerald-50 backdrop:bg-black/60"
+      className="rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/60"
     >
       <div className="w-80 p-5 sm:w-96">
         <h2 id={titleId} className="text-base font-semibold">
           {title}
         </h2>
-        <p id={descriptionId} className="mt-2 text-sm text-emerald-100/70">
+        <p id={descriptionId} className="mt-2 text-sm text-slate-500">
           {description}
         </p>
         {error && (
-          <p role="alert" className="mt-3 rounded-xl border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-200">
+          <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </p>
         )}
         <div className="mt-5 flex justify-end gap-3">
-          <button ref={cancelRef} onClick={onCancel} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">
+          <button ref={cancelRef} onClick={onCancel} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={busy}
             className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-              tone === 'destructive' ? 'bg-red-600 text-red-50' : 'bg-emerald-600 text-emerald-950'
+              tone === 'destructive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
             {busy ? 'Aguarde…' : confirmLabel}

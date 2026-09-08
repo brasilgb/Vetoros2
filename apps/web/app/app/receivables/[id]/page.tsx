@@ -110,8 +110,8 @@ export default function ReceivableDetailPage({ params }: { params: Promise<{ id:
           description={`Vencimento em ${formatDate(receivable.due_date)} · ${receivable.customer_name}`}
           action={
             <div className="flex gap-2">
-              {canAllocate && <button onClick={openAllocateDialog} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">Alocar pagamento</button>}
-              {canCancel && <button onClick={openCancelDialog} className="rounded-xl border border-red-800 px-4 py-2.5 text-sm text-red-300 hover:bg-red-950/40">Cancelar</button>}
+              {canAllocate && <button onClick={openAllocateDialog} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">Alocar pagamento</button>}
+              {canCancel && <button onClick={openCancelDialog} className="rounded-xl border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-100">Cancelar</button>}
             </div>
           }
         >
@@ -121,7 +121,7 @@ export default function ReceivableDetailPage({ params }: { params: Promise<{ id:
         <FormSection title="Detalhes">
           <FormField label="Cliente" htmlFor="d-customer"><p id="d-customer" className={formFieldClass}>{receivable.customer_name}</p></FormField>
           <FormField label="Origem" htmlFor="d-origin"><p id="d-origin" className={formFieldClass}>{receivable.origin === 'sale' ? `Venda #${receivable.sale_number}` : `OS #${receivable.service_order_number}`}</p></FormField>
-          <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-emerald-50">{formatCurrency(receivable.original_amount)}</p></FormField>
+          <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(receivable.original_amount)}</p></FormField>
           <FormField label="Recebido" htmlFor="d-paid"><p id="d-paid" className={formFieldClass}>{formatCurrency(receivable.paid_amount)}</p></FormField>
           <FormField label="Saldo" htmlFor="d-balance"><p id="d-balance" className={formFieldClass}>{formatCurrency(receivable.balance)}</p></FormField>
           <FormField label="Vencimento" htmlFor="d-due"><p id="d-due" className={formFieldClass}>{formatDate(receivable.due_date)}</p></FormField>
@@ -131,12 +131,12 @@ export default function ReceivableDetailPage({ params }: { params: Promise<{ id:
         </FormSection>
 
         <FormSection title="Parcelamento" description="Demais parcelas geradas para a mesma origem.">
-          <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-emerald-900">
+          <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-emerald-900 text-xs uppercase tracking-wide text-emerald-100/50"><th className="px-3 py-2 text-left font-medium">Parcela</th><th className="px-3 py-2 text-left font-medium">Vencimento</th><th className="px-3 py-2 text-right font-medium">Valor</th><th className="px-3 py-2 text-left font-medium">Status</th></tr></thead>
+              <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th className="px-3 py-2 text-left font-medium">Parcela</th><th className="px-3 py-2 text-left font-medium">Vencimento</th><th className="px-3 py-2 text-right font-medium">Valor</th><th className="px-3 py-2 text-left font-medium">Status</th></tr></thead>
               <tbody>
                 {receivable.siblings.map((sibling) => (
-                  <tr key={sibling.id} className={`border-b border-emerald-900/60 last:border-0 ${sibling.id === receivable.id ? 'bg-emerald-950/60' : ''}`}>
+                  <tr key={sibling.id} className={`border-b border-slate-100 last:border-0 ${sibling.id === receivable.id ? 'bg-slate-50' : ''}`}>
                     <td className="px-3 py-2">{sibling.installment_number}/{sibling.installment_count}</td>
                     <td className="px-3 py-2">{formatDate(sibling.due_date)}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(sibling.original_amount)}</td>
@@ -150,14 +150,14 @@ export default function ReceivableDetailPage({ params }: { params: Promise<{ id:
 
         <FormSection title="Pagamentos alocados" description="Recebimentos vinculados a este título — a apropriação é sempre explícita, nunca automática (FIN-02).">
           {receivable.allocations.length === 0 ? (
-            <p className="sm:col-span-2 text-sm text-emerald-100/60">Nenhum pagamento alocado ainda.</p>
+            <p className="sm:col-span-2 text-sm text-slate-500">Nenhum pagamento alocado ainda.</p>
           ) : (
-            <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-emerald-900">
+            <div className="sm:col-span-2 overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-sm">
-                <thead><tr className="border-b border-emerald-900 text-xs uppercase tracking-wide text-emerald-100/50"><th className="px-3 py-2 text-left font-medium">Data</th><th className="px-3 py-2 text-left font-medium">Forma</th><th className="px-3 py-2 text-right font-medium">Valor alocado</th><th className="px-3 py-2 text-left font-medium">Status</th><th className="px-3 py-2 text-left font-medium">Operador</th></tr></thead>
+                <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th className="px-3 py-2 text-left font-medium">Data</th><th className="px-3 py-2 text-left font-medium">Forma</th><th className="px-3 py-2 text-right font-medium">Valor alocado</th><th className="px-3 py-2 text-left font-medium">Status</th><th className="px-3 py-2 text-left font-medium">Operador</th></tr></thead>
                 <tbody>
                   {receivable.allocations.map((allocation) => (
-                    <tr key={allocation.id} className="border-b border-emerald-900/60 last:border-0">
+                    <tr key={allocation.id} className="border-b border-slate-100 last:border-0">
                       <td className="px-3 py-2">{formatDateTime(allocation.created_at)}</td>
                       <td className="px-3 py-2">{allocation.payment_method_name}</td>
                       <td className="px-3 py-2 text-right">{formatCurrency(allocation.amount)}</td>

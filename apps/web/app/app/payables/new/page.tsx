@@ -62,7 +62,7 @@ export default function NewPayablePage() {
 
   return (
     <RequireOperationalContext>
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <PageHeader title="Nova conta a pagar" description="Origem manual ou a partir de um pedido de compra aprovado." />
         <form onSubmit={submit} className="flex flex-col gap-5">
           <FormSection title="Origem">
@@ -83,8 +83,8 @@ export default function NewPayablePage() {
             )}
             {originType === 'purchase_order' && purchaseOrder && (
               <FormField label="Resumo" htmlFor="po-summary" span="full">
-                <p id="po-summary" className="mt-1 rounded-xl border border-emerald-800 bg-emerald-950 p-3 text-sm text-emerald-100/80">
-                  Fornecedor: <strong className="text-emerald-50">{purchaseOrder.supplier_name}</strong> · Total do pedido: <strong className="text-emerald-50">{formatCurrency(purchaseOrder.total)}</strong>
+                <p id="po-summary" className="mt-1 rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-600">
+                  Fornecedor: <strong className="text-slate-900">{purchaseOrder.supplier_name}</strong> · Total do pedido: <strong className="text-slate-900">{formatCurrency(purchaseOrder.total)}</strong>
                 </p>
               </FormField>
             )}
@@ -108,20 +108,20 @@ export default function NewPayablePage() {
                 <div key={index} className="flex items-center gap-2">
                   <input type="number" min="0.01" step="0.01" required placeholder="Valor (R$)" value={row.amount} onChange={(e) => updateInstallment(index, 'amount', e.target.value)} className={formFieldClass} />
                   <input type="date" required value={row.dueDate} onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)} className={formFieldClass} />
-                  <button type="button" onClick={() => removeInstallment(index)} disabled={installments.length === 1} className="rounded-lg p-2 text-red-300 hover:bg-red-950/40 disabled:opacity-30" aria-label="Remover parcela">
+                  <button type="button" onClick={() => removeInstallment(index)} disabled={installments.length === 1} className="rounded-lg p-2 text-red-700 hover:bg-red-100 disabled:opacity-30" aria-label="Remover parcela">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addInstallment} className="self-start rounded-xl border border-emerald-800 px-3 py-1.5 text-sm text-emerald-100 hover:bg-emerald-950">+ Parcela</button>
-              <p className="text-xs text-emerald-100/50">
+              <button type="button" onClick={addInstallment} className="self-start rounded-xl border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">+ Parcela</button>
+              <p className="text-xs text-slate-500">
                 Soma atual: {formatCurrency(installmentsTotal)}{originType === 'purchase_order' && poTotal !== null ? ` de ${formatCurrency(poTotal)}` : ''}
               </p>
             </div>
           </FormSection>
 
           {error && (
-            <p role="alert" className="text-sm text-red-300">
+            <p role="alert" className="text-sm text-red-700">
               {error}
             </p>
           )}

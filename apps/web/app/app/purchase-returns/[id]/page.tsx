@@ -55,7 +55,7 @@ export default function PurchaseReturnDetailPage({ params }: { params: Promise<{
     await load();
   }
 
-  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-emerald-100/60">Carregando…</p></RequireOperationalContext>;
+  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-slate-500">Carregando…</p></RequireOperationalContext>;
   if (state === 'error' || !ret) return <RequireOperationalContext><ErrorState message="Não foi possível carregar esta devolução." onRetry={load} /></RequireOperationalContext>;
 
   const { label, tone } = commonStatus(ret.status);
@@ -69,7 +69,7 @@ export default function PurchaseReturnDetailPage({ params }: { params: Promise<{
     { key: 'remaining', header: 'Restante', align: 'right', render: (row) => row.remaining_returnable_quantity, hideBelow: 'md' },
     ...(editable
       ? [{ key: 'actions', header: '', align: 'right' as const, render: (row: Item) => (
-          <button onClick={() => removeItem(row.id)} aria-label="Excluir item" className="rounded-lg p-1.5 text-emerald-100/50 hover:bg-red-950/40 hover:text-red-300">
+          <button onClick={() => removeItem(row.id)} aria-label="Excluir item" className="rounded-lg p-1.5 text-slate-500 hover:bg-red-100 hover:text-red-800">
             <Trash2 className="h-4 w-4" />
           </button>
         ) }]
@@ -93,12 +93,12 @@ export default function PurchaseReturnDetailPage({ params }: { params: Promise<{
       )}
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-emerald-100">Itens</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">Itens</h2>
         <DataTable columns={columns} rows={ret.items} rowKey={(row) => row.id} state="ready" emptyState={<EmptyState icon={Undo2} title="Nenhum item nesta devolução" />} />
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

@@ -47,20 +47,20 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  if (!data) return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (!data) return <p className="text-sm text-slate-500">Carregando…</p>;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={`Fornecedor #${data.supplier_number}`} description={String(data.legal_name ?? '')} />
       <SupplierForm supplier={data} />
 
       <FormSection title="Endereços" columns={1}>
-        <ul className="flex flex-col gap-2 text-sm text-emerald-100">
-          {data.addresses.length === 0 && <li className="text-emerald-100/50">Nenhum endereço cadastrado.</li>}
+        <ul className="flex flex-col gap-2 text-sm text-slate-700">
+          {data.addresses.length === 0 && <li className="text-slate-500">Nenhum endereço cadastrado.</li>}
           {data.addresses.map((address) => (
-            <li key={address.id} className="rounded-xl border border-emerald-900 px-3 py-2">
+            <li key={address.id} className="rounded-xl border border-slate-200 px-3 py-2">
               {address.address_type}: {address.street}, {address.city}
-              {address.state ? `/${address.state}` : ''} {address.is_primary && <span className="text-emerald-100/50">(principal)</span>}
+              {address.state ? `/${address.state}` : ''} {address.is_primary && <span className="text-slate-500">(principal)</span>}
             </li>
           ))}
         </ul>
@@ -74,19 +74,19 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
           <input name="street" required placeholder="Logradouro" className={formFieldClass} />
           <input name="city" required placeholder="Cidade" className={formFieldClass} />
           <input name="state" maxLength={2} placeholder="UF" className={formFieldClass} />
-          <label className="flex items-center gap-2 text-sm text-emerald-100/70">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
             <input name="isPrimary" type="checkbox" /> Principal
           </label>
-          <button className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-medium text-emerald-100 hover:bg-emerald-950">Adicionar endereço</button>
+          <button className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Adicionar endereço</button>
         </form>
       </FormSection>
 
       <FormSection title="Contatos" columns={1}>
-        <ul className="flex flex-col gap-2 text-sm text-emerald-100">
-          {data.contacts.length === 0 && <li className="text-emerald-100/50">Nenhum contato cadastrado.</li>}
+        <ul className="flex flex-col gap-2 text-sm text-slate-700">
+          {data.contacts.length === 0 && <li className="text-slate-500">Nenhum contato cadastrado.</li>}
           {data.contacts.map((contact) => (
-            <li key={contact.id} className="rounded-xl border border-emerald-900 px-3 py-2">
-              {contact.contact_type}: {contact.value} {contact.is_primary && <span className="text-emerald-100/50">(principal)</span>}
+            <li key={contact.id} className="rounded-xl border border-slate-200 px-3 py-2">
+              {contact.contact_type}: {contact.value} {contact.is_primary && <span className="text-slate-500">(principal)</span>}
             </li>
           ))}
         </ul>
@@ -99,15 +99,15 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
             <option value="other">Outro</option>
           </select>
           <input name="value" required placeholder="Contato" className={formFieldClass} />
-          <label className="flex items-center gap-2 text-sm text-emerald-100/70">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
             <input name="isPrimary" type="checkbox" /> Principal
           </label>
-          <button className="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-medium text-emerald-100 hover:bg-emerald-950">Adicionar contato</button>
+          <button className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Adicionar contato</button>
         </form>
       </FormSection>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

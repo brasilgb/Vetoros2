@@ -58,7 +58,7 @@ export default function ServiceOrdersPage() {
   const hasFilters = Boolean(debouncedSearch || status);
 
   const columns: DataTableColumn<ServiceOrder>[] = [
-    { key: 'number', header: 'OS', render: (row) => <span className="font-medium text-emerald-50">#{row.order_number}</span> },
+    { key: 'number', header: 'OS', render: (row) => <span className="font-medium text-slate-900">#{row.order_number}</span> },
     { key: 'title', header: 'Título', render: (row) => row.title },
     { key: 'customer', header: 'Cliente', render: (row) => row.customer_name },
     { key: 'opened', header: 'Abertura', render: (row) => formatDate(row.created_at) },
@@ -79,13 +79,13 @@ export default function ServiceOrdersPage() {
         title="Ordens de Serviço"
         description="Ordens de serviço abertas para clientes."
         action={
-          <Link href="/app/service-orders/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/service-orders/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Nova OS
           </Link>
         }
       >
         <SearchToolbar value={search} onChange={setSearch} placeholder="Número ou cliente">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todos os status</option>
             <option value="open">Aberta</option>
             <option value="in_progress">Em andamento</option>
@@ -105,14 +105,14 @@ export default function ServiceOrdersPage() {
         errorMessage={errorMessage}
         emptyState={
           hasFilters ? (
-            <EmptyState icon={Wrench} title="Nenhuma OS encontrada" description="Nenhuma ordem de serviço corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+            <EmptyState icon={Wrench} title="Nenhuma OS encontrada" description="Nenhuma ordem de serviço corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
           ) : (
             <EmptyState
               icon={Wrench}
               title="Nenhuma ordem de serviço aberta"
               description="Abra a primeira OS para começar a registrar um atendimento."
               action={
-                <Link href="/app/service-orders/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                <Link href="/app/service-orders/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                   Abrir OS
                 </Link>
               }

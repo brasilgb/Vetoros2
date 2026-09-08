@@ -1,416 +1,369 @@
-Você é o responsável por consolidar a UX/UI do VetorOS2.
+Antes de continuar qualquer trabalho de UX/UI, faça uma auditoria funcional completa do VetorOS2.
 
-O sistema já possui arquitetura, módulos e regras de negócio implementados. Seu trabalho agora é elevar a interface para um padrão profissional, consistente, clean, moderno e extremamente fácil de usar por clientes que trabalham diariamente com assistência técnica, ordens de serviço, estoque, compras, vendas, caixa e financeiro.
+O objetivo desta etapa NÃO é implementar alterações.
 
-## Objetivo principal
+Precisamos primeiro descobrir exatamente o que o sistema possui hoje, quais campos existem, quais operações são permitidas e onde os módulos estão rasos ou incompletos para utilização real por uma empresa.
 
-Criar uma linguagem visual única para todo o VetorOS2, preservando os fluxos existentes e melhorando:
+## Contexto
 
-* clareza;
-* velocidade de operação;
-* consistência;
-* hierarquia visual;
-* legibilidade;
-* previsibilidade dos fluxos;
-* responsividade;
-* sensação de produto maduro.
+O VetorOS2 pretende ser um sistema operacional/ERP especializado para empresas de assistência técnica e serviços, envolvendo:
 
-A interface deve lembrar um ERP/SaaS profissional moderno, mas sem excesso de elementos visuais ou efeitos decorativos.
+* cadastros;
+* clientes;
+* equipamentos;
+* ordens de serviço;
+* orçamentos;
+* agenda;
+* produtos;
+* estoque;
+* fornecedores;
+* compras;
+* vendas;
+* caixa;
+* recebimentos;
+* financeiro;
+* relatórios;
+* usuários e permissões.
 
-## Direção visual
+Alguns módulos aparentemente foram implementados com profundidade insuficiente.
 
-Adote uma identidade visual clean baseada em azul tecnológico.
+Exemplos já percebidos:
 
-Paleta sugerida:
+* Ordem de Serviço não apresenta todas as operações esperadas, como edição completa e tratamento adequado de exclusão/cancelamento;
+* Pedido de Compra aparentemente possui apenas fornecedor, custo/frete e observações, sem representar adequadamente aquilo que será comprado;
+* podem existir outros módulos com CRUD ou fluxos excessivamente simplificados.
 
-* Primary: `#2563EB`
-* Primary hover/active: `#1D4ED8`
-* Sidebar / superfícies escuras opcionais: `#0F172A`
-* Background principal: `#F8FAFC`
-* Cards/superfícies: `#FFFFFF`
-* Bordas: tons frios próximos a `#E2E8F0`
-* Texto principal: tons próximos a `#0F172A`
-* Texto secundário: tons próximos a `#64748B`
+Não assuma que esses são os únicos problemas.
 
-Cores semânticas:
+## Etapa 1 — Inventário do sistema atual
 
-* sucesso: verde;
-* atenção: âmbar;
-* erro/perigo: vermelho;
-* informação: azul.
+Percorra o projeto inteiro e produza um inventário por módulo.
 
-Não espalhar a cor primária por todos os elementos. O azul deve ser usado principalmente em:
+Para cada entidade/módulo, documente:
 
-* CTA principal;
-* item ativo;
-* foco;
-* links;
-* indicadores importantes;
-* elementos selecionados.
+### Cadastro
 
-Evitar:
+* tabela(s) envolvidas;
+* campos existentes no banco;
+* campos obrigatórios;
+* campos opcionais;
+* relacionamentos;
+* enums/status;
+* constraints relevantes;
+* índices relevantes.
 
-* gradientes desnecessários;
-* sombras exageradas;
-* glassmorphism;
-* excesso de bordas;
-* componentes muito arredondados;
-* ícones decorativos;
-* animações supérfluas;
-* aparência de landing page dentro do ERP.
+### API
 
-## Sidebar
+Liste:
 
-Criar uma sidebar retrátil e extremamente funcional.
+* endpoints existentes;
+* operações disponíveis;
+* create;
+* read;
+* update;
+* delete;
+* cancel;
+* reopen;
+* confirm;
+* approve;
+* finalize;
+* reverse;
+* outras ações específicas.
 
-Requisitos:
+Informe claramente quando determinada ação NÃO existir.
 
-* modo expandido com ícone + nome;
-* modo recolhido somente com ícones;
-* tooltip no modo recolhido;
-* item ativo claramente identificável;
-* grupos funcionais bem separados;
-* preservar estado expandido/recolhido quando apropriado;
-* excelente comportamento em telas menores;
-* navegação rápida e sem menus confusos.
+### Interface
 
-Organizar os módulos de forma lógica, por exemplo:
+Liste:
 
-### Operação
-
-* Dashboard
-* Clientes
-* Equipamentos
-* Ordens de Serviço
-* Agenda
-
-### Comercial
-
-* Orçamentos
-* Vendas
-
-### Suprimentos
-
-* Produtos
-* Estoque
-* Compras
-* Fornecedores, caso exista
-
-### Financeiro
-
-* Caixa
-* Recebimentos
-* Financeiro
-
-### Gestão
-
-* Relatórios
-* Empresas / Filiais
-* Usuários / Permissões
-* Configurações
-
-Adapte os nomes apenas ao que realmente existe no projeto.
-
-Não invente módulos.
-
-## Cabeçalho
-
-O cabeçalho deve ser simples e funcional.
-
-Deve acomodar de forma limpa:
-
-* título/contexto da página;
-* empresa e filial ativas;
-* ações globais relevantes;
-* usuário logado;
-* menu de conta/logout.
-
-Evitar duplicação de informações entre sidebar e header.
-
-## Padrão de páginas CRUD
-
-Quando o cadastro possuir quantidade relevante de campos ou uso frequente, adotar o padrão:
-
-1. listagem;
-2. página de criação;
-3. página de edição/detalhe.
-
-Exemplos esperados:
-
-* Clientes
-* Equipamentos
-* Ordens de Serviço
-* Produtos
-* Compras
-* Vendas
-* Usuários
-
-Não transformar CRUDs grandes em modais.
-
-Para entidades pequenas ou auxiliares, modais podem ser usados quando melhorarem o fluxo.
-
-## Listagens
-
-Padronizar todas as tabelas.
-
-Cada listagem deve ter, quando aplicável:
-
-* título;
-* descrição curta;
-* CTA principal;
-* busca;
+* página de listagem;
+* página create;
+* página detail;
+* página edit;
+* modais;
+* ações disponíveis;
 * filtros;
-* ordenação;
-* paginação;
-* estado vazio;
-* loading;
-* erro;
-* menu de ações por linha;
-* indicação visual de status.
+* buscas;
+* campos exibidos;
+* campos editáveis.
 
-Manter espaçamento confortável sem desperdiçar área útil.
-
-Tabelas precisam funcionar bem em resolução de notebook.
-
-Priorizar densidade de informação equilibrada.
-
-Não usar cards no lugar de tabela quando a informação for naturalmente tabular.
-
-## Formulários
-
-Padronizar formulários com:
-
-* labels claras;
-* ajuda contextual somente quando necessária;
-* mensagens de erro próximas ao campo;
-* agrupamento lógico de informações;
-* espaçamento consistente;
-* ações Salvar / Cancelar previsíveis;
-* indicação clara de campos obrigatórios;
-* máscaras e formatos quando existentes.
-
-Em formulários longos, utilizar seções.
-
-Evitar páginas com dezenas de inputs soltos em uma única coluna.
-
-Não modificar validações de negócio sem necessidade.
-
-## Ordem de Serviço
-
-A Ordem de Serviço é um dos fluxos centrais do produto.
-
-Dar atenção especial à sua usabilidade.
-
-A tela de detalhe/edição deve organizar informações de forma clara, considerando o que já existe no sistema:
-
-* identificação da OS;
-* cliente;
-* equipamento;
-* situação/status;
-* descrição/problema;
-* itens/serviços/peças;
-* valores;
-* histórico;
-* ações relevantes.
-
-Não inventar dados ou regras.
-
-Se houver muitas informações, usar seções, tabs ou estrutura equivalente, desde que não esconda ações essenciais.
-
-## Dashboard
-
-O dashboard deve ser informativo, não decorativo.
-
-Priorizar indicadores que já existam e sejam úteis à operação.
-
-Evitar:
-
-* gráficos vazios;
-* KPIs fictícios;
-* números inventados;
-* visualização apenas para “encher espaço”.
-
-## Estados visuais
-
-Criar padrões reutilizáveis para:
-
-* loading;
-* skeleton;
-* vazio;
-* erro;
-* sucesso;
-* acesso negado;
-* registro não encontrado;
-* ações destrutivas;
-* confirmações.
-
-## Componentização
-
-Antes de duplicar padrões, avaliar componentes reutilizáveis.
-
-Exemplos:
-
-* PageHeader;
-* DataTable;
-* EmptyState;
-* StatusBadge;
-* FilterBar;
-* FormSection;
-* ConfirmDialog;
-* EntityCombobox;
-* MetricCard;
-* SidebarNavGroup.
-
-Use os componentes e convenções já existentes no projeto quando forem adequados.
-
-Não introduza uma nova biblioteca visual pesada sem justificativa.
-
-## Design tokens
-
-Centralizar, sempre que possível:
-
-* cores;
-* espaçamentos;
-* radius;
-* tipografia;
-* estados;
-* dimensões recorrentes.
-
-Evitar estilos arbitrários repetidos página por página.
-
-## Responsividade
-
-O foco principal é desktop e notebook, mas a aplicação deve continuar utilizável em telas menores.
-
-Não sacrificar a experiência desktop tentando transformar tudo em interface mobile.
-
-## Acessibilidade
-
-Garantir:
-
-* contraste adequado;
-* foco visível;
-* labels associadas;
-* navegação por teclado onde aplicável;
-* botões com significado claro;
-* não depender apenas de cor para indicar estados.
-
-## Preservação funcional
-
-Esta é uma consolidação UX/UI.
-
-Não alterar:
-
-* regras de negócio;
-* RLS;
-* RBAC;
-* multitenancy;
-* contratos da API;
-* migrations;
-* comportamento financeiro;
-* regras de estoque;
-* regras de vendas;
-* regras de OS;
-
-a menos que um erro real de integração da UI obrigue a correção.
-
-Se encontrar problema funcional fora de UX/UI, registre a pendência em vez de expandir o escopo.
-
-## Estratégia de execução
-
-Primeiro faça um inventário das telas atuais.
+### Regras
 
 Identifique:
 
-* inconsistências;
-* componentes repetidos;
-* padrões conflitantes;
-* problemas de navegação;
-* CRUDs que deveriam usar páginas;
-* cadastros que podem permanecer em modal;
-* pontos onde a interface atual diverge desnecessariamente do padrão desejado.
+* validações;
+* transições de estado;
+* bloqueios;
+* permissões;
+* dependências entre módulos.
 
-Depois estabeleça o padrão visual base e aplique-o progressivamente.
+## Etapa 2 — Classificação
 
-Não redesenhe uma única página isoladamente e deixe as demais inconsistentes.
+Classifique cada módulo como:
 
-Priorize primeiro:
+* COMPLETO;
+* UTILIZÁVEL COM AJUSTES;
+* RASO;
+* INCOMPLETO;
+* ESTRUTURAL APENAS.
 
-1. shell geral;
-2. sidebar;
-3. header;
-4. tipografia;
-5. buttons;
-6. inputs;
-7. tabelas;
-8. formulários;
-9. páginas principais;
-10. refinamentos.
+Não considere um módulo completo apenas porque possui tabela, API e tela.
 
-## VetorOS1
+Avalie se ele representa uma operação empresarial real.
 
-Os usuários atuais já estão acostumados com o VetorOS1.
+## Etapa 3 — Cadastros primeiro
 
-Quando houver equivalência clara entre funcionalidades, preserve conceitos de navegação e organização que reduzam a curva de aprendizado.
+Analise primeiro os cadastros fundamentais.
 
-Não copie limitações visuais antigas apenas por fidelidade.
+Exemplos:
 
-O objetivo é:
+* clientes;
+* equipamentos;
+* produtos;
+* fornecedores;
+* usuários;
+* empresas;
+* filiais;
+* demais cadastros auxiliares existentes.
 
-**familiaridade funcional + qualidade visual moderna.**
+Para cada cadastro, identifique quais campos fundamentais para operação real estão faltando.
 
-## Critério final
+Não implemente ainda.
 
-O produto deve transmitir:
+## Etapa 4 — Operações
 
-* confiança;
-* estabilidade;
-* tecnologia;
-* organização;
-* velocidade;
-* profissionalismo.
+Depois analise profundamente os processos transacionais.
 
-A interface deve parecer um sistema comercial pronto para ser utilizado diariamente por empresas, e não um painel administrativo genérico ou um protótipo.
+### Ordem de Serviço
 
-Faça todas as alterações de UX/UI necessárias dentro desse escopo.
+Verifique se existe suporte adequado para:
 
-Não faça commit.
+* abertura;
+* edição;
+* cliente;
+* equipamento;
+* defeito/reclamação;
+* diagnóstico;
+* solução;
+* técnico/responsável;
+* prioridade;
+* status;
+* datas;
+* itens;
+* serviços;
+* peças;
+* quantidades;
+* valores;
+* descontos;
+* observações;
+* histórico;
+* orçamento relacionado;
+* cancelamento;
+* encerramento;
+* reabertura quando aplicável;
+* impressão/documentos;
+* auditoria.
 
-Ao final, entregue um relatório contendo:
+Não presuma que todos precisam existir; classifique o que é realmente necessário.
 
-* diagnóstico inicial;
-* padrão visual adotado;
-* componentes criados ou consolidados;
-* páginas alteradas;
-* decisões de UX;
-* diferenças relevantes em relação ao padrão antigo;
-* validações realizadas;
-* pendências que ficaram fora do escopo.
+### Compras
 
-Execute sem solicitar autorização intermediária.
+Audite:
 
+* fornecedores;
+* pedido de compra;
+* itens do pedido;
+* produto;
+* descrição;
+* unidade;
+* quantidade;
+* quantidade recebida;
+* preço unitário;
+* desconto;
+* subtotal;
+* frete;
+* outras despesas;
+* total;
+* previsão de entrega;
+* status;
+* aprovação;
+* recebimento parcial;
+* recebimento total;
+* entrada no estoque;
+* vínculo financeiro;
+* cancelamento;
+* observações.
 
-## Adendo obrigatório — largura e responsividade dos formulários
+Um pedido de compra sem itens não deve ser considerado um fluxo de compras completo.
 
-Todos os formulários devem utilizar a largura disponível de forma adequada.
+### Estoque
 
-Regras:
+Verifique:
 
-* containers de formulário devem trabalhar com `width: 100%`;
-* inputs, selects, textareas, comboboxes e componentes equivalentes devem ocupar `width: 100%` dentro de sua coluna;
-* evitar campos com larguras fixas arbitrárias;
-* o layout deve ser totalmente responsivo;
-* usar grid responsivo para distribuir campos conforme a largura da tela;
-* em telas largas, campos relacionados podem ficar em duas, três ou mais colunas quando fizer sentido;
-* em telas menores, o grid deve reduzir automaticamente até uma única coluna;
-* campos longos, como nome, razão social, descrição, endereço e observações, podem ocupar a linha inteira;
-* campos curtos, como número, UF, CEP, quantidade e datas, podem compartilhar colunas em desktop;
-* não limitar todo formulário a uma coluna estreita centralizada quando houver espaço útil disponível;
-* manter margens laterais e `max-width` apenas quando isso melhorar a leitura, sem desperdiçar excessivamente a área disponível;
-* páginas de CRUD devem aproveitar bem a largura de notebooks e monitores;
-* nenhuma tela deve gerar scroll horizontal por causa do formulário;
-* ações como Salvar e Cancelar também precisam se adaptar corretamente em telas pequenas.
+* saldo;
+* movimentações;
+* entrada;
+* saída;
+* reserva;
+* ajuste;
+* transferência;
+* origem da movimentação;
+* custo;
+* estoque mínimo;
+* unidade;
+* localização quando aplicável;
+* rastreabilidade.
 
-Objetivo visual:
+### Venda
 
-**formulários largos, organizados, fluidos e responsivos, aproveitando 100% da área útil sem parecerem esticados ou desorganizados.**
+Verifique:
+
+* cabeçalho;
+* cliente;
+* itens;
+* quantidades;
+* preços;
+* descontos;
+* totais;
+* pagamentos;
+* estoque;
+* caixa;
+* cancelamento;
+* reversão.
+
+### Financeiro / Caixa
+
+Verifique profundidade equivalente de:
+
+* contas;
+* lançamentos;
+* recebimentos;
+* pagamentos;
+* formas de pagamento;
+* caixa;
+* abertura;
+* fechamento;
+* conciliação;
+* transferências;
+* reversões;
+* histórico.
+
+### Agenda
+
+Verifique se representa adequadamente:
+
+* compromisso;
+* OS;
+* cliente;
+* equipamento;
+* responsável;
+* horário;
+* duração;
+* situação;
+* observações;
+* reagendamento;
+* cancelamento.
+
+## Etapa 5 — Fluxos entre módulos
+
+Mapeie também os fluxos reais entre módulos.
+
+Exemplos:
+
+Cliente
+→ Equipamento
+→ Orçamento
+→ Ordem de Serviço
+→ Peças/Serviços
+→ Estoque
+→ Recebimento
+→ Caixa
+→ Financeiro
+
+Fornecedor
+→ Pedido de Compra
+→ Itens
+→ Recebimento
+→ Estoque
+→ Contas a pagar / financeiro
+
+Venda
+→ Itens
+→ Estoque
+→ Recebimento
+→ Caixa
+→ Financeiro
+
+Identifique onde esses fluxos estão completos e onde estão interrompidos.
+
+## Etapa 6 — Análise de lacunas
+
+Produza uma tabela por módulo contendo:
+
+* situação atual;
+* campos existentes;
+* operações existentes;
+* campos ausentes;
+* operações ausentes;
+* impacto;
+* prioridade;
+* recomendação.
+
+Prioridades:
+
+* P0 — impede operação real;
+* P1 — necessário antes de comercialização;
+* P2 — importante para maturidade;
+* P3 — melhoria futura.
+
+## Etapa 7 — Não confundir DELETE com regra de negócio
+
+Avalie cuidadosamente exclusões.
+
+Nem toda entidade transacional deve possuir DELETE físico.
+
+Para documentos como:
+
+* OS;
+* venda;
+* compra;
+* financeiro;
+* caixa;
+
+determine quando o correto é:
+
+* excluir;
+* cancelar;
+* estornar;
+* inativar;
+* preservar histórico.
+
+Cadastros e documentos transacionais devem ser tratados de maneiras diferentes.
+
+## Entrega
+
+Não modifique código.
+
+Não crie migration.
+
+Não altere roadmap ainda.
+
+Não implemente telas.
+
+Entregue somente um relatório estruturado contendo:
+
+1. visão geral do sistema atual;
+2. inventário dos módulos;
+3. inventário de campos;
+4. inventário de ações;
+5. profundidade funcional de cada módulo;
+6. lacunas encontradas;
+7. fluxos incompletos;
+8. classificação P0/P1/P2/P3;
+9. proposta de sequência de correções.
+
+A proposta de sequência deve começar pelos cadastros fundamentais e depois avançar para operações transacionais.
+
+Não abra nenhum novo marco automaticamente.
+
+Ao terminar, pare e apresente o diagnóstico para decisão.

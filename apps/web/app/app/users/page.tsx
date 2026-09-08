@@ -70,7 +70,7 @@ export default function UsersPage() {
   }
 
   const columns: DataTableColumn<UserRow>[] = [
-    { key: 'name', header: 'Nome', render: (row) => <span className="font-medium text-emerald-50">{row.name}</span> },
+    { key: 'name', header: 'Nome', render: (row) => <span className="font-medium text-slate-900">{row.name}</span> },
     { key: 'email', header: 'E-mail', render: (row) => row.email ?? '—', hideBelow: 'sm' },
     { key: 'role', header: 'Papel', render: (row) => row.role?.name ?? '—' },
     { key: 'lastLogin', header: 'Último acesso', render: (row) => formatLastLogin(row.lastLoginAt), hideBelow: 'md' },
@@ -98,7 +98,7 @@ export default function UsersPage() {
         title="Usuários"
         description="Usuários deste tenant e o papel de acesso de cada um."
         action={
-          <Link href="/app/users/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/users/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <UserPlus className="h-4 w-4" /> Novo usuário
           </Link>
         }
@@ -119,14 +119,14 @@ export default function UsersPage() {
             onRetry={() => load(page, debouncedSearch)}
             emptyState={
               debouncedSearch ? (
-                <EmptyState icon={UserCog} title="Nenhum usuário encontrado" description="Nenhum usuário corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar busca</button>} />
+                <EmptyState icon={UserCog} title="Nenhum usuário encontrado" description="Nenhum usuário corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar busca</button>} />
               ) : (
                 <EmptyState
                   icon={UserCog}
                   title="Nenhum usuário cadastrado"
                   description="Cadastre o primeiro usuário para dar acesso a este tenant."
                   action={
-                    <Link href="/app/users/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                    <Link href="/app/users/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                       Novo usuário
                     </Link>
                   }

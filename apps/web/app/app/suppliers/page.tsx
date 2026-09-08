@@ -62,10 +62,10 @@ export default function SuppliersPage() {
       header: 'Fornecedor',
       render: (row) => (
         <div>
-          <p className="font-medium text-emerald-50">
+          <p className="font-medium text-slate-900">
             #{row.supplier_number} · {row.trade_name || row.legal_name}
           </p>
-          {row.trade_name && <p className="text-xs text-emerald-100/50">{row.legal_name}</p>}
+          {row.trade_name && <p className="text-xs text-slate-500">{row.legal_name}</p>}
         </div>
       ),
     },
@@ -98,13 +98,13 @@ export default function SuppliersPage() {
         title="Fornecedores"
         description="Cadastro de fornecedores usados em pedidos de compra."
         action={
-          <Link href="/app/suppliers/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/suppliers/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <UserPlus className="h-4 w-4" /> Novo fornecedor
           </Link>
         }
       >
         <SearchToolbar value={search} onChange={setSearch} placeholder="Número, nome ou documento">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todos os status</option>
             <option value="active">Ativos</option>
             <option value="inactive">Inativos</option>
@@ -121,14 +121,14 @@ export default function SuppliersPage() {
         onRetry={load}
         emptyState={
           hasFilters ? (
-            <EmptyState icon={Truck} title="Nenhum fornecedor encontrado" description="Nenhum fornecedor corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+            <EmptyState icon={Truck} title="Nenhum fornecedor encontrado" description="Nenhum fornecedor corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
           ) : (
             <EmptyState
               icon={Truck}
               title="Nenhum fornecedor cadastrado"
               description="Cadastre seu primeiro fornecedor para começar a registrar compras."
               action={
-                <Link href="/app/suppliers/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">
+                <Link href="/app/suppliers/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">
                   Adicionar fornecedor
                 </Link>
               }

@@ -27,7 +27,7 @@ type FinancialAccount = {
 export default function FinancialAccountsPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <FinancialAccountsPageContent />
       </Suspense>
     </RequireOperationalContext>
@@ -81,19 +81,19 @@ function FinancialAccountsPageContent() {
         title="Contas Financeiras"
         description="Contas bancárias e financeiras da empresa — onde o dinheiro está e como ele se movimenta."
         action={
-          <Link href="/app/financial-accounts/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/financial-accounts/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Nova conta financeira
           </Link>
         }
       >
         <SearchToolbar value={q} onChange={setQ} placeholder="Nome, banco, número da conta…">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
             <option value="">Todos os status</option>
             <option value="active">Ativa</option>
             <option value="inactive">Inativa</option>
           </select>
           {activeFilterCount > 0 && (
-            <button type="button" onClick={clearFilters} className="rounded-xl border border-emerald-800 px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+            <button type="button" onClick={clearFilters} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
               Limpar {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
             </button>
           )}
@@ -110,9 +110,9 @@ function FinancialAccountsPageContent() {
         errorMessage={errorMessage}
         emptyState={
           activeFilterCount > 0 ? (
-            <EmptyState icon={Wallet} title="Nenhuma conta encontrada" description="Nenhuma conta financeira corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+            <EmptyState icon={Wallet} title="Nenhuma conta encontrada" description="Nenhuma conta financeira corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
           ) : (
-            <EmptyState icon={Wallet} title="Nenhuma conta financeira" description="Cadastre a primeira conta bancária ou financeira da empresa." action={<Link href="/app/financial-accounts/new" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">Nova conta financeira</Link>} />
+            <EmptyState icon={Wallet} title="Nenhuma conta financeira" description="Cadastre a primeira conta bancária ou financeira da empresa." action={<Link href="/app/financial-accounts/new" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Nova conta financeira</Link>} />
           )
         }
       />

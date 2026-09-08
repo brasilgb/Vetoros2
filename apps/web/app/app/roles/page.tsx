@@ -72,7 +72,7 @@ export default function RolesPage() {
   }
 
   const columns: DataTableColumn<Role>[] = [
-    { key: 'name', header: 'Papel', render: (row) => <span className="font-medium text-emerald-50">{row.name}</span> },
+    { key: 'name', header: 'Papel', render: (row) => <span className="font-medium text-slate-900">{row.name}</span> },
     {
       key: 'type',
       header: 'Tipo',
@@ -109,7 +109,7 @@ export default function RolesPage() {
         title="Papéis e Permissões"
         description="Papéis de sistema e personalizados deste tenant, e o que cada um permite fazer."
         action={
-          <Link href="/app/roles/new" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+          <Link href="/app/roles/new" className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
             <PlusCircle className="h-4 w-4" /> Novo papel
           </Link>
         }
@@ -129,7 +129,7 @@ export default function RolesPage() {
           onRetry={() => load(debouncedSearch)}
           emptyState={
             debouncedSearch ? (
-              <EmptyState icon={ShieldCheck} title="Nenhum papel encontrado" description="Nenhum papel corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar busca</button>} />
+              <EmptyState icon={ShieldCheck} title="Nenhum papel encontrado" description="Nenhum papel corresponde aos filtros atuais." action={<button onClick={() => setSearch('')} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar busca</button>} />
             ) : (
               <EmptyState icon={ShieldCheck} title="Nenhum papel cadastrado" description="Isso não deveria acontecer — os papéis de sistema já vêm provisionados." />
             )

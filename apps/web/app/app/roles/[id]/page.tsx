@@ -77,7 +77,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
     router.push('/app/roles');
   }
 
-  if (state === 'loading') return <p className="text-sm text-emerald-100/60">Carregando…</p>;
+  if (state === 'loading') return <p className="text-sm text-slate-500">Carregando…</p>;
   if (state === 'error' || !role) return <ErrorState message="Não foi possível carregar este papel." onRetry={load} />;
 
   const groups = groupPermissions(permissions);
@@ -85,12 +85,12 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   const readOnly = role.isSystemManaged;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={role.name} description={readOnly ? 'Papel de sistema' : `${role.grantCount} usuário(s) com este papel`} />
 
       {readOnly && (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-800 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-100/80">
-          <Lock className="h-4 w-4 shrink-0 text-emerald-100/50" aria-hidden />
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <Lock className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
           Papéis de sistema não podem ser renomeados, ter suas permissões alteradas, inativados ou excluídos.
         </div>
       )}
@@ -103,7 +103,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
           <FormField label="Status" htmlFor="status">
             <div className="mt-1 flex items-center gap-3">
               <StatusBadge tone={statusTone.tone}>{statusTone.label}</StatusBadge>
-              <button type="button" onClick={() => { setToggleError(''); setConfirmToggleOpen(true); }} className="rounded-xl border border-emerald-800 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-950">
+              <button type="button" onClick={() => { setToggleError(''); setConfirmToggleOpen(true); }} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">
                 {role.status === 'active' ? 'Inativar' : 'Ativar'}
               </button>
             </div>
@@ -115,18 +115,18 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex flex-col gap-4">
           {groups.map((group) => (
             <div key={group.module}>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-100/60">{group.label}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h3>
               <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
                 {group.items.map((permission) =>
                   readOnly ? (
                     selected.has(permission.id) && (
-                      <span key={permission.id} className="rounded-lg border border-emerald-900 px-2.5 py-1 text-xs text-emerald-100/80">
+                      <span key={permission.id} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600">
                         {permissionLabel(permission.code)}
                       </span>
                     )
                   ) : (
-                    <label key={permission.id} className="flex items-center gap-2 py-0.5 text-sm text-emerald-100">
-                      <input type="checkbox" checked={selected.has(permission.id)} onChange={() => toggle(permission.id)} className="h-4 w-4 rounded border-emerald-700 bg-emerald-950 text-emerald-500 focus-visible:outline-2 focus-visible:outline-emerald-500" />
+                    <label key={permission.id} className="flex items-center gap-2 py-0.5 text-sm text-slate-700">
+                      <input type="checkbox" checked={selected.has(permission.id)} onChange={() => toggle(permission.id)} className="h-4 w-4 rounded border-slate-300 bg-white text-slate-9000 focus-visible:outline-2 focus-visible:outline-blue-500" />
                       {permissionLabel(permission.code)}
                     </label>
                   ),
@@ -142,7 +142,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
           <button
             type="button"
             onClick={() => { setDeleteError(''); setConfirmDeleteOpen(true); }}
-            className="rounded-xl border border-red-800 px-4 py-2.5 text-sm text-red-300 hover:bg-red-950/40"
+            className="rounded-xl border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-100"
           >
             Excluir papel
           </button>
@@ -160,7 +160,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}

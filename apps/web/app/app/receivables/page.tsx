@@ -38,7 +38,7 @@ const originLabel = (row: Receivable) => (row.origin === 'sale' ? `Venda #${row.
 export default function ReceivablesPage() {
   return (
     <RequireOperationalContext>
-      <Suspense fallback={<p className="text-sm text-emerald-100/60">Carregando…</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
         <ReceivablesPageContent />
       </Suspense>
     </RequireOperationalContext>
@@ -175,13 +175,13 @@ function ReceivablesPageContent() {
           title="Contas a Receber"
           description="Parcelas e vencimentos gerados a partir de vendas e ordens de serviço."
           action={
-            <button onClick={openDialog} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+            <button onClick={openDialog} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Gerar parcelamento
             </button>
           }
         >
           <SearchToolbar value={q} onChange={setQ} placeholder="Número, cliente…">
-            <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Qualquer vencimento</option>
               <option value="overdue">Até hoje</option>
               <option value="7d">Próximos 7 dias</option>
@@ -190,17 +190,17 @@ function ReceivablesPageContent() {
             </select>
             {period === 'custom' && (
               <>
-                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
-                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
+                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
               </>
             )}
             <div className="w-52"><EntityCombobox value={customer} onChange={setCustomer} search={searchCustomers} getId={(c) => c.id} getLabel={(c) => c.legal_name} renderOption={(c) => <span>{c.legal_name}</span>} id="receivables-customer" placeholder="Cliente…" /></div>
-            <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todas as origens</option>
               <option value="sale">Venda</option>
               <option value="service_order">Ordem de Serviço</option>
             </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
               <option value="">Todos os status</option>
               <option value="open">Em aberto</option>
               <option value="partial">Parcial</option>
@@ -209,7 +209,7 @@ function ReceivablesPageContent() {
               <option value="canceled">Cancelado</option>
             </select>
             {activeFilterCount > 0 && (
-              <button type="button" onClick={clearFilters} className="rounded-xl border border-emerald-800 px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+              <button type="button" onClick={clearFilters} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                 Limpar {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
               </button>
             )}
@@ -226,9 +226,9 @@ function ReceivablesPageContent() {
           errorMessage={errorMessage}
           emptyState={
             activeFilterCount > 0 ? (
-              <EmptyState icon={CalendarClock} title="Nenhum título encontrado" description="Nenhuma conta a receber corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={CalendarClock} title="Nenhum título encontrado" description="Nenhuma conta a receber corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
-              <EmptyState icon={CalendarClock} title="Nenhuma conta a receber" description="Gere o parcelamento de uma venda confirmada ou ordem de serviço para começar." action={<button onClick={openDialog} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-950">Gerar parcelamento</button>} />
+              <EmptyState icon={CalendarClock} title="Nenhuma conta a receber" description="Gere o parcelamento de uma venda confirmada ou ordem de serviço para começar." action={<button onClick={openDialog} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Gerar parcelamento</button>} />
             )
           }
         />
@@ -252,8 +252,8 @@ function ReceivablesPageContent() {
           )}
           {originTotal !== null && (
             <FormField label="Resumo" htmlFor="rec-summary" span="full">
-              <p id="rec-summary" className="mt-1 rounded-xl border border-emerald-800 bg-emerald-950 p-3 text-sm text-emerald-100/80">
-                Total da origem: {formatCurrency(originTotal)} · Já recebido: {formatCurrency(alreadyReceived)} · A financiar: <strong className="text-emerald-50">{formatCurrency(remaining ?? 0)}</strong>
+              <p id="rec-summary" className="mt-1 rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-600">
+                Total da origem: {formatCurrency(originTotal)} · Já recebido: {formatCurrency(alreadyReceived)} · A financiar: <strong className="text-slate-900">{formatCurrency(remaining ?? 0)}</strong>
               </p>
             </FormField>
           )}
@@ -263,12 +263,12 @@ function ReceivablesPageContent() {
                 <div key={index} className="flex items-center gap-2">
                   <input type="number" min="0.01" step="0.01" required placeholder="Valor (R$)" value={row.amount} onChange={(e) => updateInstallment(index, 'amount', e.target.value)} className={formFieldClass} />
                   <input type="date" required value={row.dueDate} onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)} className={formFieldClass} />
-                  <button type="button" onClick={() => removeInstallment(index)} disabled={installments.length === 1} className="rounded-lg p-2 text-red-300 hover:bg-red-950/40 disabled:opacity-30" aria-label="Remover parcela">
+                  <button type="button" onClick={() => removeInstallment(index)} disabled={installments.length === 1} className="rounded-lg p-2 text-red-700 hover:bg-red-100 disabled:opacity-30" aria-label="Remover parcela">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addInstallment} className="self-start rounded-xl border border-emerald-800 px-3 py-1.5 text-sm text-emerald-100 hover:bg-emerald-950">+ Parcela</button>
+              <button type="button" onClick={addInstallment} className="self-start rounded-xl border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">+ Parcela</button>
             </div>
           </FormField>
         </FormDialog>

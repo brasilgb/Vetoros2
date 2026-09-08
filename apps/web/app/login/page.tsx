@@ -14,11 +14,11 @@ export default function LoginPage() {
     if (!result.hasAvailableTenant) { setError('Sua identidade não possui tenant disponível.'); return; }
     router.push(result.tenantSelectionRequired ? '/select-tenant' : '/app'); router.refresh();
   }
-  return <main className="grid min-h-screen place-items-center p-6"><form onSubmit={submit} className="w-full max-w-sm space-y-5 rounded-3xl border border-emerald-800 bg-emerald-950/40 p-8">
-    <div><p className="text-sm uppercase tracking-[.2em] text-emerald-400">VetorOS 2</p><h1 className="mt-2 text-3xl font-bold">Entrar</h1></div>
-    <label className="block">E-mail<input name="email" type="email" autoComplete="username" required className="mt-2 w-full rounded-xl bg-emerald-950 p-3 ring-1 ring-emerald-700"/></label>
-    <label className="block">Senha<input name="password" type="password" autoComplete="current-password" required className="mt-2 w-full rounded-xl bg-emerald-950 p-3 ring-1 ring-emerald-700"/></label>
-    {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-    <button disabled={loading} className="w-full rounded-xl bg-emerald-400 p-3 font-semibold text-emerald-950 disabled:opacity-50">{loading ? 'Entrando…' : 'Entrar'}</button>
+  return <main className="grid min-h-screen place-items-center bg-slate-50 p-6"><form onSubmit={submit} className="w-full max-w-sm space-y-5 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div><p className="text-sm uppercase tracking-[.2em] text-blue-600">VetorOS 2</p><h1 className="mt-2 text-3xl font-bold text-slate-900">Entrar</h1></div>
+    <label className="block text-sm font-medium text-slate-700">E-mail<input name="email" type="email" autoComplete="username" required className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-blue-500"/></label>
+    <label className="block text-sm font-medium text-slate-700">Senha<input name="password" type="password" autoComplete="current-password" required className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-blue-500"/></label>
+    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+    <button disabled={loading} className="w-full rounded-xl bg-blue-600 p-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Entrando…' : 'Entrar'}</button>
   </form></main>;
 }

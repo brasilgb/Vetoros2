@@ -49,7 +49,7 @@ function ItemStockCell({ orderId, item, onChanged }: { orderId: string; item: It
     if (item.inventory_part_id) void loadStock();
   }, [item.inventory_part_id, loadStock]);
 
-  if (item.type !== 'part') return <span className="text-emerald-100/30">—</span>;
+  if (item.type !== 'part') return <span className="text-slate-400">—</span>;
 
   async function submitStockAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,7 +78,7 @@ function ItemStockCell({ orderId, item, onChanged }: { orderId: string; item: It
   if (!item.inventory_part_id) {
     return (
       <>
-        <button onClick={() => { setLinking(true); setSelectedPart(null); setError(''); }} className="rounded-lg border border-emerald-800 px-2.5 py-1 text-xs text-emerald-100 hover:bg-emerald-950">
+        <button onClick={() => { setLinking(true); setSelectedPart(null); setError(''); }} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
           Vincular peça
         </button>
         <FormDialog open={linking} title="Vincular peça de estoque" description="Busque pelo SKU ou descrição." submitLabel="Vincular" error={error} onCancel={() => setLinking(false)} onSubmit={submitLink}>
@@ -102,12 +102,12 @@ function ItemStockCell({ orderId, item, onChanged }: { orderId: string; item: It
 
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-xs text-emerald-100/60">
+      <p className="text-xs text-slate-500">
         {stock?.sku} · disponível {stock?.available ?? '—'}
       </p>
       <div className="flex flex-wrap gap-1">
         {(['reserve', 'release', 'consume', 'return'] as const).map((candidate) => (
-          <button key={candidate} onClick={() => { setAction(candidate); setQuantity('1'); setError(''); }} className="rounded-lg border border-emerald-800 px-2 py-1 text-xs text-emerald-100 hover:bg-emerald-950">
+          <button key={candidate} onClick={() => { setAction(candidate); setQuantity('1'); setError(''); }} className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
             {stockActionLabel[candidate]}
           </button>
         ))}
@@ -163,7 +163,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
     await load();
   }
 
-  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-emerald-100/60">Carregando…</p></RequireOperationalContext>;
+  if (state === 'loading') return <RequireOperationalContext><p className="text-sm text-slate-500">Carregando…</p></RequireOperationalContext>;
   if (state === 'error' || !order) return <RequireOperationalContext><ErrorState message="Não foi possível carregar esta ordem de serviço." onRetry={load} /></RequireOperationalContext>;
 
   const { label, tone } = commonStatus(order.status);
@@ -182,20 +182,20 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
       <PageHeader title={`OS ${order.order_number} — ${order.title}`} description={`Cliente: ${order.customer_name}${order.asset_identifier ? ` · Equipamento: ${order.asset_identifier}` : ''}`} action={<StatusBadge tone={tone}>{label}</StatusBadge>} />
 
       <FormSection title="Descrição" columns={1}>
-        <p className="text-sm text-emerald-100">
-          <span className="text-emerald-100/50">Problema relatado: </span>
+        <p className="text-sm text-slate-700">
+          <span className="text-slate-500">Problema relatado: </span>
           {order.reported_problem}
         </p>
         {order.initial_notes && (
-          <p className="text-sm text-emerald-100">
-            <span className="text-emerald-100/50">Observações: </span>
+          <p className="text-sm text-slate-700">
+            <span className="text-slate-500">Observações: </span>
             {order.initial_notes}
           </p>
         )}
       </FormSection>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-emerald-100">Itens da OS</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">Itens da OS</h2>
         <DataTable
           columns={columns}
           rows={order.items}
@@ -226,20 +226,20 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
             <input id="item-discount" type="number" min="0" step="0.01" className={formFieldClass} value={itemForm.discountAmount} onChange={(e) => setItemForm({ ...itemForm, discountAmount: e.target.value })} />
           </FormField>
           {itemError && (
-            <p role="alert" className="text-sm text-red-300 sm:col-span-2">
+            <p role="alert" className="text-sm text-red-700 sm:col-span-2">
               {itemError}
             </p>
           )}
           <div className="sm:col-span-2">
-            <button type="submit" disabled={addingItem} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+            <button type="submit" disabled={addingItem} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
               <PlusCircle className="h-4 w-4" /> {addingItem ? 'Adicionando…' : 'Adicionar item'}
             </button>
           </div>
         </form>
       </FormSection>
 
-      <p className="text-right text-sm text-emerald-100/70">
-        Subtotal: {formatCurrency(order.subtotal)} · Descontos: {formatCurrency(order.discounts)} · <span className="font-semibold text-emerald-50">Total: {formatCurrency(order.total)}</span>
+      <p className="text-right text-sm text-slate-600">
+        Subtotal: {formatCurrency(order.subtotal)} · Descontos: {formatCurrency(order.discounts)} · <span className="font-semibold text-slate-900">Total: {formatCurrency(order.total)}</span>
       </p>
     </div>
     </RequireOperationalContext>

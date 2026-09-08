@@ -109,18 +109,18 @@ export default function ScheduleDetail() {
   const canceled = row.status === 'canceled';
   return (
     <RequireOperationalContext>
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <PageHeader
           title={`Agendamento — ${row.customer_name}`}
           description={row.service_order_number ? `Vinculado à OS #${row.service_order_number}` : 'Atendimento ainda sem ordem de serviço'}
           action={<StatusBadge tone={canceled ? 'neutral' : 'success'}>{canceled ? 'Cancelado' : 'Agendado'}</StatusBadge>}
         />
 
-        <section className="rounded-2xl border border-emerald-900 p-4 text-sm text-emerald-100/80" aria-label="Contexto do atendimento">
+        <section className="rounded-2xl border border-slate-200 p-4 text-sm text-slate-600" aria-label="Contexto do atendimento">
           <p>Cliente: <strong>{row.customer_name}</strong></p>
           <p>Equipamento: {row.asset_identifier ?? 'Não informado'}</p>
           {row.service_order_id && (
-            <Link className="text-emerald-400 underline" href={`/app/service-orders/${row.service_order_id}`}>
+            <Link className="text-blue-600 underline" href={`/app/service-orders/${row.service_order_id}`}>
               Abrir OS #{row.service_order_number}
             </Link>
           )}
@@ -145,14 +145,14 @@ export default function ScheduleDetail() {
             </FormField>
           </FormSection>
 
-          {warning && <p role="status" className="text-sm text-amber-300">{warning}</p>}
-          {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+          {warning && <p role="status" className="text-sm text-amber-600">{warning}</p>}
+          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           {!canceled && (
             <div className="flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={() => { setCancelError(''); setCancelOpen(true); }} className="rounded-xl border border-red-800 px-4 py-2.5 text-sm text-red-200">
+              <button type="button" onClick={() => { setCancelError(''); setCancelOpen(true); }} className="rounded-xl border border-red-300 px-4 py-2.5 text-sm text-red-700">
                 Cancelar agendamento
               </button>
-              <button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">
+              <button disabled={saving} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
                 {saving ? 'Salvando…' : 'Salvar alterações'}
               </button>
             </div>

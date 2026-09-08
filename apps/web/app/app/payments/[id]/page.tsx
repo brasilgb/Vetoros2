@@ -84,13 +84,13 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
         <PageHeader
           title={title!}
           description={formatDateTime(payment.created_at)}
-          action={!payment.refunded ? <button onClick={() => void openRefundDialog()} className="rounded-xl border border-red-800 px-4 py-2.5 text-sm text-red-300 hover:bg-red-950/40">Estornar</button> : undefined}
+          action={!payment.refunded ? <button onClick={() => void openRefundDialog()} className="rounded-xl border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-100">Estornar</button> : undefined}
         >
           <StatusBadge tone={payment.refunded ? 'warning' : 'success'}>{payment.refunded ? 'Estornado' : 'Ativo'}</StatusBadge>
         </PageHeader>
 
         <FormSection title="Detalhes">
-          <FormField label="Valor" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-emerald-50">{formatCurrency(payment.amount)}</p></FormField>
+          <FormField label="Valor" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(payment.amount)}</p></FormField>
           <FormField label="Forma de pagamento" htmlFor="d-method"><p id="d-method" className={formFieldClass}>{payment.payment_method_name}</p></FormField>
           <FormField label="Cliente" htmlFor="d-customer"><p id="d-customer" className={formFieldClass}>{payment.customer_name ?? '—'}</p></FormField>
           <FormField label="Operador" htmlFor="d-operator"><p id="d-operator" className={formFieldClass}>{payment.created_by_name ?? '—'}</p></FormField>
@@ -99,7 +99,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
 
         <FormDialog open={refundDialog} title="Estornar recebimento" description="O valor é debitado do caixa aberto selecionado, como uma movimentação de estorno." submitLabel="Estornar" busy={busy} error={dialogError} onSubmit={handleRefund} onCancel={() => setRefundDialog(false)}>
           {openSessions.length === 0 ? (
-            <p className="text-sm text-amber-200">Nenhum caixa aberto nesta filial. Abra um caixa antes de estornar.</p>
+            <p className="text-sm text-amber-800">Nenhum caixa aberto nesta filial. Abra um caixa antes de estornar.</p>
           ) : (
             <FormField label="Caixa" htmlFor="refund-session">
               <select id="refund-session" required value={cashSessionId} onChange={(e) => setCashSessionId(e.target.value)} className={formFieldClass}>

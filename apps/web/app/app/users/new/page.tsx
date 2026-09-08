@@ -53,22 +53,22 @@ export default function NewUserPage() {
 
   if (created) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <PageHeader title="Usuário criado" description="Repasse a senha temporária ao usuário por um canal seguro fora do sistema — ela não será exibida novamente." />
         <FormSection title="Senha temporária">
           <div className="sm:col-span-2 flex items-center gap-3">
-            <code className="flex-1 rounded-xl border border-emerald-800 bg-emerald-950 p-3 text-sm text-emerald-50">{created.temporaryPassword}</code>
+            <code className="flex-1 rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900">{created.temporaryPassword}</code>
             <button
               type="button"
               onClick={() => { void navigator.clipboard.writeText(created.temporaryPassword ?? ''); setCopied(true); }}
-              className="flex items-center gap-2 rounded-xl border border-emerald-800 px-4 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950"
+              className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? 'Copiada' : 'Copiar'}
             </button>
           </div>
-          <p className="sm:col-span-2 text-xs text-emerald-100/50">O usuário deve trocar essa senha assim que possível — ainda não existe troca obrigatória automática nesta versão.</p>
+          <p className="sm:col-span-2 text-xs text-slate-500">O usuário deve trocar essa senha assim que possível — ainda não existe troca obrigatória automática nesta versão.</p>
           <div className="sm:col-span-2">
-            <button onClick={() => router.push(`/app/users/${created.id}`)} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-950">
+            <button onClick={() => router.push(`/app/users/${created.id}`)} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white">
               Já anotei, ir para o usuário
             </button>
           </div>
@@ -78,7 +78,7 @@ export default function NewUserPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title="Novo usuário" />
       <form onSubmit={submit} className="flex flex-col gap-5">
         <FormSection title="Dados">
@@ -106,7 +106,7 @@ export default function NewUserPage() {
           </FormField>
         </FormSection>
         {error && (
-          <p role="alert" className="text-sm text-red-300">
+          <p role="alert" className="text-sm text-red-700">
             {error}
           </p>
         )}

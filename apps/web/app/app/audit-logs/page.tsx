@@ -94,7 +94,7 @@ export default function AuditLogsPage() {
       <PageHeader title="Auditoria" description="Histórico de alterações realizadas neste tenant — consulta, sem edição." />
 
       <SearchToolbar value={q} onChange={setQ} placeholder="Ação, entidade, usuário…">
-        <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+        <select value={period} onChange={(e) => setPeriod(e.target.value as typeof period)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
           <option value="">Qualquer período</option>
           <option value="today">Hoje</option>
           <option value="7d">Últimos 7 dias</option>
@@ -103,24 +103,24 @@ export default function AuditLogsPage() {
         </select>
         {period === 'custom' && (
           <>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="De" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Até" className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700" />
           </>
         )}
-        <select value={module} onChange={(e) => setModule(e.target.value as typeof module)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+        <select value={module} onChange={(e) => setModule(e.target.value as typeof module)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
           <option value="">Todos os módulos</option>
           {moduleOptions.map(([key, group]) => (
             <option key={key} value={key}>{group.label}</option>
           ))}
         </select>
-        <select value={action} onChange={(e) => setAction(e.target.value)} className="rounded-xl border border-emerald-800 bg-emerald-950 px-3 py-2.5 text-sm text-emerald-100">
+        <select value={action} onChange={(e) => setAction(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700">
           <option value="">Todas as ações</option>
           {actionOptions.map((code) => (
             <option key={code} value={code}>{actionLabel(code)}</option>
           ))}
         </select>
         {activeFilterCount > 0 && (
-          <button type="button" onClick={clearFilters} className="rounded-xl border border-emerald-800 px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950">
+          <button type="button" onClick={clearFilters} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
             Limpar {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
           </button>
         )}
@@ -140,7 +140,7 @@ export default function AuditLogsPage() {
             errorMessage={errorMessage}
             emptyState={
               activeFilterCount > 0 ? (
-                <EmptyState icon={History} title="Nenhum evento encontrado" description="Nenhum evento corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-emerald-800 px-4 py-2 text-sm">Limpar filtros</button>} />
+                <EmptyState icon={History} title="Nenhum evento encontrado" description="Nenhum evento corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
               ) : (
                 <EmptyState icon={History} title="Nenhum evento registrado ainda" description="Alterações feitas neste tenant aparecerão aqui." />
               )
