@@ -7,6 +7,7 @@ import { CustomerForm } from '../customer-form';
 import { PageHeader } from '../../../../components/page-header';
 import { EmptyState } from '../../../../components/empty-state';
 import { ErrorState } from '../../../../components/error-state';
+import { CustomerRelatedRecords } from '../customer-related-records';
 
 export default function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -35,6 +36,7 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
         <>
           <PageHeader title={`Editar cliente — #${data.customer_number}`} description={String(data.legal_name ?? '')} />
           <CustomerForm customer={data} />
+          <CustomerRelatedRecords customerId={id} />
         </>
       )}
     </div>

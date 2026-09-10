@@ -10,13 +10,14 @@ import { useSetBreadcrumb } from '../../../../components/breadcrumb-context';
 type Company = {
   id: string; legal_name: string; trade_name: string | null; tax_id_type: string; tax_id_normalized: string;
   state_registration: string | null; municipal_registration: string | null; status: string;
+  phone: string | null; email: string | null; postal_code: string | null; street: string | null; address_number: string | null; address_complement: string | null; district: string | null; city: string | null; state: string | null; country: string; logo_url: string | null;
 };
 
 export default function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [company, setCompany] = useState<Company>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [fields, setFields] = useState({ legalName: '', tradeName: '', stateRegistration: '', municipalRegistration: '', status: 'active' });
+  const [fields, setFields] = useState({ legalName: '', tradeName: '', stateRegistration: '', municipalRegistration: '', status: 'active', phone: '', email: '', postalCode: '', street: '', addressNumber: '', addressComplement: '', district: '', city: '', state: '', country: 'BR', logoUrl: '' });
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -24,7 +25,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
     if (!response.ok) return setState('error');
     const data: Company = await response.json();
     setCompany(data);
-    setFields({ legalName: data.legal_name, tradeName: data.trade_name ?? '', stateRegistration: data.state_registration ?? '', municipalRegistration: data.municipal_registration ?? '', status: data.status });
+    setFields({ legalName: data.legal_name, tradeName: data.trade_name ?? '', stateRegistration: data.state_registration ?? '', municipalRegistration: data.municipal_registration ?? '', status: data.status, phone: data.phone ?? '', email: data.email ?? '', postalCode: data.postal_code ?? '', street: data.street ?? '', addressNumber: data.address_number ?? '', addressComplement: data.address_complement ?? '', district: data.district ?? '', city: data.city ?? '', state: data.state ?? '', country: data.country, logoUrl: data.logo_url ?? '' });
     setState('ready');
   }, [id]);
 
@@ -56,6 +57,10 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
         </FormField>
       </FormSection>
 
+      <FormSection title="Contato e endereço">
+        {([['phone','Telefone'],['email','E-mail'],['postalCode','CEP'],['street','Logradouro'],['addressNumber','Número'],['addressComplement','Complemento'],['district','Bairro'],['city','Cidade'],['state','UF'],['logoUrl','URL do logotipo']] as const).map(([key,label]) => <FormField key={key} label={label} htmlFor={key}><input id={key} type={key==='email'?'email':'text'} className={formFieldClass} value={fields[key]} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} /></FormField>)}
+      </FormSection>
+
       <FormSection title="Inscrições">
         <FormField label="Inscrição estadual" htmlFor="stateRegistration">
           <input id="stateRegistration" className={formFieldClass} value={fields.stateRegistration} onChange={(e) => setFields({ ...fields, stateRegistration: e.target.value })} />
@@ -71,7 +76,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
             onClick={async () => {
               const response = await api(`/companies/${id}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ legalName: fields.legalName, tradeName: fields.tradeName || null, stateRegistration: fields.stateRegistration || null, municipalRegistration: fields.municipalRegistration || null, status: fields.status }),
+                body: JSON.stringify({ ...fields, tradeName: fields.tradeName || null, stateRegistration: fields.stateRegistration || null, municipalRegistration: fields.municipalRegistration || null, phone: fields.phone || null, email: fields.email || null, postalCode: fields.postalCode || null, street: fields.street || null, addressNumber: fields.addressNumber || null, addressComplement: fields.addressComplement || null, district: fields.district || null, city: fields.city || null, state: fields.state || null, logoUrl: fields.logoUrl || null }),
               });
               if (!response.ok) setError(friendlyError((await response.json().catch(() => ({}))).error));
               else await load();

@@ -32,7 +32,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       email: values.email || null,
       notes: values.notes || null,
       status: values.status,
-      address: values.street
+      address: !customer && values.street
         ? {
             postalCode: values.postalCode || null,
             street: values.street,
@@ -102,32 +102,32 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         </FormField>
       </FormSection>
 
-      <FormSection title="Endereço principal">
+      {!customer && <FormSection title="Endereço principal">
         <FormField label="CEP" htmlFor="postalCode">
-          <input id="postalCode" className={formFieldClass} name="postalCode" defaultValue={String(customer?.postal_code ?? '')} />
+          <input id="postalCode" className={formFieldClass} name="postalCode" />
         </FormField>
         <FormField label="Logradouro" htmlFor="street">
-          <input id="street" className={formFieldClass} name="street" defaultValue={String(customer?.street ?? '')} />
+          <input id="street" className={formFieldClass} name="street" />
         </FormField>
         <FormField label="Número" htmlFor="number">
-          <input id="number" className={formFieldClass} name="number" defaultValue={String(customer?.number ?? '')} />
+          <input id="number" className={formFieldClass} name="number" />
         </FormField>
         <FormField label="Complemento" htmlFor="complement">
-          <input id="complement" className={formFieldClass} name="complement" defaultValue={String(customer?.complement ?? '')} />
+          <input id="complement" className={formFieldClass} name="complement" />
         </FormField>
         <FormField label="Bairro" htmlFor="district">
-          <input id="district" className={formFieldClass} name="district" defaultValue={String(customer?.district ?? '')} />
+          <input id="district" className={formFieldClass} name="district" />
         </FormField>
         <FormField label="Cidade" htmlFor="city">
-          <input id="city" className={formFieldClass} name="city" defaultValue={String(customer?.city ?? '')} />
+          <input id="city" className={formFieldClass} name="city" />
         </FormField>
         <FormField label="UF" htmlFor="state">
-          <input id="state" className={formFieldClass} name="state" maxLength={2} defaultValue={String(customer?.state ?? '')} />
+          <input id="state" className={formFieldClass} name="state" maxLength={2} />
         </FormField>
         <FormField label="País" htmlFor="country">
-          <input id="country" className={formFieldClass} name="country" maxLength={2} defaultValue={String(customer?.country ?? 'BR')} />
+          <input id="country" className={formFieldClass} name="country" maxLength={2} defaultValue="BR" />
         </FormField>
-      </FormSection>
+      </FormSection>}
 
       <FormSection title="Observações" columns={1}>
         <FormField label="Notas internas" htmlFor="notes">

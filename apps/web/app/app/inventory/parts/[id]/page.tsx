@@ -10,7 +10,7 @@ import { useSetBreadcrumb } from '../../../../../components/breadcrumb-context';
 import { RequireOperationalContext } from '../../../../../components/require-operational-context';
 import { useOperationalContext } from '../../../../../components/operational-context';
 
-type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string };
+type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string; category_id:string|null;brand_id:string|null;barcode_ean: string | null; minimum_stock: string; default_location: string | null; ncm: string | null };
 const movementTypes = [
   { value: 'entry', label: 'Entrada' },
   { value: 'exit', label: 'Saída' },
@@ -24,6 +24,8 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
+  const [details, setDetails] = useState({ categoryId:'',brandId:'',barcodeEan: '', minimumStock: '0', defaultLocation: '', ncm: '' });
+  const [categories,setCategories]=useState<Array<{id:string;name:string;status:string}>>([]),[brands,setBrands]=useState<Array<{id:string;name:string;status:string}>>([]);
   const [move, setMove] = useState({ type: 'entry', quantity: '1', reason: '' });
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
@@ -36,12 +38,14 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
     setPart(data);
     setDescription(data.description);
     setStatus(data.status);
+    setDetails({ categoryId:data.category_id??'',brandId:data.brand_id??'',barcodeEan: data.barcode_ean ?? '', minimumStock: data.minimum_stock, defaultLocation: data.default_location ?? '', ncm: data.ncm ?? '' });
     setState('ready');
   }, [id]);
 
   useEffect(() => {
     if (!hasFullContext) return;
     void load();
+    void Promise.all([api('/inventory/categories'),api('/inventory/brands')]).then(async([c,b])=>{if(c.ok)setCategories(await c.json());if(b.ok)setBrands(await b.json());});
   }, [load, hasFullContext]);
 
   useSetBreadcrumb(part ? part.sku : undefined);
@@ -75,13 +79,19 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
             <option value="inactive">Inativo</option>
           </select>
         </FormField>
+        <FormField label="Categoria" htmlFor="categoryId"><select id="categoryId" className={formFieldClass} value={details.categoryId} onChange={(e)=>setDetails({...details,categoryId:e.target.value})}><option value="">Sem categoria</option>{categories.map(entry=><option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></FormField>
+        <FormField label="Marca" htmlFor="brandId"><select id="brandId" className={formFieldClass} value={details.brandId} onChange={(e)=>setDetails({...details,brandId:e.target.value})}><option value="">Sem marca</option>{brands.map(entry=><option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></FormField>
+        <FormField label="Código de barras / EAN" htmlFor="barcodeEan"><input id="barcodeEan" className={formFieldClass} value={details.barcodeEan} onChange={(e) => setDetails({ ...details, barcodeEan: e.target.value })} /></FormField>
+        <FormField label="Estoque mínimo" htmlFor="minimumStock"><input id="minimumStock" type="number" min="0" step="0.001" className={formFieldClass} value={details.minimumStock} onChange={(e) => setDetails({ ...details, minimumStock: e.target.value })} /></FormField>
+        <FormField label="Localização padrão" htmlFor="defaultLocation"><input id="defaultLocation" className={formFieldClass} value={details.defaultLocation} onChange={(e) => setDetails({ ...details, defaultLocation: e.target.value })} /></FormField>
+        <FormField label="NCM" htmlFor="ncm"><input id="ncm" maxLength={8} className={formFieldClass} value={details.ncm} onChange={(e) => setDetails({ ...details, ncm: e.target.value })} /></FormField>
         <div className="sm:col-span-2">
           <AsyncButton
             tone="secondary"
             label="Salvar cadastro"
             busyLabel="Salvando…"
             onClick={async () => {
-              const response = await api(`/inventory/parts/${id}`, { method: 'PATCH', body: JSON.stringify({ description, status }) });
+              const response = await api(`/inventory/parts/${id}`, { method: 'PATCH', body: JSON.stringify({ description, status, categoryId:details.categoryId||null,brandId:details.brandId||null,barcodeEan: details.barcodeEan || null, minimumStock: Number(details.minimumStock), defaultLocation: details.defaultLocation || null, ncm: details.ncm || null }) });
               if (!response.ok) setError(friendlyError((await response.json().catch(() => ({}))).error));
               else await load();
             }}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeftRight, Package } from 'lucide-react';
+import { ArrowLeftRight, Package, Tags } from 'lucide-react';
 import { PageHeader } from '../../../components/page-header';
 
 export default function InventoryHubPage() {
@@ -13,6 +13,10 @@ export default function InventoryHubPage() {
             <p className="font-medium text-slate-900">Peças / Produtos</p>
             <p className="text-sm text-slate-500">Cadastro e saldos por filial.</p>
           </div>
+        </Link>
+        <Link href="/app/inventory/catalogs" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-5 hover:bg-slate-50">
+          <Tags className="h-6 w-6 text-blue-600" />
+          <div><p className="font-medium text-slate-900">Categorias e marcas</p><p className="text-sm text-slate-500">Catálogos usados nos produtos.</p></div>
         </Link>
         <Link href="/app/inventory/movements" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-5 hover:bg-slate-50">
           <ArrowLeftRight className="h-6 w-6 text-blue-600" />

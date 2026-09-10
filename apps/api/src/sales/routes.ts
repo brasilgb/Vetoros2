@@ -13,8 +13,8 @@ const params = z.object({ id });
 const createSchema = z.object({ customerId: id.nullable().optional(), saleDate: date.optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
 const updateSchema = z.object({ customerId: id.nullable().optional(), saleDate: date.optional(), notes: z.string().trim().max(4000).nullable().optional() }).strict();
 const listSchema = z.object({ search: z.string().trim().max(100).optional(), customerId: id.optional(), status: z.enum(statuses).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20), order: z.enum(['newest', 'oldest', 'number_asc', 'number_desc']).default('newest') }).strict();
-const itemCreate = z.object({ type: z.enum(['service', 'part']), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300), quantity: z.coerce.number().positive(), unitPrice: z.coerce.number().nonnegative(), discountAmount: z.coerce.number().nonnegative().default(0), notes: z.string().trim().max(2000).nullable().optional() }).strict();
-const itemUpdate = z.object({ type: z.enum(['service', 'part']).optional(), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300).optional(), quantity: z.coerce.number().positive().optional(), unitPrice: z.coerce.number().nonnegative().optional(), discountAmount: z.coerce.number().nonnegative().optional(), notes: z.string().trim().max(2000).nullable().optional() }).strict();
+const itemCreate = z.object({ type: z.enum(['service', 'part', 'non_stock']), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300), quantity: z.coerce.number().positive(), unitPrice: z.coerce.number().nonnegative(), discountAmount: z.coerce.number().nonnegative().default(0), notes: z.string().trim().max(2000).nullable().optional() }).strict();
+const itemUpdate = z.object({ type: z.enum(['service', 'part', 'non_stock']).optional(), inventoryPartId: id.nullable().optional(), description: z.string().trim().min(1).max(300).optional(), quantity: z.coerce.number().positive().optional(), unitPrice: z.coerce.number().nonnegative().optional(), discountAmount: z.coerce.number().nonnegative().optional(), notes: z.string().trim().max(2000).nullable().optional() }).strict();
 const scope = (s: AuthSession): ResourceScope => s.activeBranchId ? { companyId: s.activeCompanyId!, branchId: s.activeBranchId } : s.activeCompanyId ? { companyId: s.activeCompanyId } : { requireTenant: true };
 // VEN-03: cancelar uma venda `confirmed` volta a ser uma transição válida, agora com estorno
 // de estoque (ver POST /sales/:id/cancel). `cancelled` continua terminal.
@@ -66,7 +66,7 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
 
   app.get('/sales/:id/items', async (req, reply) => { const p = params.safeParse(req.params); if (!p.success) return reply.code(400).send({ error: 'invalid_request' }); const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.read')) return; const found = await saleDetail(s, p.data.id); return found ? found.items : reply.code(404).send({ error: 'not_found' }); });
   app.post('/sales/:id/items', async (req, reply) => {
-    const p = params.safeParse(req.params), b = itemCreate.safeParse(req.body); if (!p.success || !b.success || b.data.discountAmount > b.data.quantity * b.data.unitPrice || (b.data.type === 'service' && b.data.inventoryPartId)) return reply.code(400).send({ error: 'invalid_request' });
+    const p = params.safeParse(req.params), b = itemCreate.safeParse(req.body); if (!p.success || !b.success || b.data.discountAmount > b.data.quantity * b.data.unitPrice || ((b.data.type === 'part') !== Boolean(b.data.inventoryPartId))) return reply.code(400).send({ error: 'invalid_request' });
     const s = await auth(req, reply); if (!s || !await allow(reply, s, 'sales.update')) return;
     const result = await service.withAuthenticatedTenant(s, async (tx) => {
       const [sale] = await tx.execute(sql`select status from sales where id=${p.data.id}`); if (!sale) return 'sale'; if (sale.status !== 'draft') return 'locked';
@@ -87,7 +87,7 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
       const [old] = await tx.execute(sql`select i.*,sa.status sale_status from sale_items i join sales sa on sa.id=i.sale_id where i.id=${p.data.itemId} and i.sale_id=${p.data.id}`);
       if (!old) return 'missing'; if (old.sale_status !== 'draft') return 'locked';
       const type = b.data.type ?? old.type, part = 'inventoryPartId' in b.data ? b.data.inventoryPartId : old.inventory_part_id;
-      if (type === 'service' && part) return 'invalid';
+      if ((type === 'part') !== Boolean(part)) return 'invalid';
       if (part) { const found = await tx.execute(sql`select id from inventory_parts where id=${part} and status='active'`); if (!found.length) return 'part'; }
       const quantity = b.data.quantity ?? Number(old.quantity), unitPrice = b.data.unitPrice ?? Number(old.unit_price), discount = b.data.discountAmount ?? Number(old.discount_amount);
       if (discount > quantity * unitPrice) return 'invalid';

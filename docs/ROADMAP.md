@@ -40,5 +40,11 @@ Este documento define a sequência canônica dos marcos. `DONE` identifica escop
 | DONE | REL-02 | Exportação CSV de Relatórios |
 | DONE | QA-01 | Isolamento e paralelismo determinístico das suítes de integração |
 | DONE | PRD-01 | Production Readiness & Operational Hardening |
+| DONE | CAD-01 | Cadastros Fundamentais |
+| TODO | OS-ADV-01 | Ordem de Serviço Operacional Completa e Retorno em Garantia |
 
 PRD-01 foi concluído. Não há próximo marco autorizado neste documento.
+
+Nota de release: o gate de código, banco e API do CAD-01 foi concluído. O smoke Web/E2E não pôde ser executado neste ambiente por restrições externas confirmadas de Chromium e Docker socket e deverá ser repetido em ambiente compatível antes de release/produção.
+
+QA-WEB-SMOKE — validar smoke Web dos CRUDs CAD-01 em ambiente com Chromium e Docker disponíveis antes do release. Esta é uma pendência de validação operacional, não de implementação.

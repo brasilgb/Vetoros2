@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
-  bigint, boolean, char, check, index, jsonb, pgTable, primaryKey, text, timestamp, unique,
+  bigint, boolean, char, check, date, index, jsonb, pgTable, primaryKey, text, timestamp, unique,
   uniqueIndex, uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -40,12 +40,16 @@ export const companies = pgTable('companies', {
   id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull().references(() => tenants.id), legalName: text('legal_name').notNull(),
   tradeName: text('trade_name'), taxIdType: text('tax_id_type').notNull(), taxIdNormalized: text('tax_id_normalized').notNull(),
   stateRegistration: text('state_registration'), municipalRegistration: text('municipal_registration'), taxRegime: text('tax_regime'),
+  phone: text('phone'), email: text('email'), postalCode: text('postal_code'), street: text('street'), addressNumber: text('address_number'),
+  addressComplement: text('address_complement'), district: text('district'), city: text('city'), state: char('state',{length:2}), country: char('country',{length:2}).notNull().default('BR'), logoUrl: text('logo_url'),
   currencyCode: char('currency_code', { length: 3 }).notNull().default('BRL'), status: text('status').notNull().default('active'), ...timestamps,
 }, (t) => [unique('companies_tenant_id_id_uq').on(t.tenantId, t.id), unique('companies_tax_id_uq').on(t.tenantId, t.taxIdType, t.taxIdNormalized), check('companies_status_ck', sql`${t.status} in ('active','inactive')`)]);
 
 export const branches = pgTable('branches', {
   id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), companyId: uuid('company_id').notNull(),
   code: text('code').notNull(), name: text('name').notNull(), timezone: text('timezone').notNull().default('America/Sao_Paulo'),
+  phone: text('phone'), email: text('email'), postalCode: text('postal_code'), street: text('street'), addressNumber: text('address_number'),
+  addressComplement: text('address_complement'), district: text('district'), city: text('city'), state: char('state',{length:2}), country: char('country',{length:2}).notNull().default('BR'),
   status: text('status').notNull().default('active'), isDefault: boolean('is_default').notNull().default(false), ...timestamps,
 }, (t) => [unique('branches_tenant_company_id_uq').on(t.tenantId, t.companyId, t.id), unique('branches_code_uq').on(t.tenantId, t.companyId, t.code), check('branches_status_ck', sql`${t.status} in ('active','inactive')`)]);
 
@@ -71,7 +75,7 @@ export const customerContacts = pgTable('customer_contacts', {
   id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), customerId: uuid('customer_id').notNull(), contactType: text('contact_type').notNull(), label: text('label'), value: text('value').notNull(), valueNormalized: text('value_normalized').notNull(), isPrimary: boolean('is_primary').notNull().default(false), ...timestamps,
 }, (t) => [unique('customer_contacts_tenant_id_id_uq').on(t.tenantId, t.id), index('customer_contacts_customer_idx').on(t.tenantId, t.customerId)]);
 export const customerAssets = pgTable('customer_assets', {
-  id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), customerId: uuid('customer_id').notNull(), internalIdentifier: text('internal_identifier').notNull(), category: text('category').notNull(), brand: text('brand'), model: text('model'), serialNumber: text('serial_number'), imei: text('imei'), assetTag: text('asset_tag'), description: text('description'), notes: text('notes'), status: text('status').notNull().default('active'), originCompanyId: uuid('origin_company_id'), originBranchId: uuid('origin_branch_id'), createdByIdentityId: uuid('created_by_identity_id'), updatedByIdentityId: uuid('updated_by_identity_id'), ...timestamps,
+  id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), customerId: uuid('customer_id').notNull(), internalIdentifier: text('internal_identifier').notNull(), category: text('category').notNull(), brand: text('brand'), model: text('model'), serialNumber: text('serial_number'), imei: text('imei'), assetTag: text('asset_tag'), acquiredAt:date('acquired_at'), warrantyUntil:date('warranty_until'), warrantyNotes:text('warranty_notes'), receivedAccessories:text('received_accessories'), intakeCondition:text('intake_condition'), description: text('description'), notes: text('notes'), status: text('status').notNull().default('active'), originCompanyId: uuid('origin_company_id'), originBranchId: uuid('origin_branch_id'), createdByIdentityId: uuid('created_by_identity_id'), updatedByIdentityId: uuid('updated_by_identity_id'), ...timestamps,
 }, (t) => [unique('customer_assets_tenant_id_id_uq').on(t.tenantId,t.id), unique('customer_assets_identifier_uq').on(t.tenantId,t.internalIdentifier), index('customer_assets_customer_idx').on(t.tenantId,t.customerId)]);
 export const customerAssetIdentifiers = pgTable('customer_asset_identifiers', {
   id: uuid('id').primaryKey().defaultRandom(), tenantId: uuid('tenant_id').notNull(), assetId: uuid('asset_id').notNull(), identifierType: text('identifier_type').notNull(), value: text('value').notNull(), valueNormalized: text('value_normalized').notNull(), ...timestamps,

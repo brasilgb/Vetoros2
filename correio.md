@@ -1,369 +1,179 @@
-Antes de continuar qualquer trabalho de UX/UI, faça uma auditoria funcional completa do VetorOS2.
+Continue exclusivamente **OS-ADV-01 — Ordem de Serviço Operacional Completa e Retorno em Garantia**.
 
-O objetivo desta etapa NÃO é implementar alterações.
+O gate atual demonstrou que existe implementação funcional, mas **não existe suíte específica identificável para OS-ADV-01**.
 
-Precisamos primeiro descobrir exatamente o que o sistema possui hoje, quais campos existem, quais operações são permitidas e onde os módulos estão rasos ou incompletos para utilização real por uma empresa.
+Não tente acessar Docker novamente neste executor. O acesso ao daemon já está comprovadamente bloqueado por política externa.
 
-## Contexto
+O objetivo desta rodada é **criar a cobertura automatizada específica do OS-ADV-01**, sem alterar o domínio salvo se os próprios testes revelarem defeitos reais.
 
-O VetorOS2 pretende ser um sistema operacional/ERP especializado para empresas de assistência técnica e serviços, envolvendo:
+## Criar suíte dedicada
 
-* cadastros;
-* clientes;
-* equipamentos;
-* ordens de serviço;
-* orçamentos;
-* agenda;
-* produtos;
-* estoque;
-* fornecedores;
-* compras;
-* vendas;
-* caixa;
-* recebimentos;
-* financeiro;
-* relatórios;
-* usuários e permissões.
+Crie preferencialmente:
 
-Alguns módulos aparentemente foram implementados com profundidade insuficiente.
+`apps/api/tests/service-order-warranty.integration.test.ts`
 
-Exemplos já percebidos:
+ou nome equivalente coerente com o padrão existente.
 
-* Ordem de Serviço não apresenta todas as operações esperadas, como edição completa e tratamento adequado de exclusão/cancelamento;
-* Pedido de Compra aparentemente possui apenas fornecedor, custo/frete e observações, sem representar adequadamente aquilo que será comprado;
-* podem existir outros módulos com CRUD ou fluxos excessivamente simplificados.
+A suíte deve reutilizar helpers, fixtures, autenticação e infraestrutura de testes já existentes no projeto.
 
-Não assuma que esses são os únicos problemas.
+Não duplique infraestrutura de teste desnecessariamente.
 
-## Etapa 1 — Inventário do sistema atual
+## Cobertura obrigatória
 
-Percorra o projeto inteiro e produza um inventário por módulo.
+### 1. Campos operacionais
 
-Para cada entidade/módulo, documente:
+Provar atualização e persistência de:
 
-### Cadastro
-
-* tabela(s) envolvidas;
-* campos existentes no banco;
-* campos obrigatórios;
-* campos opcionais;
-* relacionamentos;
-* enums/status;
-* constraints relevantes;
-* índices relevantes.
-
-### API
-
-Liste:
-
-* endpoints existentes;
-* operações disponíveis;
-* create;
-* read;
-* update;
-* delete;
-* cancel;
-* reopen;
-* confirm;
-* approve;
-* finalize;
-* reverse;
-* outras ações específicas.
-
-Informe claramente quando determinada ação NÃO existir.
-
-### Interface
-
-Liste:
-
-* página de listagem;
-* página create;
-* página detail;
-* página edit;
-* modais;
-* ações disponíveis;
-* filtros;
-* buscas;
-* campos exibidos;
-* campos editáveis.
-
-### Regras
-
-Identifique:
-
-* validações;
-* transições de estado;
-* bloqueios;
-* permissões;
-* dependências entre módulos.
-
-## Etapa 2 — Classificação
-
-Classifique cada módulo como:
-
-* COMPLETO;
-* UTILIZÁVEL COM AJUSTES;
-* RASO;
-* INCOMPLETO;
-* ESTRUTURAL APENAS.
-
-Não considere um módulo completo apenas porque possui tabela, API e tela.
-
-Avalie se ele representa uma operação empresarial real.
-
-## Etapa 3 — Cadastros primeiro
-
-Analise primeiro os cadastros fundamentais.
-
-Exemplos:
-
-* clientes;
-* equipamentos;
-* produtos;
-* fornecedores;
-* usuários;
-* empresas;
-* filiais;
-* demais cadastros auxiliares existentes.
-
-Para cada cadastro, identifique quais campos fundamentais para operação real estão faltando.
-
-Não implemente ainda.
-
-## Etapa 4 — Operações
-
-Depois analise profundamente os processos transacionais.
-
-### Ordem de Serviço
-
-Verifique se existe suporte adequado para:
-
-* abertura;
-* edição;
-* cliente;
-* equipamento;
-* defeito/reclamação;
+* prioridade;
+* técnico responsável;
 * diagnóstico;
 * solução;
-* técnico/responsável;
-* prioridade;
-* status;
-* datas;
-* itens;
-* serviços;
-* peças;
-* quantidades;
-* valores;
-* descontos;
-* observações;
-* histórico;
-* orçamento relacionado;
-* cancelamento;
-* encerramento;
-* reabertura quando aplicável;
-* impressão/documentos;
-* auditoria.
+* datas operacionais pertinentes;
+* conclusão;
+* entrega.
 
-Não presuma que todos precisam existir; classifique o que é realmente necessário.
+Validar campos inválidos, UUIDs inexistentes e ownership.
 
-### Compras
+### 2. Técnico
 
-Audite:
+Provar que:
 
-* fornecedores;
-* pedido de compra;
-* itens do pedido;
-* produto;
-* descrição;
-* unidade;
-* quantidade;
-* quantidade recebida;
-* preço unitário;
-* desconto;
-* subtotal;
-* frete;
-* outras despesas;
-* total;
-* previsão de entrega;
-* status;
-* aprovação;
-* recebimento parcial;
-* recebimento total;
-* entrada no estoque;
-* vínculo financeiro;
-* cancelamento;
-* observações.
+* técnico válido do mesmo tenant pode ser atribuído;
+* usuário inválido é rejeitado;
+* usuário de outro tenant é rejeitado/invisível;
+* vínculos respeitam o modelo de membership/profile existente.
 
-Um pedido de compra sem itens não deve ser considerado um fluxo de compras completo.
+### 3. Garantia
 
-### Estoque
+Cobrir configuração da garantia e análise dos três estados:
 
-Verifique:
+* `within_warranty`;
+* `expired`;
+* `not_applicable`.
 
-* saldo;
-* movimentações;
-* entrada;
-* saída;
-* reserva;
-* ajuste;
-* transferência;
-* origem da movimentação;
-* custo;
-* estoque mínimo;
-* unidade;
-* localização quando aplicável;
-* rastreabilidade.
+Provar os limites temporais de forma determinística, evitando dependência frágil do relógio quando possível.
 
-### Venda
+### 4. Retorno em garantia
 
-Verifique:
+Provar:
 
-* cabeçalho;
-* cliente;
-* itens;
-* quantidades;
-* preços;
-* descontos;
-* totais;
-* pagamentos;
-* estoque;
-* caixa;
-* cancelamento;
-* reversão.
+* retorno só pode ser criado a partir de OS em estado permitido;
+* OS ainda aberta/não entregue é rejeitada;
+* retorno é uma nova OS;
+* OS original permanece preservada;
+* retorno possui referência inequívoca à origem;
+* classificação/snapshot da garantia é persistida corretamente;
+* dados históricos da origem não são sobrescritos.
 
-### Financeiro / Caixa
+### 5. Múltiplos retornos
 
-Verifique profundidade equivalente de:
+Provar explicitamente:
 
-* contas;
-* lançamentos;
-* recebimentos;
-* pagamentos;
-* formas de pagamento;
-* caixa;
-* abertura;
-* fechamento;
-* conciliação;
-* transferências;
-* reversões;
-* histórico.
+* uma OS original pode possuir mais de um retorno quando permitido;
+* cada retorno possui ID e número próprios;
+* todos apontam para a mesma OS original correta;
+* criar novo retorno não altera retornos anteriores;
+* listagem de retornos retorna todos os vínculos esperados.
 
-### Agenda
+### 6. Histórico de status
 
-Verifique se representa adequadamente:
+Provar:
 
-* compromisso;
-* OS;
-* cliente;
-* equipamento;
-* responsável;
-* horário;
-* duração;
-* situação;
-* observações;
-* reagendamento;
-* cancelamento.
+* mudanças relevantes geram registros no histórico;
+* ordem cronológica/determinística;
+* tenant correto;
+* vínculo correto com a OS;
+* registros anteriores não são editados.
 
-## Etapa 5 — Fluxos entre módulos
+### 7. Append-only
 
-Mapeie também os fluxos reais entre módulos.
+Executar tentativa direta de:
 
-Exemplos:
+* `UPDATE` em `service_order_status_history`;
+* `DELETE` em `service_order_status_history`.
 
-Cliente
-→ Equipamento
-→ Orçamento
-→ Ordem de Serviço
-→ Peças/Serviços
-→ Estoque
-→ Recebimento
-→ Caixa
-→ Financeiro
+Ambas devem ser rejeitadas pelo banco conforme a arquitetura implementada.
 
-Fornecedor
-→ Pedido de Compra
-→ Itens
-→ Recebimento
-→ Estoque
-→ Contas a pagar / financeiro
+### 8. Tenant isolation / RLS
 
-Venda
-→ Itens
-→ Estoque
-→ Recebimento
-→ Caixa
-→ Financeiro
+Criar ou reutilizar pelo menos dois tenants.
 
-Identifique onde esses fluxos estão completos e onde estão interrompidos.
+Provar:
 
-## Etapa 6 — Análise de lacunas
+* tenant A não lê OS/retorno/histórico de B;
+* tenant A não cria retorno usando OS de B;
+* tenant A não vincula técnico de B;
+* UUID real conhecido de outro tenant não produz vazamento;
+* consultas diretas com runtime/RLS também preservam o isolamento.
 
-Produza uma tabela por módulo contendo:
+### 9. FK same-tenant
 
-* situação atual;
-* campos existentes;
-* operações existentes;
-* campos ausentes;
-* operações ausentes;
-* impacto;
-* prioridade;
-* recomendação.
+Tentar violar diretamente as relações compostas relevantes e confirmar rejeição física pelo PostgreSQL.
 
-Prioridades:
+### 10. RBAC
 
-* P0 — impede operação real;
-* P1 — necessário antes de comercialização;
-* P2 — importante para maturidade;
-* P3 — melhoria futura.
+Cobrir pelo menos:
 
-## Etapa 7 — Não confundir DELETE com regra de negócio
+* sem sessão -> 401;
+* sessão/contexto válido sem permission -> 403;
+* `service_orders.read` permite somente leitura;
+* `service_orders.create` controla criação do retorno quando aplicável;
+* `service_orders.update` controla alterações operacionais/garantia conforme a implementação atual.
 
-Avalie cuidadosamente exclusões.
+Não invente novas permissions nesta rodada salvo se houver inconsistência arquitetural comprovada.
 
-Nem toda entidade transacional deve possuir DELETE físico.
+### 11. Regressão
 
-Para documentos como:
+A nova suíte não deve substituir:
 
-* OS;
-* venda;
-* compra;
-* financeiro;
-* caixa;
+* `service-orders.integration.test.ts`;
+* `service-order-stock.integration.test.ts`;
+* contratos DB existentes.
 
-determine quando o correto é:
+Preserve todos.
 
-* excluir;
-* cancelar;
-* estornar;
-* inativar;
-* preservar histórico.
+## Testes de contrato
 
-Cadastros e documentos transacionais devem ser tratados de maneiras diferentes.
+Se houver regras físicas adequadas para teste sem PostgreSQL ativo, adicione também contrato DB para migration 0032, incluindo:
 
-## Entrega
+* colunas;
+* constraints;
+* FKs same-tenant;
+* RLS;
+* append-only;
+* índices relevantes.
 
-Não modifique código.
+Mas não trate contratos textuais/estruturais como substitutos dos testes reais de integração.
 
-Não crie migration.
+## Restrições
 
-Não altere roadmap ainda.
+* Não continuar CRM-02.
+* Não reabrir CAD-01.
+* Não criar próximo marco.
+* Não marcar OS-ADV-01 como DONE.
+* Não alterar `docs/ROADMAP.md` para DONE nesta rodada.
+* Não fazer commit.
+* Não adaptar testes para esconder defeitos.
+* Não enfraquecer RLS, RBAC ou constraints.
 
-Não implemente telas.
+## Validação possível neste executor
 
-Entregue somente um relatório estruturado contendo:
+Execute tudo que não dependa do daemon Docker:
 
-1. visão geral do sistema atual;
-2. inventário dos módulos;
-3. inventário de campos;
-4. inventário de ações;
-5. profundidade funcional de cada módulo;
-6. lacunas encontradas;
-7. fluxos incompletos;
-8. classificação P0/P1/P2/P3;
-9. proposta de sequência de correções.
+* lint;
+* typecheck;
+* build;
+* testes de contrato;
+* `git diff --check`.
 
-A proposta de sequência deve começar pelos cadastros fundamentais e depois avançar para operações transacionais.
+Se a suíte nova exigir PostgreSQL e não puder rodar aqui, apenas registre isso objetivamente.
 
-Não abra nenhum novo marco automaticamente.
+Ao final informe:
 
-Ao terminar, pare e apresente o diagnóstico para decisão.
+1. arquivos criados/alterados;
+2. quantidade de testes específicos adicionados;
+3. cenários cobertos;
+4. contratos que passaram;
+5. validações estáticas;
+6. quais testes ainda precisam ser executados externamente no Docker;
+7. mantenha OS-ADV-01 como `TODO`.

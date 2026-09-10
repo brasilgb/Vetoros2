@@ -16,8 +16,11 @@ import { formatCurrency } from '../../../../lib/format';
 import { useSetBreadcrumb } from '../../../../components/breadcrumb-context';
 import { RequireOperationalContext } from '../../../../components/require-operational-context';
 import { useOperationalContext } from '../../../../components/operational-context';
+import { EntityCombobox } from '../../../../components/entity-combobox';
+import { PartOptionRow, partLabel } from '../../../../components/entity-option-rows';
+import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
-type Item = { id: string; type: string; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
+type Item = { id: string; type: string; part_sku: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
 type Quote = {
   id: string; quote_number: number; title: string; status: string; customer_name: string; asset_identifier: string | null; converted_service_order_id: string | null;
   items: Item[]; subtotal: number; discounts: number; total: number;
@@ -32,6 +35,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [title, setTitle] = useState('');
   const [itemForm, setItemForm] = useState({ type: 'service', description: '', quantity: '1', unitPrice: '0', discountAmount: '0' });
+  const [part, setPart] = useState<PartOption | null>(null);
   const [addingItem, setAddingItem] = useState(false);
   const [error, setError] = useState('');
   const [pendingTransition, setPendingTransition] = useState<string>();
@@ -59,10 +63,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     event.preventDefault();
     setAddingItem(true);
     setError('');
-    const response = await api(`/quotes/${id}/items`, { method: 'POST', body: JSON.stringify(itemForm) });
+    if (itemForm.type === 'part' && !part) return setError('Selecione uma peça de estoque.');
+    const response = await api(`/quotes/${id}/items`, { method: 'POST', body: JSON.stringify({ ...itemForm, inventoryPartId: itemForm.type === 'part' ? part!.id : null }) });
     setAddingItem(false);
     if (!response.ok) return setError(friendlyError((await response.json().catch(() => ({}))).error));
     setItemForm({ ...itemForm, description: '', quantity: '1', unitPrice: '0', discountAmount: '0' });
+    setPart(null);
     await load();
   }
 
@@ -95,7 +101,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const { label, tone } = commonStatus(quote.status);
   const editable = quote.status === 'draft';
   const columns: DataTableColumn<Item>[] = [
-    { key: 'type', header: 'Tipo', render: (row) => (row.type === 'part' ? 'Peça' : 'Serviço') },
+    { key: 'type', header: 'Tipo', render: (row) => row.type === 'part' ? 'Peça' : row.type === 'non_stock' ? 'Material sem estoque' : 'Serviço' },
     { key: 'description', header: 'Descrição', render: (row) => row.description },
     { key: 'quantity', header: 'Qtd.', align: 'right', render: (row) => Number(row.quantity), hideBelow: 'sm' },
     { key: 'unit_price', header: 'Unitário', align: 'right', render: (row) => formatCurrency(row.unit_price), hideBelow: 'md' },
@@ -156,8 +162,14 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <select id="item-type" className={formFieldClass} value={itemForm.type} onChange={(e) => setItemForm({ ...itemForm, type: e.target.value })}>
                 <option value="service">Serviço</option>
                 <option value="part">Peça</option>
+                <option value="non_stock">Material sem estoque</option>
               </select>
             </FormField>
+            {itemForm.type === 'part' && (
+              <FormField label="Peça de estoque" htmlFor="quote-item-part">
+                <EntityCombobox id="quote-item-part" value={part} onChange={setPart} search={searchParts} getId={(entry) => entry.id} getLabel={partLabel} renderOption={(entry) => <PartOptionRow item={entry} />} placeholder="Buscar por SKU ou descrição…" />
+              </FormField>
+            )}
             <FormField label="Descrição" htmlFor="item-description" span="full">
               <input id="item-description" required className={formFieldClass} value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} />
             </FormField>

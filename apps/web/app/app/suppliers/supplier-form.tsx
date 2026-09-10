@@ -27,6 +27,8 @@ export function SupplierForm({ supplier }: { supplier?: Record<string, unknown> 
         document: values.document || null,
         stateRegistration: values.stateRegistration || null,
         municipalRegistration: values.municipalRegistration || null,
+        commercialTerms: values.commercialTerms || null,
+        defaultLeadTimeDays: values.defaultLeadTimeDays ? Number(values.defaultLeadTimeDays) : null,
         notes: values.notes || null,
         status: values.status,
       }),
@@ -71,6 +73,15 @@ export function SupplierForm({ supplier }: { supplier?: Record<string, unknown> 
         </FormField>
         <FormField label="Inscrição municipal" htmlFor="municipalRegistration">
           <input id="municipalRegistration" className={formFieldClass} name="municipalRegistration" defaultValue={String(supplier?.municipal_registration ?? '')} />
+        </FormField>
+      </FormSection>
+
+      <FormSection title="Condições comerciais">
+        <FormField label="Prazo padrão (dias)" htmlFor="defaultLeadTimeDays">
+          <input id="defaultLeadTimeDays" name="defaultLeadTimeDays" type="number" min="0" className={formFieldClass} defaultValue={String(supplier?.default_lead_time_days ?? '')} />
+        </FormField>
+        <FormField label="Condições de pagamento e fornecimento" htmlFor="commercialTerms" span="full">
+          <textarea id="commercialTerms" name="commercialTerms" className={`${formFieldClass} min-h-24`} defaultValue={String(supplier?.commercial_terms ?? '')} />
         </FormField>
       </FormSection>
 

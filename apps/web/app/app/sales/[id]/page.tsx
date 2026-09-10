@@ -53,6 +53,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
 
   async function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (item.type === 'part' && !part) return setError('Selecione uma peça de estoque.');
     setAddingItem(true);
     setError('');
     const response = await api(`/sales/${id}/items`, { method: 'POST', body: JSON.stringify({ ...item, inventoryPartId: item.type === 'part' ? (part?.id ?? null) : null }) });
@@ -86,7 +87,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const cancellable = sale.status === 'draft' || sale.status === 'confirmed';
 
   const columns: DataTableColumn<Item>[] = [
-    { key: 'type', header: 'Tipo', render: (row) => (row.type === 'part' ? 'Peça' : 'Serviço') },
+    { key: 'type', header: 'Tipo', render: (row) => row.type === 'part' ? 'Peça' : row.type === 'non_stock' ? 'Material sem estoque' : 'Serviço' },
     { key: 'description', header: 'Descrição', render: (row) => `${row.part_sku ? `${row.part_sku} — ` : ''}${row.description}` },
     { key: 'quantity', header: 'Qtd.', align: 'right', render: (row) => Number(row.quantity), hideBelow: 'sm' },
     { key: 'unit_price', header: 'Unitário', align: 'right', render: (row) => formatCurrency(row.unit_price), hideBelow: 'md' },
@@ -140,10 +141,11 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
               <select id="item-type" className={formFieldClass} value={item.type} onChange={(e) => setItem({ ...item, type: e.target.value })}>
                 <option value="part">Peça</option>
                 <option value="service">Serviço</option>
+                <option value="non_stock">Material sem estoque</option>
               </select>
             </FormField>
             {item.type === 'part' && (
-              <FormField label="Peça (opcional)" htmlFor="item-part">
+              <FormField label="Peça de estoque" htmlFor="item-part">
                 <EntityCombobox
                   id="item-part"
                   value={part}

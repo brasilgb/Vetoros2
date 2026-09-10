@@ -11,14 +11,15 @@ import { useSetBreadcrumb } from '../../../../components/breadcrumb-context';
 type Identifier = { id: string; identifier_type: string; value: string };
 type Asset = {
   id: string; internal_identifier: string; category: string; brand: string | null; model: string | null; serial_number: string | null; imei: string | null;
-  asset_tag: string | null; description: string | null; notes: string | null; status: string; customer_name: string; identifiers: Identifier[];
+  asset_tag: string | null; acquired_at: string | null; warranty_until: string | null; warranty_notes: string | null; received_accessories: string | null; intake_condition: string | null; description: string | null; notes: string | null; status: string; customer_name: string; identifiers: Identifier[];
+  service_orders: Array<{id:string;order_number:number;title:string;status:string}>; quotes: Array<{id:string;quote_number:number;title:string;status:string}>;
 };
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [asset, setAsset] = useState<Asset>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [fields, setFields] = useState({ internalIdentifier: '', category: '', brand: '', model: '', serialNumber: '', imei: '', assetTag: '', description: '', notes: '', status: 'active' });
+  const [fields, setFields] = useState({ internalIdentifier: '', category: '', brand: '', model: '', serialNumber: '', imei: '', assetTag: '', acquiredAt: '', warrantyUntil: '', warrantyNotes: '', receivedAccessories: '', intakeCondition: '', description: '', notes: '', status: 'active' });
   const [identifier, setIdentifier] = useState({ identifierType: '', value: '' });
   const [addingIdentifier, setAddingIdentifier] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +31,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     setAsset(data);
     setFields({
       internalIdentifier: data.internal_identifier, category: data.category, brand: data.brand ?? '', model: data.model ?? '', serialNumber: data.serial_number ?? '',
-      imei: data.imei ?? '', assetTag: data.asset_tag ?? '', description: data.description ?? '', notes: data.notes ?? '', status: data.status,
+      imei: data.imei ?? '', assetTag: data.asset_tag ?? '', acquiredAt: data.acquired_at ?? '', warrantyUntil: data.warranty_until ?? '', warrantyNotes: data.warranty_notes ?? '', receivedAccessories: data.received_accessories ?? '', intakeCondition: data.intake_condition ?? '', description: data.description ?? '', notes: data.notes ?? '', status: data.status,
     });
     setState('ready');
   }, [id]);
@@ -75,6 +76,14 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         </FormField>
       </FormSection>
 
+      <FormSection title="Aquisição, garantia e entrada">
+        <FormField label="Data de aquisição" htmlFor="acquiredAt"><input id="acquiredAt" type="date" className={formFieldClass} value={fields.acquiredAt} onChange={(e) => setFields({ ...fields, acquiredAt: e.target.value })} /></FormField>
+        <FormField label="Garantia até" htmlFor="warrantyUntil"><input id="warrantyUntil" type="date" className={formFieldClass} value={fields.warrantyUntil} onChange={(e) => setFields({ ...fields, warrantyUntil: e.target.value })} /></FormField>
+        <FormField label="Acessórios recebidos" htmlFor="receivedAccessories" span="full"><textarea id="receivedAccessories" className={formFieldClass} value={fields.receivedAccessories} onChange={(e) => setFields({ ...fields, receivedAccessories: e.target.value })} /></FormField>
+        <FormField label="Condição na entrada" htmlFor="intakeCondition" span="full"><textarea id="intakeCondition" className={formFieldClass} value={fields.intakeCondition} onChange={(e) => setFields({ ...fields, intakeCondition: e.target.value })} /></FormField>
+        <FormField label="Observações da garantia" htmlFor="warrantyNotes" span="full"><textarea id="warrantyNotes" className={formFieldClass} value={fields.warrantyNotes} onChange={(e) => setFields({ ...fields, warrantyNotes: e.target.value })} /></FormField>
+      </FormSection>
+
       <FormSection title="Detalhes">
         <FormField label="Marca" htmlFor="brand">
           <input id="brand" className={formFieldClass} value={fields.brand} onChange={(e) => setFields({ ...fields, brand: e.target.value })} />
@@ -109,13 +118,18 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
               method: 'PATCH',
               body: JSON.stringify({
                 internalIdentifier: fields.internalIdentifier, category: fields.category, brand: fields.brand || null, model: fields.model || null, serialNumber: fields.serialNumber || null,
-                imei: fields.imei || null, assetTag: fields.assetTag || null, description: fields.description || null, notes: fields.notes || null, status: fields.status,
+                imei: fields.imei || null, assetTag: fields.assetTag || null, acquiredAt: fields.acquiredAt || null, warrantyUntil: fields.warrantyUntil || null, warrantyNotes: fields.warrantyNotes || null, receivedAccessories: fields.receivedAccessories || null, intakeCondition: fields.intakeCondition || null, description: fields.description || null, notes: fields.notes || null, status: fields.status,
               }),
             });
             if (!response.ok) setError(friendlyError((await response.json().catch(() => ({}))).error));
             else await load();
           }}
         />
+      </FormSection>
+
+      <FormSection title="Histórico operacional" columns={1}>
+        <ul className="space-y-2 text-sm">{asset.service_orders.map((entry) => <li key={entry.id}><a className="text-blue-700 hover:underline" href={`/app/service-orders/${entry.id}`}>OS {entry.order_number} — {entry.title}</a> ({entry.status})</li>)}{asset.service_orders.length===0&&<li className="text-slate-500">Nenhuma OS vinculada.</li>}</ul>
+        <ul className="space-y-2 text-sm">{asset.quotes.map((entry) => <li key={entry.id}><a className="text-blue-700 hover:underline" href={`/app/quotes/${entry.id}`}>Orçamento {entry.quote_number} — {entry.title}</a> ({entry.status})</li>)}{asset.quotes.length===0&&<li className="text-slate-500">Nenhum orçamento vinculado.</li>}</ul>
       </FormSection>
 
       <FormSection title="Identificadores adicionais" columns={1}>

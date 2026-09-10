@@ -119,6 +119,7 @@ describe('VEN-01 sales API', () => {
     expect((await addItem(saleId, { type: 'part', inventoryPartId: randomUUID(), description: 'x', quantity: 1, unitPrice: 1 })).statusCode).toBe(404);
     const betaPartId = await insertBetaPart();
     expect((await addItem(saleId, { type: 'part', inventoryPartId: betaPartId, description: 'x', quantity: 1, unitPrice: 1 })).statusCode).toBe(404);
+    expect((await addItem(saleId, { type: 'part', description: 'Peça sem vínculo', quantity: 1, unitPrice: 1 })).statusCode).toBe(400);
     expect((await addItem(saleId, { type: 'part', description: 'x', quantity: 0, unitPrice: 1 })).statusCode).toBe(400);
     expect((await addItem(saleId, { type: 'part', description: 'x', quantity: -1, unitPrice: 1 })).statusCode).toBe(400);
     expect((await addItem(saleId, { type: 'part', description: 'x', quantity: 1, unitPrice: 1, discountAmount: -1 })).statusCode).toBe(400);
@@ -204,11 +205,11 @@ describe('VEN-02 sale stock integration', () => {
     expect(await balanceOf(partId)).toBe(before);
   });
 
-  it('confirming a sale with a part item that has no inventory_part_id never touches stock', async () => {
+  it('confirming a non-stock material never touches stock', async () => {
     const partId = await makePartWithBalance(10);
     const before = await balanceOf(partId);
     const saleId = (await create()).json().id;
-    await addItem(saleId, { type: 'part', description: 'Peça avulsa sem vínculo', quantity: 2, unitPrice: 5 });
+    await addItem(saleId, { type: 'non_stock', description: 'Material avulso sem vínculo', quantity: 2, unitPrice: 5 });
     expect((await confirm(saleId)).statusCode).toBe(200);
     expect(await balanceOf(partId)).toBe(before);
   });
@@ -350,11 +351,11 @@ describe('VEN-03 sale cancellation with stock reversal', () => {
     expect(movementsB.filter((m: { sale_id: string }) => m.sale_id === saleId)).toHaveLength(2);
   });
 
-  it('only the linked part participates in cancellation reversal — service and unlinked-part items never move stock', async () => {
+  it('only the linked part participates in cancellation reversal — service and non-stock items never move stock', async () => {
     const partId = await makePartWithBalance(10);
     const saleId = (await create()).json().id;
     await addItem(saleId, { type: 'service', description: 'Serviço', quantity: 1, unitPrice: 50 });
-    await addItem(saleId, { type: 'part', description: 'Peça avulsa sem vínculo', quantity: 2, unitPrice: 5 });
+    await addItem(saleId, { type: 'non_stock', description: 'Material avulso sem vínculo', quantity: 2, unitPrice: 5 });
     await addItem(saleId, { type: 'part', inventoryPartId: partId, description: 'Peça vinculada', quantity: 4, unitPrice: 10 });
     expect((await confirm(saleId)).statusCode).toBe(200);
     expect(await balanceOf(partId)).toBe(6);

@@ -16,7 +16,7 @@ import { useDebouncedValue } from '../../../../lib/use-debounced-value';
 
 // Listagem orientada ao trabalho diário (seção 3.5 do correio.md UX-02): SKU, descrição, saldo
 // e status — sem colunas técnicas (custo/preço de referência ficam no cadastro, não na lista).
-type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string };
+type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string; category_name:string|null;brand_name:string|null };
 const PAGE_SIZE = 20;
 
 export default function InventoryPartsPage() {
@@ -28,13 +28,15 @@ export default function InventoryPartsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [categoryId,setCategoryId]=useState(''),[brandId,setBrandId]=useState('');
+  const [categories,setCategories]=useState<Array<{id:string;name:string}>>([]),[brands,setBrands]=useState<Array<{id:string;name:string}>>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
   const load = useCallback(
     async (targetPage: number) => {
       setState('loading');
-      const query = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE), ...(debouncedSearch ? { search: debouncedSearch } : {}), ...(status ? { status } : {}) });
+      const query = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE), ...(debouncedSearch ? { search: debouncedSearch } : {}), ...(status ? { status } : {}),...(categoryId?{categoryId}:{}),...(brandId?{brandId}:{}) });
       const response = await api(`/inventory/parts?${query}`);
       if (response.status === 401) return router.replace('/login');
       if (!response.ok) {
@@ -47,18 +49,20 @@ export default function InventoryPartsPage() {
       setPage(targetPage);
       setState('ready');
     },
-    [debouncedSearch, status, router],
+    [debouncedSearch, status, categoryId, brandId, router],
   );
 
   useEffect(() => {
     if (!hasFullContext) return;
     void load(1);
+    void Promise.all([api('/inventory/categories'),api('/inventory/brands')]).then(async([c,b])=>{if(c.ok)setCategories(await c.json());if(b.ok)setBrands(await b.json());});
   }, [load, hasFullContext]);
 
-  const hasFilters = Boolean(debouncedSearch || status);
+  const hasFilters = Boolean(debouncedSearch || status || categoryId || brandId);
   const columns: DataTableColumn<Part>[] = [
     { key: 'sku', header: 'Peça', render: (row) => <span className="font-medium text-slate-900">{row.sku}</span> },
     { key: 'description', header: 'Descrição', render: (row) => row.description },
+    { key: 'catalog', header: 'Categoria / marca', render: (row) => [row.category_name,row.brand_name].filter(Boolean).join(' · ')||'—', hideBelow:'md' },
     { key: 'balance', header: 'Saldo', align: 'right', render: (row) => `${Number(row.balance)} ${row.unit}` },
     { key: 'status', header: 'Status', render: (row) => { const { label, tone } = commonStatus(row.status); return <StatusBadge tone={tone}>{label}</StatusBadge>; } },
   ];
@@ -81,6 +85,8 @@ export default function InventoryPartsPage() {
               <option value="active">Ativos</option>
               <option value="inactive">Inativos</option>
             </select>
+            <select value={categoryId} onChange={(e)=>setCategoryId(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"><option value="">Todas as categorias</option>{categories.map(entry=><option key={entry.id} value={entry.id}>{entry.name}</option>)}</select>
+            <select value={brandId} onChange={(e)=>setBrandId(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"><option value="">Todas as marcas</option>{brands.map(entry=><option key={entry.id} value={entry.id}>{entry.name}</option>)}</select>
           </SearchToolbar>
         </PageHeader>
 
@@ -94,7 +100,7 @@ export default function InventoryPartsPage() {
           errorMessage={errorMessage}
           emptyState={
             hasFilters ? (
-              <EmptyState icon={Package} title="Nenhuma peça encontrada" description="Nenhuma peça corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
+              <EmptyState icon={Package} title="Nenhuma peça encontrada" description="Nenhuma peça corresponde aos filtros atuais." action={<button onClick={() => { setSearch(''); setStatus('');setCategoryId('');setBrandId(''); }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
               <EmptyState
                 icon={Package}

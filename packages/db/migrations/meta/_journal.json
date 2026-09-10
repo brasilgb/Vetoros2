@@ -218,6 +218,13 @@
       "when": 1788717600000,
       "tag": "0030_agd01_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788721200000,
+      "tag": "0032_os_adv01_service_order_warranty",
+      "breakpoints": true
     }
   ]
 }

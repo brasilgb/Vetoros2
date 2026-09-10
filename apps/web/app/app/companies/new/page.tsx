@@ -10,7 +10,7 @@ import { friendlyError } from '../../../../components/error-state';
 
 export default function NewCompanyPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ legalName: '', tradeName: '', taxIdType: 'cnpj', taxIdNormalized: '', stateRegistration: '', municipalRegistration: '' });
+  const [form, setForm] = useState({ legalName: '', tradeName: '', taxIdType: 'cnpj', taxIdNormalized: '', stateRegistration: '', municipalRegistration: '', phone: '', email: '', postalCode: '', street: '', addressNumber: '', addressComplement: '', district: '', city: '', state: '', country: 'BR', logoUrl: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -21,8 +21,7 @@ export default function NewCompanyPage() {
     const response = await api('/companies', {
       method: 'POST',
       body: JSON.stringify({
-        legalName: form.legalName, tradeName: form.tradeName || null, taxIdType: form.taxIdType, taxIdNormalized: form.taxIdNormalized,
-        stateRegistration: form.stateRegistration || null, municipalRegistration: form.municipalRegistration || null, currencyCode: 'BRL',
+        ...form, tradeName: form.tradeName || null, stateRegistration: form.stateRegistration || null, municipalRegistration: form.municipalRegistration || null, phone: form.phone || null, email: form.email || null, postalCode: form.postalCode || null, street: form.street || null, addressNumber: form.addressNumber || null, addressComplement: form.addressComplement || null, district: form.district || null, city: form.city || null, state: form.state || null, logoUrl: form.logoUrl || null, currencyCode: 'BRL',
       }),
     });
     setSaving(false);
@@ -51,6 +50,9 @@ export default function NewCompanyPage() {
           <FormField label="Nome fantasia" htmlFor="tradeName" span="full">
             <input id="tradeName" className={formFieldClass} value={form.tradeName} onChange={(e) => setForm({ ...form, tradeName: e.target.value })} />
           </FormField>
+        </FormSection>
+        <FormSection title="Contato e endereço">
+          {([['phone','Telefone'],['email','E-mail'],['postalCode','CEP'],['street','Logradouro'],['addressNumber','Número'],['addressComplement','Complemento'],['district','Bairro'],['city','Cidade'],['state','UF'],['logoUrl','URL do logotipo']] as const).map(([key,label]) => <FormField key={key} label={label} htmlFor={key}><input id={key} type={key==='email'?'email':'text'} className={formFieldClass} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></FormField>)}
         </FormSection>
         <FormSection title="Inscrições">
           <FormField label="Inscrição estadual" htmlFor="stateRegistration">

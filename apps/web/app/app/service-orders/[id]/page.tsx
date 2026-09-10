@@ -18,7 +18,7 @@ import { EntityCombobox } from '../../../../components/entity-combobox';
 import { PartOptionRow, partLabel } from '../../../../components/entity-option-rows';
 import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
-type Item = { id: string; type: 'service' | 'part'; inventory_part_id: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
+type Item = { id: string; type: 'service' | 'part' | 'non_stock'; inventory_part_id: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
 type Order = {
   order_number: number; title: string; status: string; customer_name: string; asset_identifier: string | null; reported_problem: string; initial_notes: string | null;
   items: Item[]; subtotal: number; discounts: number; total: number;
@@ -134,6 +134,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
   const [order, setOrder] = useState<Order>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [itemForm, setItemForm] = useState({ type: 'service', description: '', quantity: '1', unitPrice: '0', discountAmount: '0' });
+  const [part, setPart] = useState<PartOption | null>(null);
   const [addingItem, setAddingItem] = useState(false);
   const [itemError, setItemError] = useState('');
   const { hasFullContext } = useOperationalContext();
@@ -156,10 +157,12 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
     event.preventDefault();
     setAddingItem(true);
     setItemError('');
-    const response = await api(`/service-orders/${id}/items`, { method: 'POST', body: JSON.stringify(itemForm) });
+    if (itemForm.type === 'part' && !part) { setAddingItem(false); return setItemError('Selecione uma peça de estoque.'); }
+    const response = await api(`/service-orders/${id}/items`, { method: 'POST', body: JSON.stringify({ ...itemForm, inventoryPartId: itemForm.type === 'part' ? part!.id : null }) });
     setAddingItem(false);
     if (!response.ok) return setItemError(friendlyError((await response.json().catch(() => ({}))).error));
     setItemForm({ ...itemForm, description: '', quantity: '1', unitPrice: '0', discountAmount: '0' });
+    setPart(null);
     await load();
   }
 
@@ -168,7 +171,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
 
   const { label, tone } = commonStatus(order.status);
   const columns: DataTableColumn<Item>[] = [
-    { key: 'type', header: 'Tipo', render: (row) => (row.type === 'part' ? 'Peça' : 'Serviço') },
+    { key: 'type', header: 'Tipo', render: (row) => row.type === 'part' ? 'Peça' : row.type === 'non_stock' ? 'Material sem estoque' : 'Serviço' },
     { key: 'description', header: 'Descrição', render: (row) => row.description },
     { key: 'quantity', header: 'Qtd.', align: 'right', render: (row) => Number(row.quantity), hideBelow: 'sm' },
     { key: 'unit_price', header: 'Unitário', align: 'right', render: (row) => formatCurrency(row.unit_price), hideBelow: 'md' },
@@ -211,8 +214,14 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
             <select id="item-type" className={formFieldClass} value={itemForm.type} onChange={(e) => setItemForm({ ...itemForm, type: e.target.value })}>
               <option value="service">Serviço</option>
               <option value="part">Peça</option>
+              <option value="non_stock">Material sem estoque</option>
             </select>
           </FormField>
+          {itemForm.type === 'part' && (
+            <FormField label="Peça de estoque" htmlFor="os-item-part">
+              <EntityCombobox id="os-item-part" value={part} onChange={setPart} search={searchParts} getId={(entry) => entry.id} getLabel={partLabel} renderOption={(entry) => <PartOptionRow item={entry} />} placeholder="Buscar por SKU ou descrição…" />
+            </FormField>
+          )}
           <FormField label="Descrição" htmlFor="item-description" span="full">
             <input id="item-description" required className={formFieldClass} value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} />
           </FormField>
