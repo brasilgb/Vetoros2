@@ -223,7 +223,21 @@
       "idx": 31,
       "version": "7",
       "when": 1788721200000,
+      "tag": "0031_cad01_foundational_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788724800000,
       "tag": "0032_os_adv01_service_order_warranty",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788728400000,
+      "tag": "0033_os_adv02_operational_flow",
       "breakpoints": true
     }
   ]

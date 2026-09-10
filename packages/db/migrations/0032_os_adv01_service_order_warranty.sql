@@ -27,6 +27,7 @@ alter table service_orders add constraint service_orders_kind_check check (servi
 alter table service_orders add constraint service_orders_warranty_status_check check (warranty_snapshot_status is null or warranty_snapshot_status in ('within_warranty','expired','not_applicable'));
 alter table service_orders add constraint service_orders_warranty_result_check check (warranty_analysis_result is null or warranty_analysis_result in ('pending_analysis','approved','rejected','not_related','expired'));
 alter table service_orders add constraint service_orders_warranty_dates_check check (warranty_ends_at is null or warranty_started_at is null or warranty_ends_at >= warranty_started_at);
+alter table service_orders add constraint service_orders_technician_fk foreign key (tenant_id,technician_user_profile_id) references tenant_user_profiles(tenant_id,id);
 alter table service_orders add constraint service_orders_original_fk foreign key (tenant_id,original_service_order_id) references service_orders(tenant_id,id);
 alter table service_orders add constraint service_orders_previous_fk foreign key (tenant_id,previous_service_order_id) references service_orders(tenant_id,id);
 create index if not exists service_orders_original_idx on service_orders(tenant_id,original_service_order_id);
@@ -42,5 +43,7 @@ drop policy if exists service_order_status_history_tenant on service_order_statu
 create policy service_order_status_history_tenant on service_order_status_history using (tenant_id = current_setting('app.tenant_id', true)::uuid) with check (tenant_id = current_setting('app.tenant_id', true)::uuid);
 grant select,insert on service_order_status_history to vetoros_runtime;
 
--- O histórico é append-only para o papel de runtime.
+-- O histórico é append-only para todos os papéis, inclusive administrativos.
+create function reject_service_order_status_history_mutation() returns trigger language plpgsql as $$ begin raise exception 'service_order_status_history is append-only'; end $$;
+create trigger service_order_status_history_append_only before update or delete on service_order_status_history for each row execute function reject_service_order_status_history_mutation();
 revoke update,delete on service_order_status_history from vetoros_runtime;

@@ -173,4 +173,28 @@ describe('COM-03 purchase receipts API', () => {
     expect(Number(orderDetail.items[0].pending_quantity)).toBe(0);
     expect(orderDetail.receipt_state).toBe('received');
   });
+
+  // COM-ADV-01, seção 18 (itens 14/15): `confirm`/`cancel` não tinham nenhuma cobertura negativa
+  // de RBAC. O gate já existia na rota — faltava o teste. Mesmo padrão de revogar/restaurar a
+  // permission do papel `single` já usado nesta rodada para purchase-orders/service-orders.
+  it('RBAC negativo: nega confirm e cancel sem as permissions purchase_receipts.confirm/.update, preservando o recebimento', async () => {
+    const tenantAlpha = '01992ea1-1250-7000-8000-000000000010', role = '01992ea1-1250-7000-8000-000000000031';
+    const { orderId, orderItemId } = await makeApprovedOrder(5);
+    const receiptId = (await createReceipt(orderId)).json().id;
+    await addItem(receiptId, orderItemId, 5);
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+      await tx`delete from tenant_role_permissions where tenant_id=${tenantAlpha} and role_id=${role} and permission_id in (select id from permissions where code in ('purchase_receipts.confirm','purchase_receipts.update'))`;
+    });
+    try {
+      expect((await confirm(receiptId)).statusCode).toBe(403);
+      expect((await app.inject({ method: 'POST', url: `/purchase-receipts/${receiptId}/cancel`, headers: { cookie } })).statusCode).toBe(403);
+      expect((await app.inject({ method: 'GET', url: `/purchase-receipts/${receiptId}`, headers: { cookie } })).json()).toMatchObject({ status: 'draft' });
+    } finally {
+      await admin.begin(async (tx) => {
+        await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+        await tx`insert into tenant_role_permissions(tenant_id,role_id,permission_id) select ${tenantAlpha},${role},id from permissions where code in ('purchase_receipts.confirm','purchase_receipts.update') on conflict do nothing`;
+      });
+    }
+  });
 });

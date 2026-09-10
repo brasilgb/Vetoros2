@@ -20,7 +20,11 @@ const roleTemplateNames: Record<string, string> = { owner: 'Proprietário', admi
 export async function mapTemplatePermissions() {
   await db.execute(sql`insert into system_role_template_permissions (role_template_id,permission_id) select t.id,p.id from system_role_templates t, permissions p where t.code in ('owner','administrator') on conflict do nothing`);
   const byCode: Record<string, string[]> = {
-    attendance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'customers.create', 'customers.update', 'customer_assets.read', 'customer_assets.create', 'customer_assets.update', 'service_orders.read', 'service_orders.create', 'service_orders.update', 'schedules.read', 'schedules.create', 'schedules.update', 'schedules.cancel', 'quotes.read', 'quotes.create', 'quotes.update', 'sales.read', 'sales.create'],
+    // OS-ADV-02: `service_orders.cancel` segue o mesmo critério de `schedules.cancel` logo abaixo
+    // — quem já abre/conduz a OS no dia a dia também pode cancelá-la; `technician`, que só
+    // executa o serviço (sem `.create`), fica de fora, mesmo critério de exclusão já aplicado a
+    // `cashier`/`inventory` em relação a permissions administrativas/sensíveis de outros módulos.
+    attendance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'customers.create', 'customers.update', 'customer_assets.read', 'customer_assets.create', 'customer_assets.update', 'service_orders.read', 'service_orders.create', 'service_orders.update', 'service_orders.cancel', 'schedules.read', 'schedules.create', 'schedules.update', 'schedules.cancel', 'quotes.read', 'quotes.create', 'quotes.update', 'sales.read', 'sales.create'],
     technician: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customer_assets.read', 'service_orders.read', 'service_orders.update', 'schedules.read', 'inventory.read'],
     inventory: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'inventory.read', 'inventory.create', 'inventory.update', 'inventory.move', 'suppliers.read', 'purchase_receipts.read', 'purchase_receipts.update', 'purchase_receipts.confirm', 'purchase_returns.read', 'purchase_returns.create', 'purchase_returns.update', 'purchase_returns.confirm'],
     // FIN-01: `cashier` é literalmente o papel operacional do fluxo de caixa — abre/fecha caixa e
@@ -164,6 +168,11 @@ async function runDevSeed() {
   const finPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module in ('cash','payments','receivables','payables','financial_accounts') order by code`)).map((row) => row.id);
   const schedulePermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='schedules' order by code`)).map((row) => row.id);
   const salesPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='sales' order by code`)).map((row) => row.id);
+  // OS-ADV-02: `service_orders.cancel` (migration 0033) é adicionada depois da lista estática
+  // `permissionCodes` acima — mesmo padrão de `schedulePermissionIds`/`salesPermissionIds`: busca
+  // dinâmica por módulo, para que este e qualquer futuro `service_orders.*` chegue ao papel dev
+  // sem precisar editar esta lista de novo.
+  const serviceOrdersPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='service_orders' order by code`)).map((row) => row.id);
   await mapTemplatePermissions();
   await provisionRoleTemplates(dev.tenantAlpha);
   await provisionRoleTemplates(dev.tenantBeta);
@@ -186,7 +195,7 @@ async function runDevSeed() {
     await tx.execute(sql`insert into tenant_user_profiles (id,tenant_id,membership_id,name) values (${dev.profileSingle},${dev.tenantAlpha},${dev.membershipSingle},'Single Alpha') on conflict (id) do nothing`);
     await tx.execute(sql`insert into tenant_roles (id,tenant_id,code,name,scope_type) values (${dev.roleSingle},${dev.tenantAlpha},'dev_auth_reader','Development auth reader','tenant') on conflict (id) do nothing`);
     const reportsPermissionIds = (await tx.execute<{ id: string }>(sql`select id from permissions where code='reports.read'`)).map((row) => row.id);
-    for (const permissionId of [...permissionIds, ...salesPermissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds, ...schedulePermissionIds, ...reportsPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
+    for (const permissionId of [...permissionIds, ...salesPermissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds, ...schedulePermissionIds, ...serviceOrdersPermissionIds, ...reportsPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
     await tx.execute(sql`insert into access_grants (id,tenant_id,user_profile_id,role_id,scope_type) values (${dev.grantSingle},${dev.tenantAlpha},${dev.profileSingle},${dev.roleSingle},'tenant') on conflict (id) do nothing`);
     await tx.execute(sql`insert into companies (id,tenant_id,legal_name,trade_name,tax_id_type,tax_id_normalized) values (${dev.companyAlphaServices},${dev.tenantAlpha},'Company Alpha Serviços','Alpha Serviços','cnpj','01992ea1125071') on conflict (id) do nothing`);
     await tx.execute(sql`insert into branches (id,tenant_id,company_id,code,name) values (${dev.branchAlphaNorth},${dev.tenantAlpha},${dev.companyAlpha},'NORTH','Branch Alpha Norte'),(${dev.branchAlphaServices},${dev.tenantAlpha},${dev.companyAlphaServices},'SERVICES','Branch Alpha Serviços 01') on conflict (id) do nothing`);

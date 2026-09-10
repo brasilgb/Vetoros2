@@ -1,6 +1,7 @@
 'use client';
 import { use, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { PlusCircle, ShoppingCart, Trash2 } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { PageHeader } from '../../../../components/page-header';
@@ -21,6 +22,12 @@ import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
 type Item = { id: string; type: string; part_sku: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total: string };
 type Sale = { id: string; sale_number: number; sale_date: string; customer_name: string | null; branch_name: string; status: string; notes: string | null; items: Item[]; subtotal: string; discount_total: string; total: string };
+// VEN-ADV-01, seção 24: a venda não tinha nenhuma visibilidade financeira — nem os pagamentos já
+// recebidos, nem os recebíveis gerados a partir dela apareciam aqui (só no sentido inverso, já
+// fechado no FIN-ADV-01). Mesmo padrão de lista+link já usado em payables/receivables/pedido de
+// compra.
+type Payment = { id: string; amount: string; payment_method_name: string; created_at: string; refunded: boolean };
+type Receivable = { id: string; installment_number: number; installment_count: number; original_amount: string; derived_status: string };
 
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -33,6 +40,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState('');
   const [pendingAction, setPendingAction] = useState<'confirm' | 'cancel'>();
   const [busy, setBusy] = useState(false);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [receivables, setReceivables] = useState<Receivable[]>([]);
   const { hasFullContext } = useOperationalContext();
 
   const load = useCallback(async () => {
@@ -41,6 +50,9 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     const data: Sale = await response.json();
     setSale(data);
     setNotes(data.notes ?? '');
+    const [paymentsResponse, receivablesResponse] = await Promise.all([api(`/payments?saleId=${id}&pageSize=100`), api(`/receivables?saleId=${id}&pageSize=100`)]);
+    if (paymentsResponse.ok) setPayments((await paymentsResponse.json()).items);
+    if (receivablesResponse.ok) setReceivables((await receivablesResponse.json()).items);
     setState('ready');
   }, [id]);
 
@@ -177,6 +189,50 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </form>
         </FormSection>
+      )}
+
+      {(payments.length > 0 || receivables.length > 0) && (
+        <div className="grid gap-6 sm:grid-cols-2">
+          {payments.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">Pagamentos recebidos</h2>
+              <ul className="flex flex-col gap-2">
+                {payments.map((payment) => (
+                  <li key={payment.id}>
+                    <Link href={`/app/payments/${payment.id}`} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">
+                      <span>
+                        {payment.payment_method_name} · {formatDate(payment.created_at)}
+                      </span>
+                      <span className={payment.refunded ? 'text-red-700' : 'font-semibold text-slate-900'}>
+                        {payment.refunded ? 'Estornado' : formatCurrency(payment.amount)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {receivables.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">Recebíveis gerados</h2>
+              <ul className="flex flex-col gap-2">
+                {receivables.map((receivable) => {
+                  const receivableStatus = commonStatus(receivable.derived_status);
+                  return (
+                    <li key={receivable.id}>
+                      <Link href={`/app/receivables/${receivable.id}`} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">
+                        <span>
+                          Parcela {receivable.installment_number}/{receivable.installment_count} · {formatCurrency(receivable.original_amount)}
+                        </span>
+                        <StatusBadge tone={receivableStatus.tone}>{receivableStatus.label}</StatusBadge>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       {error && (

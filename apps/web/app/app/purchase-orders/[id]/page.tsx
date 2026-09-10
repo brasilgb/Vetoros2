@@ -25,6 +25,10 @@ type Order = {
   id: string; purchase_order_number: number; supplier_name: string; branch_name: string; issue_date: string; expected_date: string | null; supplier_reference: string | null;
   status: string; receipt_state: string; freight_total: string; other_costs_total: string; subtotal: string; discount_total: string; total: string; items: Item[];
 };
+// COM-ADV-01, seção 13: a tela do pedido não mostrava os recebimentos já feitos (só um link
+// para criar um novo) — mesmo padrão de "Devoluções relacionadas" já usado em
+// purchase-receipts/[id]/page.tsx, aplicado aqui para "Recebimentos".
+type Receipt = { id: string; receipt_number: number; status: string; received_at: string };
 
 export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,6 +41,7 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const [error, setError] = useState('');
   const [pendingAction, setPendingAction] = useState<'approve' | 'cancel'>();
   const [busy, setBusy] = useState(false);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const { hasFullContext } = useOperationalContext();
 
   const load = useCallback(async () => {
@@ -45,6 +50,8 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
     const data: Order = await response.json();
     setOrder(data);
     setFields({ expectedDate: data.expected_date ?? '', supplierReference: data.supplier_reference ?? '', freightTotal: data.freight_total, otherCostsTotal: data.other_costs_total });
+    const receiptsResponse = await api(`/purchase-orders/${id}/receipts`);
+    if (receiptsResponse.ok) setReceipts(await receiptsResponse.json());
     setState('ready');
   }, [id]);
 
@@ -206,6 +213,27 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
             </div>
           </form>
         </FormSection>
+      )}
+
+      {receipts.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">Recebimentos</h2>
+          <ul className="flex flex-col gap-2">
+            {receipts.map((receipt) => {
+              const receiptStatus = commonStatus(receipt.status);
+              return (
+                <li key={receipt.id}>
+                  <Link href={`/app/purchase-receipts/${receipt.id}`} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">
+                    <span>
+                      #{receipt.receipt_number} · {formatDate(receipt.received_at)}
+                    </span>
+                    <StatusBadge tone={receiptStatus.tone}>{receiptStatus.label}</StatusBadge>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {error && (

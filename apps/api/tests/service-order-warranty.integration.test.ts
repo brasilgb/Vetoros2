@@ -37,7 +37,13 @@ const createOrder = (payload: Record<string, unknown> = {}) => inject('POST', '/
   customerId: customerAlpha, title: `OS ADV ${randomUUID()}`, reportedProblem: 'Falha intermitente', ...payload,
 });
 const updateOperational = (id: string, payload: Record<string, unknown>) => inject('PATCH', `/service-orders/${id}/operational`, payload);
-const setCompleted = async (id: string) => { const response = await updateOperational(id, { status: 'completed', reason: 'teste' }); expect(response.statusCode).toBe(200); };
+// OS-ADV-02: `open` não completa em um passo só — a máquina de estados (migration 0033) exige
+// passar por `in_progress` primeiro. O helper reflete o fluxo real em vez de pular etapas.
+const setCompleted = async (id: string) => {
+  expect((await updateOperational(id, { status: 'in_progress', reason: 'teste' })).statusCode).toBe(200);
+  const response = await updateOperational(id, { status: 'completed', reason: 'teste' });
+  expect(response.statusCode).toBe(200);
+};
 
 beforeAll(async () => {
   await app.ready();
@@ -53,6 +59,9 @@ describe('OS-ADV-01 — cobertura dedicada', () => {
     const created = await createOrder();
     expect(created.statusCode).toBe(201);
     const id = created.json().id;
+    // OS-ADV-02: `open` -> `completed` direto não é uma transição válida (migration 0033); passa
+    // por `in_progress` antes, como o fluxo real exige.
+    expect((await updateOperational(id, { status: 'in_progress' })).statusCode).toBe(200);
     const response = await updateOperational(id, {
       priority: 'urgent', technicianUserProfileId: profileAlpha, diagnosis: 'Diagnóstico', executedSolution: 'Solução',
       technicalNotes: 'Notas técnicas', startedAt: '2026-09-09T10:00:00.000Z', technicallyCompletedAt: '2026-09-09T11:00:00.000Z',
@@ -68,7 +77,7 @@ describe('OS-ADV-01 — cobertura dedicada', () => {
     const id = created.json().id;
     expect((await updateOperational(id, { priority: 'critical' })).statusCode).toBe(400);
     expect((await updateOperational(id, { technicianUserProfileId: randomUUID() })).statusCode).toBe(404);
-    expect((await updateOperational(id, { technicianUserProfileId: profileBeta })).statusCode).toBe(403);
+    expect((await updateOperational(id, { technicianUserProfileId: profileBeta })).statusCode).toBe(404);
   });
 
   it('registra histórico ordenado e mantém o histórico append-only', async () => {
@@ -127,8 +136,10 @@ describe('OS-ADV-01 — cobertura dedicada', () => {
     const original = await createOrder();
     const originalId = original.json().id;
     await setCompleted(originalId);
-    const one = await inject('POST', `/service-orders/${originalId}/warranty-return`, { reportedProblem: 'Retorno 1' });
-    const two = await inject('POST', `/service-orders/${originalId}/warranty-return`, { reportedProblem: 'Retorno 2' });
+    const [one, two] = await Promise.all([
+      inject('POST', `/service-orders/${originalId}/warranty-return`, { reportedProblem: 'Retorno 1' }),
+      inject('POST', `/service-orders/${originalId}/warranty-return`, { reportedProblem: 'Retorno 2' }),
+    ]);
     expect(one.statusCode).toBe(201); expect(two.statusCode).toBe(201);
     expect(one.json().id).not.toBe(two.json().id);
     expect(one.json().order_number).not.toBe(two.json().order_number);
@@ -140,10 +151,21 @@ describe('OS-ADV-01 — cobertura dedicada', () => {
 
   it('mantém isolamento de tenant no endpoint e no UUID conhecido', async () => {
     const betaId = randomUUID();
-    await admin`insert into service_orders(id,tenant_id,company_id,branch_id,order_number,customer_id,status,title,reported_problem) values(${betaId},${tenantBeta},${companyBeta},${branchBeta},${Math.floor(Math.random() * 1000000) + 9000000},${customerBeta},'open','Beta','Beta')`;
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantBeta}, true)`;
+      await tx`insert into service_orders(id,tenant_id,company_id,branch_id,order_number,customer_id,status,title,reported_problem) values(${betaId},${tenantBeta},${companyBeta},${branchBeta},${Math.floor(Math.random() * 1000000) + 9000000},${customerBeta},'open','Beta','Beta')`;
+    });
     expect((await inject('GET', `/service-orders/${betaId}`)).statusCode).toBe(404);
     expect((await inject('POST', `/service-orders/${betaId}/warranty-return`, { reportedProblem: 'Cross tenant' })).statusCode).toBe(404);
-    await admin`delete from service_orders where id=${betaId}`;
+    const rows = await runtime.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+      return tx`select id from service_orders where id=${betaId}`;
+    });
+    expect(rows).toHaveLength(0);
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantBeta}, true)`;
+      await tx`delete from service_orders where id=${betaId}`;
+    });
   });
 
   it('rejeita FK composta cross-tenant fisicamente', async () => {
@@ -154,8 +176,16 @@ describe('OS-ADV-01 — cobertura dedicada', () => {
     expect((await app.inject({ method: 'GET', url: '/service-orders' })).statusCode).toBe(401);
     const created = await createOrder();
     const role = '01992ea1-1250-7000-8000-000000000031';
-    await admin`delete from tenant_role_permissions where tenant_id=${tenantAlpha} and role_id=${role} and permission_id=(select id from permissions where code='service_orders.update')`;
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+      await tx`delete from tenant_role_permissions where tenant_id=${tenantAlpha} and role_id=${role} and permission_id=(select id from permissions where code='service_orders.update')`;
+    });
     try { expect((await updateOperational(created.json().id, { diagnosis: 'Sem permissão' })).statusCode).toBe(403); }
-    finally { await admin`insert into tenant_role_permissions(tenant_id,role_id,permission_id) select ${tenantAlpha},${role},id from permissions where code='service_orders.update' on conflict do nothing`; }
+    finally {
+      await admin.begin(async (tx) => {
+        await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+        await tx`insert into tenant_role_permissions(tenant_id,role_id,permission_id) select ${tenantAlpha},${role},id from permissions where code='service_orders.update' on conflict do nothing`;
+      });
+    }
   });
 });

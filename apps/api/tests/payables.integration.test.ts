@@ -205,6 +205,23 @@ describe('FIN-03 payment and reversal', () => {
     expect((await pay(created.id, installmentId, { amount: 150, idempotencyKey: `pay-over-${randomUUID()}` })).statusCode).toBe(409);
   });
 
+  // FIN-ADV-01, seções 9/15/25: cenário canônico de concorrência (conta de R$1.000, duas baixas
+  // simultâneas de R$700 — nunca R$1.400 pago). A função `pay_payable` já trava a parcela com
+  // `for update` (migration 0024) antes de validar o saldo; faltava a prova sob concorrência real
+  // (só existia o equivalente para alocação em `receivables`).
+  it('concurrency: two simultaneous payments that together exceed the balance never both succeed (700+700 on 1000)', async () => {
+    const created = (await create({ description: 'Concorrência', installments: [{ amount: 1000, dueDate: '2026-12-01' }] })).json();
+    const installmentId = (await getPayable(created.id)).json().installments[0].id;
+    const results = await Promise.all([
+      pay(created.id, installmentId, { amount: 700, idempotencyKey: `pay-race-a-${randomUUID()}` }),
+      pay(created.id, installmentId, { amount: 700, idempotencyKey: `pay-race-b-${randomUUID()}` }),
+    ]);
+    expect(results.filter((r) => r.statusCode === 201)).toHaveLength(1);
+    expect(results.filter((r) => r.statusCode === 409)).toHaveLength(1);
+    const detail = (await getPayable(created.id)).json();
+    expect(detail).toMatchObject({ derived_status: 'partial', paid_amount: '700.00', balance: '300.00' });
+  });
+
   it('is idempotent: a second call with the same idempotencyKey returns the same payment instead of duplicating', async () => {
     const created = (await create({ description: 'Idempotente', installments: [{ amount: 80, dueDate: '2026-12-01' }] })).json();
     const installmentId = (await getPayable(created.id)).json().installments[0].id;

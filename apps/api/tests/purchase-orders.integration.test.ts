@@ -139,4 +139,30 @@ describe('COM-02 purchase orders API', () => {
     const list = await app.inject({ method: 'GET', url: '/purchase-orders?pageSize=100', headers: { cookie } });
     expect((list.json().items as Array<{ id: string }>).some((o) => o.id === betaOrderId)).toBe(false);
   });
+
+  // COM-ADV-01, seção 18 (itens 14/15): `approve`/`cancel` não tinham nenhuma cobertura negativa
+  // de RBAC (`purchase_returns.integration.test.ts` já tinha; orders/receipts não). O gate em si
+  // já existia na rota (`allow(reply,s,'purchase_orders.approve'|'update')`) — faltava só o teste.
+  // Revoga/restaura a permission do papel `single` (mesmo padrão já usado em
+  // service-order-lifecycle.integration.test.ts para `service_orders.cancel`), em vez de fabricar
+  // uma identidade restrita nova só para isto.
+  it('RBAC negativo: nega approve e cancel sem as permissions purchase_orders.approve/.update, preservando o pedido', async () => {
+    const tenantAlpha = '01992ea1-1250-7000-8000-000000000010', role = '01992ea1-1250-7000-8000-000000000031';
+    const created = await create();
+    const orderId = created.json().id;
+    await admin.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+      await tx`delete from tenant_role_permissions where tenant_id=${tenantAlpha} and role_id=${role} and permission_id in (select id from permissions where code in ('purchase_orders.approve','purchase_orders.update'))`;
+    });
+    try {
+      expect((await app.inject({ method: 'POST', url: `/purchase-orders/${orderId}/approve`, headers: { cookie } })).statusCode).toBe(403);
+      expect((await app.inject({ method: 'POST', url: `/purchase-orders/${orderId}/cancel`, headers: { cookie } })).statusCode).toBe(403);
+      expect((await app.inject({ method: 'GET', url: `/purchase-orders/${orderId}`, headers: { cookie } })).json()).toMatchObject({ status: 'draft' });
+    } finally {
+      await admin.begin(async (tx) => {
+        await tx`select set_config('app.tenant_id', ${tenantAlpha}, true)`;
+        await tx`insert into tenant_role_permissions(tenant_id,role_id,permission_id) select ${tenantAlpha},${role},id from permissions where code in ('purchase_orders.approve','purchase_orders.update') on conflict do nothing`;
+      });
+    }
+  });
 });

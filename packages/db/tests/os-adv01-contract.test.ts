@@ -11,6 +11,7 @@ describe('OS-ADV-01 database contract', () => {
   });
 
   it('enforces same-tenant return references and deterministic indexes', () => {
+    expect(migration).toContain('foreign key (tenant_id,technician_user_profile_id) references tenant_user_profiles(tenant_id,id)');
     expect(migration).toContain('foreign key (tenant_id,original_service_order_id) references service_orders(tenant_id,id)');
     expect(migration).toContain('foreign key (tenant_id,previous_service_order_id) references service_orders(tenant_id,id)');
     expect(migration).toContain('service_orders_original_idx');
@@ -20,6 +21,8 @@ describe('OS-ADV-01 database contract', () => {
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('force row level security');
     expect(migration).toContain('grant select,insert on service_order_status_history to vetoros_runtime');
+    expect(migration).toContain('create trigger service_order_status_history_append_only');
+    expect(migration).toContain('reject_service_order_status_history_mutation');
     expect(migration).toContain('revoke update,delete on service_order_status_history from vetoros_runtime');
   });
 });

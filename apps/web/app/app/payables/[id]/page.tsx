@@ -1,6 +1,7 @@
 'use client';
 import { use, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { PageHeader } from '../../../../components/page-header';
 import { ErrorState, friendlyError } from '../../../../components/error-state';
@@ -136,6 +137,17 @@ export default function PayableDetailPage({ params }: { params: Promise<{ id: st
         </PageHeader>
 
         <FormSection title="Dados do título">
+          {/* FIN-ADV-01, seção 22: origem precisa navegar para a entidade de origem — antes era
+              só texto (mesma correção espelhada em receivables/[id]/page.tsx). */}
+          <FormField label="Origem" htmlFor="d-origin">
+            {payable.origin === 'purchase_order' && payable.purchase_order_id ? (
+              <Link id="d-origin" href={`/app/purchase-orders/${payable.purchase_order_id}`} className={`${formFieldClass} block text-blue-700 hover:underline`}>
+                Pedido #{payable.purchase_order_number}
+              </Link>
+            ) : (
+              <p id="d-origin" className={formFieldClass}>Manual</p>
+            )}
+          </FormField>
           <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(payable.original_amount)}</p></FormField>
           <FormField label="Pago" htmlFor="d-paid"><p id="d-paid" className={formFieldClass}>{formatCurrency(payable.paid_amount)}</p></FormField>
           <FormField label="Saldo" htmlFor="d-balance"><p id="d-balance" className={formFieldClass}>{formatCurrency(payable.balance)}</p></FormField>

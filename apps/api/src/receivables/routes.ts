@@ -30,7 +30,7 @@ const allocateSchema = z.object({ paymentId: id, amount: z.coerce.number().posit
 const cancelSchema = z.object({ reason: z.string().trim().max(1000).nullable().optional() }).strict();
 const listSchema = z.object({
   page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  customerId: id.optional(), origin: z.enum(['sale', 'service_order']).optional(),
+  customerId: id.optional(), saleId: id.optional(), origin: z.enum(['sale', 'service_order']).optional(),
   status: z.enum(['open', 'partial', 'paid', 'overdue', 'canceled']).optional(),
   from: z.string().trim().min(1).optional(), to: z.string().trim().min(1).optional(),
   q: z.string().trim().min(1).max(200).optional(),
@@ -87,6 +87,7 @@ export function registerReceivableRoutes(app: FastifyInstance, service: AuthServ
       left join service_orders so on so.id=r.service_order_id
       where r.branch_id=${s.activeBranchId!}
         and (${q.data.customerId ?? null}::uuid is null or r.customer_id=${q.data.customerId ?? null})
+        and (${q.data.saleId ?? null}::uuid is null or r.sale_id=${q.data.saleId ?? null})
         and (${q.data.origin ?? null}::text is null
           or (${q.data.origin ?? null}='sale' and r.sale_id is not null)
           or (${q.data.origin ?? null}='service_order' and r.service_order_id is not null))

@@ -331,11 +331,13 @@ describe('FIN-01 sale/service order cancellation guard', () => {
     expect(allowed.statusCode).toBe(200);
   });
 
+  // OS-ADV-02: cancelamento saiu do PATCH genérico e virou ação dedicada em `/cancel` (seção 14
+  // do correio.md) — o guarda-corpo de pagamento ativo (FIN-01) foi preservado, só mudou de rota.
   it('blocks canceling a service order that has an unrefunded receipt', async () => {
     const { sessionId } = await registerAndOpen(0);
     const orderId = await makeServiceOrder();
     await receive({ cashSessionId: sessionId, amount: 40, paymentMethodId: cashMethodId, serviceOrderId: orderId, idempotencyKey: `os-cancel-guard-${randomUUID()}` });
-    const blocked = await app.inject({ method: 'PATCH', url: `/service-orders/${orderId}`, headers: { cookie }, payload: { status: 'canceled' } });
+    const blocked = await app.inject({ method: 'POST', url: `/service-orders/${orderId}/cancel`, headers: { cookie } });
     expect(blocked.statusCode).toBe(409);
     expect(blocked.json().error).toBe('service_order_has_active_payments');
   });

@@ -20,8 +20,32 @@ import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
 type Item = { id: string; type: 'service' | 'part' | 'non_stock'; inventory_part_id: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
 type Order = {
-  order_number: number; title: string; status: string; customer_name: string; asset_identifier: string | null; reported_problem: string; initial_notes: string | null;
+  id: string; order_number: number; title: string; status: string; customer_name: string; asset_identifier: string | null; reported_problem: string; initial_notes: string | null;
   items: Item[]; subtotal: number; discounts: number; total: number;
+  // OS-ADV-01/OS-ADV-02: campos operacionais e de garantia sem UI até agora (seção 15 do correio.md).
+  priority: 'low' | 'normal' | 'high' | 'urgent'; technician_user_profile_id: string | null; diagnosis: string | null; executed_solution: string | null; technical_notes: string | null;
+  started_at: string | null; technically_completed_at: string | null; delivered_at: string | null; delivery_notes: string | null;
+  warranty_enabled: boolean; warranty_started_at: string | null; warranty_ends_at: string | null; warranty_notes: string | null;
+  service_order_kind: 'standard' | 'warranty_return'; original_service_order_id: string | null;
+};
+type Technician = { id: string; name: string };
+type HistoryEntry = { id: string; previous_status: string | null; new_status: string; reason: string | null; created_at: string };
+type ReturnRow = { id: string; order_number: number; status: string; created_at: string; warranty_analysis_result: string | null };
+
+const priorityLabel: Record<string, string> = { low: 'Baixa', normal: 'Normal', high: 'Alta', urgent: 'Urgente' };
+// Espelha a máquina de estados validada pelo banco (migration 0033) — só para oferecer os
+// próximos passos possíveis; a validação real continua sendo feita pelo trigger no Postgres.
+const nextStatuses: Record<string, string[]> = {
+  open: ['awaiting_diagnosis', 'in_progress'],
+  awaiting_diagnosis: ['awaiting_approval', 'in_progress'],
+  awaiting_approval: ['approved'],
+  approved: ['in_progress'],
+  in_progress: ['awaiting_parts', 'ready', 'completed'],
+  awaiting_parts: ['in_progress'],
+  ready: ['completed', 'delivered'],
+  completed: ['delivered'],
+  delivered: [],
+  canceled: [],
 };
 type Stock = { sku: string; description: string; physical_balance: number; total_reserved: number; item_reserved: number; consumed: number; returned: number; status: string; available: number };
 
@@ -139,17 +163,96 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
   const [itemError, setItemError] = useState('');
   const { hasFullContext } = useOperationalContext();
 
+  // OS-ADV-02, seção 15: campos operacionais, transição de status, cancelamento, garantia e
+  // histórico — nenhum tinha UI até este marco, embora a API já existisse desde OS-ADV-01.
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [opForm, setOpForm] = useState({ priority: 'normal', technicianUserProfileId: '', diagnosis: '', executedSolution: '', technicalNotes: '', deliveryNotes: '' });
+  const [opSaving, setOpSaving] = useState(false);
+  const [opError, setOpError] = useState('');
+  const [statusTarget, setStatusTarget] = useState<string | null>(null);
+  const [statusReason, setStatusReason] = useState('');
+  const [statusError, setStatusError] = useState('');
+  const [canceling, setCanceling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState('');
+  const [warrantyForm, setWarrantyForm] = useState({ enabled: false, startedAt: '', endsAt: '', notes: '' });
+  const [warrantySaving, setWarrantySaving] = useState(false);
+  const [warrantyError, setWarrantyError] = useState('');
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [returns, setReturns] = useState<ReturnRow[]>([]);
+
   const load = useCallback(async () => {
     const response = await api(`/service-orders/${id}`);
     if (!response.ok) return setState('error');
-    setOrder(await response.json());
+    const data: Order = await response.json();
+    setOrder(data);
+    setOpForm({ priority: data.priority, technicianUserProfileId: data.technician_user_profile_id ?? '', diagnosis: data.diagnosis ?? '', executedSolution: data.executed_solution ?? '', technicalNotes: data.technical_notes ?? '', deliveryNotes: data.delivery_notes ?? '' });
+    setWarrantyForm({ enabled: data.warranty_enabled, startedAt: data.warranty_started_at ?? '', endsAt: data.warranty_ends_at ?? '', notes: data.warranty_notes ?? '' });
+    const [historyResponse, returnsResponse] = await Promise.all([api(`/service-orders/${id}/history`), api(`/service-orders/${id}/returns`)]);
+    if (historyResponse.ok) setHistory(await historyResponse.json());
+    if (returnsResponse.ok) setReturns(await returnsResponse.json());
     setState('ready');
   }, [id]);
 
   useEffect(() => {
     if (!hasFullContext) return;
     void load();
+    void (async () => {
+      const response = await api('/service-orders/technicians');
+      if (response.ok) setTechnicians(await response.json());
+    })();
   }, [load, hasFullContext]);
+
+  async function saveOperational(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOpSaving(true);
+    setOpError('');
+    const response = await api(`/service-orders/${id}/operational`, {
+      method: 'PATCH',
+      body: JSON.stringify({ priority: opForm.priority, technicianUserProfileId: opForm.technicianUserProfileId || null, diagnosis: opForm.diagnosis || null, executedSolution: opForm.executedSolution || null, technicalNotes: opForm.technicalNotes || null, deliveryNotes: opForm.deliveryNotes || null }),
+    });
+    setOpSaving(false);
+    if (!response.ok) return setOpError(friendlyError((await response.json().catch(() => ({}))).error));
+    await load();
+  }
+
+  async function submitStatusChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!statusTarget) return;
+    setStatusError('');
+    const isDeliver = statusTarget === 'delivered';
+    const response = await api(`/service-orders/${id}/operational`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: statusTarget, reason: statusReason || null, ...(isDeliver ? { deliveredAt: new Date().toISOString() } : {}) }),
+    });
+    if (!response.ok) return setStatusError(friendlyError((await response.json().catch(() => ({}))).error));
+    setStatusTarget(null);
+    setStatusReason('');
+    await load();
+  }
+
+  async function submitCancel(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCancelError('');
+    const response = await api(`/service-orders/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason: cancelReason || null }) });
+    if (!response.ok) return setCancelError(friendlyError((await response.json().catch(() => ({}))).error));
+    setCanceling(false);
+    setCancelReason('');
+    await load();
+  }
+
+  async function saveWarranty(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setWarrantySaving(true);
+    setWarrantyError('');
+    const response = await api(`/service-orders/${id}/warranty`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled: warrantyForm.enabled, startedAt: warrantyForm.startedAt || null, endsAt: warrantyForm.endsAt || null, notes: warrantyForm.notes || null }),
+    });
+    setWarrantySaving(false);
+    if (!response.ok) return setWarrantyError(friendlyError((await response.json().catch(() => ({}))).error));
+    await load();
+  }
 
   useSetBreadcrumb(order ? `OS ${order.order_number}` : undefined);
 
@@ -196,6 +299,129 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
           </p>
         )}
       </FormSection>
+
+      <FormSection title="Situação" description="Avançar segue o fluxo operacional da OS; cancelamento é uma ação separada e exige motivo." columns={1}>
+        <div className="flex flex-wrap items-center gap-2">
+          {(nextStatuses[order.status] ?? []).map((next) => (
+            <button key={next} onClick={() => { setStatusTarget(next); setStatusReason(''); setStatusError(''); }} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100">
+              {commonStatus(next).label}
+            </button>
+          ))}
+          {order.status !== 'canceled' && (
+            <button onClick={() => { setCanceling(true); setCancelReason(''); setCancelError(''); }} className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100">
+              Cancelar OS
+            </button>
+          )}
+          {(nextStatuses[order.status] ?? []).length === 0 && order.status === 'canceled' && <span className="text-xs text-slate-500">OS cancelada — estado terminal.</span>}
+          {(nextStatuses[order.status] ?? []).length === 0 && order.status === 'delivered' && <span className="text-xs text-slate-500">OS entregue — estado terminal (só pode ser cancelada).</span>}
+        </div>
+        <FormDialog open={statusTarget !== null} title={statusTarget ? `Mover para "${commonStatus(statusTarget).label}"` : ''} submitLabel="Confirmar" error={statusError} onCancel={() => setStatusTarget(null)} onSubmit={submitStatusChange}>
+          <FormField label="Motivo (opcional)" htmlFor="status-reason" span="full">
+            <input id="status-reason" className={formFieldClass} value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
+          </FormField>
+        </FormDialog>
+        <FormDialog open={canceling} title="Cancelar ordem de serviço" description="Bloqueado se houver reserva de estoque ativa, pagamento sem estorno ou título a receber ativo." submitLabel="Cancelar OS" error={cancelError} onCancel={() => setCanceling(false)} onSubmit={submitCancel}>
+          <FormField label="Motivo do cancelamento" htmlFor="cancel-reason" span="full">
+            <input id="cancel-reason" className={formFieldClass} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
+          </FormField>
+        </FormDialog>
+      </FormSection>
+
+      <FormSection title="Técnico e diagnóstico">
+        <form onSubmit={saveOperational} className="contents">
+          <FormField label="Prioridade" htmlFor="op-priority">
+            <select id="op-priority" className={formFieldClass} value={opForm.priority} onChange={(e) => setOpForm({ ...opForm, priority: e.target.value })}>
+              {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Técnico responsável" htmlFor="op-technician">
+            <select id="op-technician" className={formFieldClass} value={opForm.technicianUserProfileId} onChange={(e) => setOpForm({ ...opForm, technicianUserProfileId: e.target.value })}>
+              <option value="">Não atribuído</option>
+              {technicians.map((tech) => <option key={tech.id} value={tech.id}>{tech.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Diagnóstico técnico" htmlFor="op-diagnosis" span="full">
+            <textarea id="op-diagnosis" rows={3} className={formFieldClass} value={opForm.diagnosis} onChange={(e) => setOpForm({ ...opForm, diagnosis: e.target.value })} />
+          </FormField>
+          <FormField label="Solução executada" htmlFor="op-solution" span="full">
+            <textarea id="op-solution" rows={3} className={formFieldClass} value={opForm.executedSolution} onChange={(e) => setOpForm({ ...opForm, executedSolution: e.target.value })} />
+          </FormField>
+          <FormField label="Notas técnicas" htmlFor="op-notes" span="full">
+            <textarea id="op-notes" rows={2} className={formFieldClass} value={opForm.technicalNotes} onChange={(e) => setOpForm({ ...opForm, technicalNotes: e.target.value })} />
+          </FormField>
+          <FormField label="Observações de entrega" htmlFor="op-delivery-notes" span="full">
+            <textarea id="op-delivery-notes" rows={2} className={formFieldClass} value={opForm.deliveryNotes} onChange={(e) => setOpForm({ ...opForm, deliveryNotes: e.target.value })} />
+          </FormField>
+          {opError && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{opError}</p>}
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={opSaving} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              {opSaving ? 'Salvando…' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </FormSection>
+
+      <FormSection title="Garantia">
+        <form onSubmit={saveWarranty} className="contents">
+          <FormField label="Garantia habilitada" htmlFor="warranty-enabled">
+            <label className="mt-1 flex items-center gap-2 text-sm text-slate-700">
+              <input id="warranty-enabled" type="checkbox" checked={warrantyForm.enabled} onChange={(e) => setWarrantyForm({ ...warrantyForm, enabled: e.target.checked })} />
+              Esta OS tem garantia
+            </label>
+          </FormField>
+          <div />
+          <FormField label="Início da garantia" htmlFor="warranty-started">
+            <input id="warranty-started" type="date" className={formFieldClass} value={warrantyForm.startedAt} onChange={(e) => setWarrantyForm({ ...warrantyForm, startedAt: e.target.value })} />
+          </FormField>
+          <FormField label="Fim da garantia" htmlFor="warranty-ends">
+            <input id="warranty-ends" type="date" className={formFieldClass} value={warrantyForm.endsAt} onChange={(e) => setWarrantyForm({ ...warrantyForm, endsAt: e.target.value })} />
+          </FormField>
+          <FormField label="Notas da garantia" htmlFor="warranty-notes" span="full">
+            <textarea id="warranty-notes" rows={2} className={formFieldClass} value={warrantyForm.notes} onChange={(e) => setWarrantyForm({ ...warrantyForm, notes: e.target.value })} />
+          </FormField>
+          {warrantyError && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{warrantyError}</p>}
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={warrantySaving} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              {warrantySaving ? 'Salvando…' : 'Salvar garantia'}
+            </button>
+          </div>
+        </form>
+        {returns.length > 0 && (
+          <div className="sm:col-span-2">
+            <h3 className="mb-2 text-xs font-semibold text-slate-500">Retornos em garantia desta OS</h3>
+            <ul className="flex flex-col gap-1">
+              {returns.map((r) => {
+                const returnStatus = commonStatus(r.status);
+                return (
+                  <li key={r.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                    <span>OS {r.order_number}</span>
+                    <StatusBadge tone={returnStatus.tone}>{returnStatus.label}</StatusBadge>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </FormSection>
+
+      {history.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">Histórico</h2>
+          <ul className="flex flex-col gap-1.5">
+            {history.map((entry) => {
+              const from = entry.previous_status ? commonStatus(entry.previous_status).label : null;
+              const to = commonStatus(entry.new_status).label;
+              return (
+                <li key={entry.id} className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
+                  <span className="font-medium text-slate-800">{from ? `${from} → ${to}` : to}</span>
+                  {entry.reason && <span> · {entry.reason}</span>}
+                  <span className="text-slate-400"> · {new Date(entry.created_at).toLocaleString('pt-BR')}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Itens da OS</h2>

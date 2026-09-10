@@ -145,6 +145,86 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
       throw e;
     }
   });
+  // PDV-ADV-01, seção 21: orquestrador transacional de finalização — não duplica NENHUMA regra
+  // de domínio (confirmação continua sendo exatamente a lógica de /confirm acima, pagamento
+  // continua sendo exatamente `receive_payment` de FIN-01), só coordena as duas dentro de UMA
+  // transação em vez do frontend precisar de N chamadas HTTP independentes com janela real de
+  // inconsistência (confirmar e a chamada de pagamento cair no meio). Troco nunca chega aqui:
+  // quem calcula "valor entregue - troco = valor da venda" é o cliente (seção 18/19) — o
+  // endpoint só aceita o valor que efetivamente quita a venda, nunca mais que o saldo restante,
+  // rejeitando com 409 antes de tocar em qualquer coisa (nenhum pagamento acima do total, seção
+  // 19, mesmo somando vários métodos). Reconfirmar uma venda já confirmada não repete a baixa de
+  // estoque (mesma idempotência de /confirm); cada pagamento tem sua própria idempotencyKey e
+  // reaproveita a idempotência já existente de `receive_payment` — duplo clique/retry no checkout
+  // inteiro nunca duplica nem a baixa de estoque nem nenhum pagamento.
+  const checkoutBody = z.object({
+    cashSessionId: id,
+    payments: z.array(z.object({ paymentMethodId: id, amount: z.coerce.number().positive(), idempotencyKey: z.string().trim().min(8).max(120) })).max(10).default([]),
+  }).strict();
+  app.post('/sales/:id/checkout', async (req, reply) => {
+    const p = params.safeParse(req.params), b = checkoutBody.safeParse(req.body);
+    if (!p.success || !b.success) return reply.code(400).send({ error: 'invalid_request' });
+    const s = await auth(req, reply);
+    if (!s || !await allow(reply, s, 'sales.confirm') || !await allow(reply, s, 'payments.create')) return;
+    const seenMethods = new Set<string>();
+    for (const payment of b.data.payments) { if (seenMethods.has(payment.idempotencyKey)) return reply.code(400).send({ error: 'invalid_request' }); seenMethods.add(payment.idempotencyKey); }
+    try {
+      const result = await service.withAuthenticatedTenant(s, async (tx) => {
+        const [old] = await tx.execute(sql`select * from sales where id=${p.data.id} for update`);
+        if (!old) return 'missing';
+        if (!['draft', 'confirmed'].includes(old.status)) return 'transition';
+        // Mesma checagem já feita em POST /payments (cash/routes.ts) — `receive_payment` em si
+        // não valida branch da sessão, só tenant, então a rota é quem precisa impedir usar uma
+        // sessão de caixa de outra filial (seção 40).
+        if (b.data.payments.length && !(await tx.execute(sql`select 1 from cash_sessions where id=${b.data.cashSessionId} and branch_id=${s.activeBranchId!}`)).length) return 'session_not_found';
+        // Validar o teto ANTES de confirmar (seção 21/22): se validássemos depois, um retry cujo
+        // pagamento já foi registrado na primeira chamada pareceria "exceder o saldo" contra o
+        // próprio pagamento que ele está tentando repetir — por isso `existingByKey` exclui do
+        // cálculo qualquer idempotencyKey que já tenha um pagamento real (o valor final ainda é
+        // conferido por `receive_payment`, que rejeita com 23505 se o retry vier com valor
+        // diferente do gravado). E se essa validação rodasse DEPOIS da confirmação, uma rejeição
+        // por saldo excedido deixaria a venda presa em `confirmed` sem nenhum pagamento — a
+        // própria inconsistência que a seção 21 pede para nunca existir.
+        const existing = b.data.payments.length ? await tx.execute(sql`select idempotency_key,amount from payments where sale_id=${p.data.id} and not exists (select 1 from cash_movements m where m.payment_id=payments.id and m.type='refund')`) : [];
+        const existingByKey = new Map(existing.map((r) => [r.idempotency_key as string, Number(r.amount)]));
+        const alreadyReceived = existing.reduce((n, r) => n + Number(r.amount), 0);
+        const newRequested = b.data.payments.filter((payment) => !existingByKey.has(payment.idempotencyKey)).reduce((n, payment) => n + payment.amount, 0);
+        const remaining = Math.round((Number(old.total) - alreadyReceived) * 100) / 100;
+        const requested = Math.round(newRequested * 100) / 100;
+        if (requested > remaining + 0.001) return 'payment_exceeds_total';
+        let sale = old; const confirmIdempotent = old.status === 'confirmed';
+        if (old.status === 'draft') {
+          if (!(await tx.execute(sql`select 1 from sale_items where sale_id=${p.data.id} limit 1`)).length) return 'empty';
+          const stockItems = await tx.execute(sql`select id,inventory_part_id,quantity from sale_items where sale_id=${p.data.id} and type='part' and inventory_part_id is not null order by inventory_part_id`);
+          const reason = `Venda #${old.sale_number}`;
+          for (const item of stockItems) await tx.execute(sql`select * from record_stock_movement(${old.company_id},${old.branch_id},${item.inventory_part_id},'exit',${item.quantity},${reason},null,null,null,null,${p.data.id},${item.id})`);
+          [sale] = await tx.execute(sql`update sales set status='confirmed',confirmed_at=now(),updated_by_identity_id=${s.identityId},updated_at=now() where id=${p.data.id} returning *`);
+        }
+        const payments = [];
+        for (const payment of b.data.payments) {
+          const [pr] = await tx.execute(sql`select * from receive_payment(${b.data.cashSessionId},${payment.amount},${payment.paymentMethodId},${p.data.id},null,null,${payment.idempotencyKey})`);
+          payments.push(pr);
+        }
+        return { sale: { ...sale, idempotent: confirmIdempotent }, payments };
+      });
+      if (result === 'missing') return reply.code(404).send({ error: 'not_found' });
+      if (result === 'transition') return reply.code(409).send({ error: 'invalid_status_transition' });
+      if (result === 'empty') return reply.code(400).send({ error: 'sale_has_no_items' });
+      if (result === 'session_not_found') return reply.code(404).send({ error: 'cash_session_not_found' });
+      if (result === 'payment_exceeds_total') return reply.code(409).send({ error: 'payment_exceeds_total' });
+      if (!result.sale.idempotent) await service.auditResource(s, 'sale.confirmed', 'sale', p.data.id, { idempotent: false });
+      for (const payment of result.payments) await service.auditResource(s, 'payment.created', 'payment', payment.payment_id, { saleId: p.data.id, idempotent: payment.idempotent });
+      return reply.code(201).send(result);
+    } catch (e) {
+      const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
+      if (code === '23514') return reply.code(409).send({ error: 'insufficient_stock' });
+      if (code === '23503') return reply.code(404).send({ error: 'invalid_origin_or_payment_method' });
+      if (code === '22023') return reply.code(400).send({ error: 'invalid_movement' });
+      if (code === '55000') return reply.code(409).send({ error: 'session_not_open' });
+      if (code === '23505') return reply.code(409).send({ error: 'idempotency_conflict' });
+      throw e;
+    }
+  });
   // VEN-03: cancelar uma venda `draft` continua sendo só mudança de status (nunca produziu
   // saída, nada a estornar). Cancelar uma venda `confirmed` localiza as saídas originais de
   // VEN-02 pelo próprio ledger (`stock_movements` com `sale_id`/`type='exit'`) — nunca confia

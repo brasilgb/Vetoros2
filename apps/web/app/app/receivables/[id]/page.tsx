@@ -1,6 +1,7 @@
 'use client';
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { PageHeader } from '../../../../components/page-header';
 import { ErrorState, friendlyError } from '../../../../components/error-state';
@@ -120,7 +121,17 @@ export default function ReceivableDetailPage({ params }: { params: Promise<{ id:
 
         <FormSection title="Detalhes">
           <FormField label="Cliente" htmlFor="d-customer"><p id="d-customer" className={formFieldClass}>{receivable.customer_name}</p></FormField>
-          <FormField label="Origem" htmlFor="d-origin"><p id="d-origin" className={formFieldClass}>{receivable.origin === 'sale' ? `Venda #${receivable.sale_number}` : `OS #${receivable.service_order_number}`}</p></FormField>
+          {/* FIN-ADV-01, seção 22: origem precisa navegar para a entidade de origem — antes era
+              só texto (mesma correção espelhada em payables/[id]/page.tsx). */}
+          <FormField label="Origem" htmlFor="d-origin">
+            <Link
+              id="d-origin"
+              href={receivable.origin === 'sale' ? `/app/sales/${receivable.sale_id}` : `/app/service-orders/${receivable.service_order_id}`}
+              className={`${formFieldClass} block text-blue-700 hover:underline`}
+            >
+              {receivable.origin === 'sale' ? `Venda #${receivable.sale_number}` : `OS #${receivable.service_order_number}`}
+            </Link>
+          </FormField>
           <FormField label="Valor original" htmlFor="d-amount"><p id="d-amount" className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(receivable.original_amount)}</p></FormField>
           <FormField label="Recebido" htmlFor="d-paid"><p id="d-paid" className={formFieldClass}>{formatCurrency(receivable.paid_amount)}</p></FormField>
           <FormField label="Saldo" htmlFor="d-balance"><p id="d-balance" className={formFieldClass}>{formatCurrency(receivable.balance)}</p></FormField>

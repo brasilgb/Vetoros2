@@ -34,6 +34,12 @@ const commonStatusMap: Record<string, { label: string; tone: StatusTone }> = {
   rejected: { label: 'Rejeitado', tone: 'danger' },
   expired: { label: 'Expirado', tone: 'neutral' },
   partially_received: { label: 'Parcialmente recebido', tone: 'warning' },
+  // OS-ADV-02: estados operacionais da OS que ainda não tinham rótulo no mapa comum.
+  awaiting_diagnosis: { label: 'Aguardando diagnóstico', tone: 'warning' },
+  awaiting_approval: { label: 'Aguardando aprovação', tone: 'warning' },
+  awaiting_parts: { label: 'Aguardando peças', tone: 'warning' },
+  ready: { label: 'Pronta para entrega', tone: 'info' },
+  delivered: { label: 'Entregue', tone: 'success' },
 };
 
 /** Mapa central para significados comuns de status entre módulos. Um módulo com vocabulário próprio deve declarar seu próprio mapa e usar <StatusBadge tone> diretamente, mas reaproveitar este mapa sempre que o significado coincidir. */

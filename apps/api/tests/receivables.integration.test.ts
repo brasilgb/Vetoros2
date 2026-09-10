@@ -331,6 +331,19 @@ describe('FIN-02 listing, overdue, RBAC and tenant isolation', () => {
     expect(list.json().items.map((i: { id: string }) => i.id)).toContain(receivable.id);
   });
 
+  // VEN-ADV-01, seção 24: a tela da venda precisa listar os recebíveis gerados a partir dela —
+  // o endpoint não tinha filtro por `saleId` (só `customerId`/`origin`/`status`/período/busca).
+  it('filters receivables by saleId (seção 24 do correio.md — navegação de origem)', async () => {
+    const { saleId } = await makeSale(70);
+    const other = await makeSale(30);
+    const mine = (await generate({ saleId, installments: [{ amount: 70, dueDate: '2089-01-10' }] })).json().items[0];
+    await generate({ saleId: other.saleId, installments: [{ amount: 30, dueDate: '2089-01-10' }] });
+    const list = await listReceivables(`saleId=${saleId}&pageSize=100`);
+    expect(list.statusCode).toBe(200);
+    const ids = list.json().items.map((i: { id: string }) => i.id);
+    expect(ids).toEqual([mine.id]);
+  });
+
   it('derives overdue when due_date is in the past and the balance is still open', async () => {
     const { saleId } = await makeSale(65);
     const receivable = (await generate({ saleId, installments: [{ amount: 65, dueDate: '2020-01-01' }] })).json().items[0];

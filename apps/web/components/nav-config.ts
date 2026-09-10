@@ -16,6 +16,7 @@ import {
   Receipt,
   ShieldCheck,
   ShoppingCart,
+  Store,
   Truck,
   Undo2,
   UserCog,
@@ -73,7 +74,12 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: 'Vendas',
-    items: [{ label: 'Vendas', href: '/app/sales', icon: ShoppingCart, requiresOperationalContext: true }],
+    // PDV-ADV-01, seção 3: rota dedicada de operação de balcão, separada do CRUD administrativo
+    // de Vendas — mesmo domínio (`sales`), UI especializada para uso contínuo no caixa.
+    items: [
+      { label: 'PDV', href: '/app/pos', icon: Store, requiresOperationalContext: true },
+      { label: 'Vendas', href: '/app/sales', icon: ShoppingCart, requiresOperationalContext: true },
+    ],
   },
   { label: 'Relatórios', items: [{ label: 'Visão operacional', href: '/app/reports', icon: BarChart3 }] },
   {

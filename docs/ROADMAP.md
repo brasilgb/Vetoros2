@@ -41,7 +41,12 @@ Este documento define a sequência canônica dos marcos. `DONE` identifica escop
 | DONE | QA-01 | Isolamento e paralelismo determinístico das suítes de integração |
 | DONE | PRD-01 | Production Readiness & Operational Hardening |
 | DONE | CAD-01 | Cadastros Fundamentais |
-| TODO | OS-ADV-01 | Ordem de Serviço Operacional Completa e Retorno em Garantia |
+| DONE | OS-ADV-01 | Ordem de Serviço Operacional Completa e Retorno em Garantia |
+| DONE | OS-ADV-02 | Ordem de Serviço Operacional Completa (máquina de estados, cancelamento dedicado e UI) |
+| DONE | COM-ADV-01 | Compras Operacionais Completas (auditoria confirmou COM-01/04 já maduros; RBAC negativa e UI de recebimentos fechadas) |
+| DONE | FIN-ADV-01 | Financeiro Operacional Completo (auditoria confirmou FIN/CAI/VEN já maduros; concorrência em payables e navegação de origem fechadas) |
+| DONE | VEN-ADV-01 | Vendas Operacionais Completas (auditoria confirmou VEN-01/03.1 já maduros; navegação de origem venda→financeiro fechada) |
+| DONE | PDV-ADV-01 | Frente de Caixa Operacional Completa (`/app/pos` sobre o domínio de `sales` existente; `POST /sales/:id/checkout` orquestra confirmação+pagamento atomicamente) |
 
 PRD-01 foi concluído. Não há próximo marco autorizado neste documento.
 

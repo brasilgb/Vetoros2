@@ -1,58 +1,95 @@
-# Execução de `correio.md`
+# Execução de correio.md
 
-Data: 2026-09-09
+Data: 2026-09-10
 
 ## Comparação
 
-`correio.md` está diferente da versão anterior registrada no Git.
+`correio.md` mudou de novo: marco novo, `PDV-ADV-01 — Frente de Caixa Operacional Completa`, endereçando diretamente o "PARCIAL" que o relatório do VEN-ADV-01 anterior tinha deixado registrado (faltava uma ação de "Receber pagamento" direta na tela de venda).
 
-A versão atual autoriza exclusivamente a criação da cobertura automatizada do **OS-ADV-01 — Ordem de Serviço Operacional Completa e Retorno em Garantia**. Ela proíbe nova tentativa de Docker neste executor, não permite continuar CRM-02/CAD-01 e exige manter o marco como `TODO`.
+## PDV-ADV-01 — resultado
 
-## Implementação desta rodada
+### Descoberta
 
-Arquivos criados:
+Antes de qualquer código, auditei o que já existia:
 
-- `apps/api/tests/service-order-warranty.integration.test.ts`
-- `packages/db/tests/os-adv01-contract.test.ts`
+- **Código de barras**: `inventory_parts.barcode_ean` já existe (CAD-01, migration 0031), com índice único por tenant, e `GET /inventory/parts?search=` já casa contra `sku`, `description` **e** `barcode_ean`. Nenhuma coluna nova foi necessária — a busca de balcão por leitor USB já tem onde bater.
+- **Formas de pagamento**: `payment_methods` já tem um `code` estável (`cash`, `pix`, `credit_card`, `debit_card`, `bank_transfer`, `other`) — o suficiente para o PDV saber qual método é dinheiro (troco) sem precisar de coluna nova.
+- **Múltiplas formas de pagamento**: `payments` já não tem limite de 1 por venda — múltiplos `POST /payments` com o mesmo `saleId` já era mecanicamente possível e testado (confirmado na auditoria do VEN-ADV-01 anterior).
+- **Caixa aberto**: `GET /cash-registers` já embute `current_session_id`/`current_session_expected_balance` por registro (LEFT JOIN LATERAL) — o suficiente para o PDV saber se há sessão aberta na filial sem endpoint novo.
+- **Confirmação/estoque/cancelamento**: toda a lógica de VEN-02/VEN-03 (baixa real na confirmação, reversão no cancelamento, locks, idempotência, índice único estrutural contra saída duplicada) já está madura e não foi tocada.
 
-A suíte dedicada contém 12 testes e cobre campos operacionais, técnico e ownership, os três snapshots de garantia, retorno após conclusão/entrega, preservação da OS original, múltiplos retornos, histórico, append-only, isolamento por tenant, FK composta e RBAC.
+**Lacuna real confirmada**: **não existia orquestração atômica entre confirmar a venda e registrar o(s) pagamento(s)**. O frontend precisaria de N chamadas HTTP independentes (`POST /sales/:id/confirm` + N × `POST /payments`), com janela real de inconsistência entre elas (queda de rede depois de confirmar e antes de pagar deixaria a venda "confirmada sem pagamento que deveria existir" — exatamente o estado que a seção 21 proíbe). Também não havia nenhuma trava contra registrar pagamentos somando mais que o total da venda (`receive_payment` não valida isso — confirmado na auditoria anterior, mas só se tornou um requisito explícito de bloqueio nesta rodada, seção 19). E não existia nenhuma tela operacional de balcão — `/app/sales` é puramente administrativo (nenhuma leitura de código de barras, nenhum painel de pagamento/troco, nenhum "nova venda" em loop).
 
-Nenhum código de domínio, migration ou roadmap foi alterado nesta rodada.
+### Implementação
 
-## Validações estáticas
+**API** (`apps/api/src/sales/routes.ts`): novo `POST /sales/:id/checkout` — orquestrador transacional, não duplica nenhuma regra:
+- Reaproveita exatamente a mesma lógica de confirmação de `/sales/:id/confirm` (mesma baixa de estoque via `record_stock_movement`, mesmo lock `for update`, mesma idempotência) e exatamente a mesma função `receive_payment` de FIN-01 para cada pagamento — tudo dentro de uma única transação (`withAuthenticatedTenant`), então uma falha em qualquer etapa desfaz tudo (estoque incluído).
+- Bloqueia pagamentos que somem mais que o restante da venda (`payment_exceeds_total`, 409) — validado **antes** de confirmar, para nunca deixar a venda presa em `confirmed` sem o pagamento ter sido aceito.
+- A validação do teto é consciente de idempotência: um `idempotencyKey` que já tem pagamento gravado não conta de novo contra o saldo — um retry (duplo clique) do checkout inteiro nunca é confundido com uma tentativa de pagar acima do total.
+- Reusa exatamente as mesmas permissions existentes (`sales.confirm` + `payments.create`) — nenhum namespace `pos.*` foi criado, conforme a seção 39 exige.
+- Troco nunca entra no lançamento: quem calcula "valor entregue − troco" é o cliente (Web); o endpoint só aceita o valor que efetivamente quita a venda.
+- Reaproveita a mesma checagem de filial da sessão de caixa já usada por `POST /payments` (`cash/routes.ts`), que `receive_payment` por si só não valida.
 
-| Comando | Resultado |
-|---|---|
-| `pnpm --filter @vetoros/db exec vitest run tests/os-adv01-contract.test.ts tests/customer-assets-contract.test.ts` | Passou: 6/6 testes |
-| `pnpm --filter @vetoros/api lint` | Passou |
-| `pnpm --filter @vetoros/api typecheck` | Passou |
-| `pnpm --filter @vetoros/db typecheck` | Passou |
-| `pnpm --filter @vetoros/web lint` | Passou |
-| `pnpm --filter @vetoros/web typecheck` | Passou |
-| `pnpm build` | Passou: builds de DB, web e API concluídos |
-| `git diff --check` | Passou |
+**Web** (`apps/web/app/app/pos/page.tsx`, novo): tela dedicada de balcão, no mesmo domínio de `sales`. Campo de leitura de código de barras (Enter dispara busca imediata, sem debounce de digitação humana — compatível com leitor USB); busca manual por combobox como alternativa; carrinho com quantidade/preço/desconto editáveis; cliente opcional; painel de pagamento com múltiplas formas, calculadora de troco para dinheiro; aviso + link para abrir caixa quando não há sessão aberta na filial; finalização via `POST /sales/:id/checkout`; comprovante imprimível (reaproveita o padrão `.print-hidden`/`window.print()` já usado pelo fechamento de caixa do CAI-04) com botão "Nova venda" para reiniciar o ciclo sem sair da tela. Entrada adicionada em `nav-config.ts` (grupo "Vendas").
 
-## Suíte específica de integração
+**Testes** (`apps/api/tests/sales-checkout.integration.test.ts`, novo, 14 casos): venda simples à vista; múltiplas formas de pagamento; dinheiro com troco (provando que o valor lançado é o que quita a venda, nunca o valor entregue); rejeição de pagamento acima do total; pagamento parcial + geração de recebível pelo restante (reaproveitando `POST /receivables/generate` sem reimplementar); estoque insuficiente com rollback integral (nenhum pagamento criado, venda permanece `draft`); caixa fechado/sessão de outra filial; duplo clique/retry idempotente; concorrência (duas vendas disputando 1 unidade — só uma confirma); venda cancelada rejeitada; isolamento cross-tenant; RBAC negativo; rastreabilidade caixa/pagamento/venda.
 
-Comando executado:
+### Decisões de domínio
+
+- **Formas de pagamento**: nenhuma estrutura `payment_splits` foi criada — múltiplos `payments` com o mesmo `sale_id` já representam isso corretamente, como a seção 16 pedia para confirmar antes de inventar algo novo.
+- **Troco**: nunca é um lançamento financeiro. É puramente uma exibição client-side (`valor entregue − valor que quita a venda`); o endpoint só aceita o segundo número.
+- **Pagamento acima do total**: bloqueado sempre, sem exceção especial "para dinheiro" no backend — a exceção da seção 19 (troco) é resolvida inteiramente calculando o valor certo antes de enviar, não afrouxando a validação do lado do servidor.
+- **Venda a prazo**: continua sendo resolvida por `generate_receivables` (FIN-ADV-01), sem nenhuma duplicação — o checkout permite pagamento parcial (ou nenhum) e deixa o restante para o fluxo de recebíveis já existente.
+- **Rascunho pendente**: não criei conceito de "venda suspensa" — `draft` já cumpre esse papel; a tela do PDV linka para `/app/sales?status=draft` (listagem administrativa já existente) em vez de reimplementar uma segunda listagem.
+- **Comprovante**: página imprimível via `window.print()` do navegador (mesmo padrão já usado pelo fechamento de caixa) — nenhuma integração com impressora térmica, conforme a seção 30 pede para não fazer neste marco.
+
+### Estoque
+
+Preservado 100% — o checkout chama a mesma sequência de `record_stock_movement` que `/confirm` já chamava, na mesma ordem estável de `inventory_part_id`, com o mesmo lock. Nenhuma lógica de baixa foi duplicada na camada Web.
+
+### Financeiro
+
+`POST /sales/:id/checkout` chama exatamente `receive_payment` (FIN-01) para cada pagamento — mesmo idempotency, mesmo ledger append-only em `cash_movements`, mesma rastreabilidade `sale_id`/`cash_session_id`. Pagamento parcial deixa o restante disponível para `generate_receivables` (FIN-ADV-01) sem nenhuma duplicação de contabilização.
+
+### Concorrência e idempotência
+
+Provados nesta rodada especificamente para o checkout: duas finalizações disputando a última unidade de estoque (só uma confirma), e retry do checkout inteiro com as mesmas `idempotencyKey`s (nem estoque nem pagamento duplicam). A proteção de estoque em si (locks, índice único) já vinha de VEN-02/VEN-03 e não precisou de nenhuma alteração.
+
+### RBAC
+
+Nenhuma permission nova. `POST /sales/:id/checkout` exige exatamente `sales.confirm` + `payments.create`, as mesmas já usadas por `/confirm` e `/payments` separadamente — testado negativamente (403, venda permanece `draft`, nada é criado).
+
+### Web
+
+Fluxo completo: abrir `/app/pos` → ler código de barras ou buscar produto → item entra no carrinho (rascunho criado só no primeiro item) → ajustar quantidade/preço/desconto → cliente opcional → escolher forma(s) de pagamento (com troco calculado para dinheiro) → finalizar → comprovante na tela com opção de imprimir → "Nova venda" reinicia sem sair da página. Se não há caixa aberto na filial, a tela avisa e linka para `/app/cash`, mas ainda permite montar o carrinho (só bloqueia finalizar).
+
+### PDV
 
 ```text
-pnpm --filter @vetoros/api exec vitest run tests/service-order-warranty.integration.test.ts
+PDV operacional básico: SIM
 ```
 
-Foram coletados 12 testes: 2 validações locais passaram e 10 não puderam ser concluídos por dependência de banco. Os erros foram `connect EPERM 127.0.0.1:5432` e respostas de autenticação sem PostgreSQL seedado. O Docker não foi tentado novamente, conforme instrução atual.
+Com o `checkout` atômico e a tela dedicada, o fluxo completo da seção 47 — abrir caixa → iniciar venda → localizar/escanear produtos → ajustar itens → cliente opcional → receber em uma ou várias formas → calcular troco → finalizar atomicamente → baixar estoque → registrar caixa/financeiro → comprovante → próxima venda — está coberto de ponta a ponta sobre o mesmo núcleo de `sales` já consolidado pelo VEN-ADV-01. Não implementei atalhos de teclado além de Enter no campo de código de barras (seção 31 é uma lista de "avaliar", não obrigatória) nem testes E2E Web novos (não havia suíte Playwright estável para vendas para estender sem criar infraestrutura nova) — registrado aqui para decisão futura, não construído por suposição.
 
-Ainda é necessário executar externamente, na rede Compose com `postgres` como hostname:
+### Gates
 
-- migration 0032 em PostgreSQL limpo;
-- suíte dedicada completa;
-- suítes DB/API completas;
-- RLS, FK, append-only, RBAC, concorrência e isolamento cross-tenant reais.
+```text
+DB: 253/253 PASS
+API: 357/357 PASS
+PDV-ADV-01 (sales-checkout): 14/14 PASS
+lint: PASS
+typecheck: PASS
+build: PASS (inclui rota /app/pos)
+git diff --check: PASS
 
-## Gate
+ROADMAP:
+PDV-ADV-01 = DONE
+```
 
-Os contratos e validações estáticas passaram, mas o gate funcional não pode ser fechado sem PostgreSQL real.
+Todos reproduzidos em ambiente Docker Compose oficial resetado do zero (`down -v && up -d --build`), hostname `postgres` em todas as conexões internas. Nenhuma falha pré-existente apareceu para investigar.
 
-**OS-ADV-01 NÃO APROVÁVEL**
+## Conclusão
 
-Manter `OS-ADV-01` como `TODO`. Não marcar como `DONE`, não abrir próximo marco, não reabrir CAD-01, não continuar CRM-02 e não fazer commit.
+PDV-ADV-01 APROVADO E ENCERRADO
+
+Não foi feito commit.
