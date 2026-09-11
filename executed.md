@@ -4,92 +4,120 @@ Data: 2026-09-10
 
 ## Comparação
 
-`correio.md` mudou de novo: marco novo, `PDV-ADV-01 — Frente de Caixa Operacional Completa`, endereçando diretamente o "PARCIAL" que o relatório do VEN-ADV-01 anterior tinha deixado registrado (faltava uma ação de "Receber pagamento" direta na tela de venda).
+`correio.md` mudou de novo: marco novo, `FIS-ADV-01 — Fiscal Operacional Completo`, uma área genuinamente nova (nenhum marco anterior tinha tocado em nada fiscal/tributário) — diferente das últimas rodadas, que eram auditorias sobre domínio já maduro.
 
-## PDV-ADV-01 — resultado
+## FIS-ADV-01 — Fiscal Operacional Completo
 
 ### Descoberta
 
-Antes de qualquer código, auditei o que já existia:
+Busca completa por todos os termos da seção 3 (fiscal, NF-e/NFC-e/NFS-e, Focus NFe, SEFAZ, CFOP/CST/CSOSN/ICMS/IPI/PIS/COFINS/ISS, inscrição estadual/municipal, regime tributário etc.) em migrations, API, Web e docs. **Não havia nenhuma estrutura fiscal persistida** — só um `role template` `fiscal` reservado desde o seed inicial (migration 0001), nunca populado com nenhuma permission.
 
-- **Código de barras**: `inventory_parts.barcode_ean` já existe (CAD-01, migration 0031), com índice único por tenant, e `GET /inventory/parts?search=` já casa contra `sku`, `description` **e** `barcode_ean`. Nenhuma coluna nova foi necessária — a busca de balcão por leitor USB já tem onde bater.
-- **Formas de pagamento**: `payment_methods` já tem um `code` estável (`cash`, `pix`, `credit_card`, `debit_card`, `bank_transfer`, `other`) — o suficiente para o PDV saber qual método é dinheiro (troco) sem precisar de coluna nova.
-- **Múltiplas formas de pagamento**: `payments` já não tem limite de 1 por venda — múltiplos `POST /payments` com o mesmo `saleId` já era mecanicamente possível e testado (confirmado na auditoria do VEN-ADV-01 anterior).
-- **Caixa aberto**: `GET /cash-registers` já embute `current_session_id`/`current_session_expected_balance` por registro (LEFT JOIN LATERAL) — o suficiente para o PDV saber se há sessão aberta na filial sem endpoint novo.
-- **Confirmação/estoque/cancelamento**: toda a lógica de VEN-02/VEN-03 (baixa real na confirmação, reversão no cancelamento, locks, idempotência, índice único estrutural contra saída duplicada) já está madura e não foi tocada.
+O que já existia e era diretamente reutilizável (nada foi duplicado):
 
-**Lacuna real confirmada**: **não existia orquestração atômica entre confirmar a venda e registrar o(s) pagamento(s)**. O frontend precisaria de N chamadas HTTP independentes (`POST /sales/:id/confirm` + N × `POST /payments`), com janela real de inconsistência entre elas (queda de rede depois de confirmar e antes de pagar deixaria a venda "confirmada sem pagamento que deveria existir" — exatamente o estado que a seção 21 proíbe). Também não havia nenhuma trava contra registrar pagamentos somando mais que o total da venda (`receive_payment` não valida isso — confirmado na auditoria anterior, mas só se tornou um requisito explícito de bloqueio nesta rodada, seção 19). E não existia nenhuma tela operacional de balcão — `/app/sales` é puramente administrativo (nenhuma leitura de código de barras, nenhum painel de pagamento/troco, nenhum "nova venda" em loop).
+- **Emitente**: `companies` já tinha `tax_id_type`/`tax_id_normalized` (CNPJ), `state_registration`, `municipal_registration`, `tax_regime` (coluna já existente, sem validação) e endereço completo. `branches` já tinha endereço completo próprio.
+- **Destinatário**: `customers` já representa PF/PJ (`person_type`, `document_type`/`document_normalized`, `rg_state_registration`, `municipal_registration`) com `customer_addresses` completo (CEP/rua/número/complemento/bairro/cidade/UF/país) — cobre a seção 5 inteira sem alterar nada.
+- **Produto**: `inventory_parts` já tinha `ncm` (de CAD-01) e `barcode_ean` (que já serve como GTIN).
+- **Origem/rastreabilidade**: o padrão de FK composta same-tenant + `check` de origem exatamente-uma (já usado por `receivables`) era diretamente aplicável a documento fiscal → venda/OS.
 
-### Implementação
+### Lacunas reais
 
-**API** (`apps/api/src/sales/routes.ts`): novo `POST /sales/:id/checkout` — orquestrador transacional, não duplica nenhuma regra:
-- Reaproveita exatamente a mesma lógica de confirmação de `/sales/:id/confirm` (mesma baixa de estoque via `record_stock_movement`, mesmo lock `for update`, mesma idempotência) e exatamente a mesma função `receive_payment` de FIN-01 para cada pagamento — tudo dentro de uma única transação (`withAuthenticatedTenant`), então uma falha em qualquer etapa desfaz tudo (estoque incluído).
-- Bloqueia pagamentos que somem mais que o restante da venda (`payment_exceeds_total`, 409) — validado **antes** de confirmar, para nunca deixar a venda presa em `confirmed` sem o pagamento ter sido aceito.
-- A validação do teto é consciente de idempotência: um `idempotencyKey` que já tem pagamento gravado não conta de novo contra o saldo — um retry (duplo clique) do checkout inteiro nunca é confundido com uma tentativa de pagar acima do total.
-- Reusa exatamente as mesmas permissions existentes (`sales.confirm` + `payments.create`) — nenhum namespace `pos.*` foi criado, conforme a seção 39 exige.
-- Troco nunca entra no lançamento: quem calcula "valor entregue − troco" é o cliente (Web); o endpoint só aceita o valor que efetivamente quita a venda.
-- Reaproveita a mesma checagem de filial da sessão de caixa já usada por `POST /payments` (`cash/routes.ts`), que `receive_payment` por si só não valida.
+1. Nenhuma tabela para representar um documento fiscal em si (número, série, status, chave, protocolo, snapshot).
+2. `companies` sem CNAE nem ambiente fiscal (homologação/produção); `branches` sem código IBGE do município.
+3. `inventory_parts` sem CEST, origem da mercadoria, CFOP padrão.
+4. Nenhuma máquina de estados fiscal, nenhuma imutabilidade pós-autorização.
+5. Nenhuma abstração de provedor fiscal — logo nenhuma integração (nem estrutural) com a Focus NFe.
+6. Nenhuma permission fiscal populada, nenhuma tela.
 
-**Web** (`apps/web/app/app/pos/page.tsx`, novo): tela dedicada de balcão, no mesmo domínio de `sales`. Campo de leitura de código de barras (Enter dispara busca imediata, sem debounce de digitação humana — compatível com leitor USB); busca manual por combobox como alternativa; carrinho com quantidade/preço/desconto editáveis; cliente opcional; painel de pagamento com múltiplas formas, calculadora de troco para dinheiro; aviso + link para abrir caixa quando não há sessão aberta na filial; finalização via `POST /sales/:id/checkout`; comprovante imprimível (reaproveita o padrão `.print-hidden`/`window.print()` já usado pelo fechamento de caixa do CAI-04) com botão "Nova venda" para reiniciar o ciclo sem sair da tela. Entrada adicionada em `nav-config.ts` (grupo "Vendas").
+### Implementado
 
-**Testes** (`apps/api/tests/sales-checkout.integration.test.ts`, novo, 14 casos): venda simples à vista; múltiplas formas de pagamento; dinheiro com troco (provando que o valor lançado é o que quita a venda, nunca o valor entregue); rejeição de pagamento acima do total; pagamento parcial + geração de recebível pelo restante (reaproveitando `POST /receivables/generate` sem reimplementar); estoque insuficiente com rollback integral (nenhum pagamento criado, venda permanece `draft`); caixa fechado/sessão de outra filial; duplo clique/retry idempotente; concorrência (duas vendas disputando 1 unidade — só uma confirma); venda cancelada rejeitada; isolamento cross-tenant; RBAC negativo; rastreabilidade caixa/pagamento/venda.
+**Banco** (`packages/db/migrations/0034_fis_adv01_fiscal.sql`):
+- `companies`: +`cnae`, +`fiscal_environment` (`homologacao`/`producao`, default homologação — nunca emite em produção "por acidente"), `check` novo em `tax_regime` (simples/simples com excesso/presumido/real/MEI — coluna já existia, sem validação até agora).
+- `branches`: +`ibge_city_code`. **Decisão de domínio (seção 4)**: identidade fiscal (CNPJ/IE/IM/regime/CNAE/ambiente) pertence à **empresa**; o **endereço/município usado no documento é o da filial emissora** — toda venda/OS já carrega `company_id` **e** `branch_id`, é a filial que fisicamente realiza a operação. Não criei tabela de "emitente" separada.
+- `inventory_parts`: +`cest`, +`origin` (0–8, código de origem da mercadoria), +`default_cfop` (só um valor de partida para a emissão preencher sozinha — nunca a fonte de verdade da operação real, que é decidida no documento).
+- `fiscal_documents`/`fiscal_document_items`: origem exatamente-uma (venda XOR OS), **numeração nunca local** (`document_number`/`series` nascem `null`, só o provedor os atribui na autorização — nenhum contador foi criado), snapshot completo do destinatário e dos itens no momento da criação, totais congelados.
+- Máquina de estados por trigger único (mesmo padrão de OS-ADV-02/migration 0033): `draft→pending→authorized|rejected`, `rejected→pending` (nova tentativa), `authorized→cancellation_pending→authorized|cancelled`. `cancelled` é terminal de verdade.
+- Imutabilidade física: depois que a emissão é solicitada (`status` fora de `draft`/`rejected`), nenhuma alteração de conteúdo (totais, destinatário, itens) é aceita pelo banco — testado com `UPDATE`/`DELETE` diretos via SQL.
+- RLS forçado + `revoke delete` em `fiscal_documents` (nunca `DELETE`, só `cancelled`).
+- Permissions `fiscal.read`/`fiscal.create`/`fiscal.issue`/`fiscal.cancel` adicionadas ao role template `fiscal` já existente — nenhum namespace novo.
 
-### Decisões de domínio
+**API**:
+- `apps/api/src/fiscal/provider.ts`: interface `FiscalProvider` (`issue`/`consult`/`cancel`) + `FocusNfeProvider` — autenticação HTTP Basic com o token como usuário (contrato público estável da Focus NFe), `ref` como referência idempotente. Sem `FOCUS_NFE_API_KEY` configurada, responde `fiscal_provider_not_configured` de forma recuperável — nunca finge uma emissão.
+- `apps/api/src/fiscal/fake-provider.ts`: usado exclusivamente pelos testes (seção 28) — fila explícita (`enqueueIssueResult`/`enqueueCancelResult`) para o teste decidir autorizar/rejeitar/errar sem nenhuma chamada de rede.
+- `apps/api/src/fiscal/routes.ts`: `GET /fiscal-documents`, `GET /fiscal-documents/:id`, `POST /fiscal-documents` (cria em `draft`, só a partir de venda **confirmada** ou OS **concluída/entregue** — nunca de aprovação de orçamento), `POST /fiscal-documents/:id/issue`, `POST /fiscal-documents/:id/consult`, `POST /fiscal-documents/:id/cancel`.
+- **Emissão em duas fases** (seção 21/22): fase 1 reivindica atomicamente (`draft/rejected→pending`, lock rápido, sem rede) — uma segunda tentativa concorrente já encontra `pending` e nunca chama o provedor; fase 2 chama o provedor **fora** da transação (não segura lock de linha durante I/O de rede) e aplica o resultado com guard `where status='pending'` (protege contra dupla aplicação).
+- **Cancelamento nunca é `status='cancelled'` local puro** (seção 19): passa por `cancellation_pending`, só vira `cancelled` quando o provedor confirma; se o provedor rejeitar, volta para `authorized`.
 
-- **Formas de pagamento**: nenhuma estrutura `payment_splits` foi criada — múltiplos `payments` com o mesmo `sale_id` já representam isso corretamente, como a seção 16 pedia para confirmar antes de inventar algo novo.
-- **Troco**: nunca é um lançamento financeiro. É puramente uma exibição client-side (`valor entregue − valor que quita a venda`); o endpoint só aceita o segundo número.
-- **Pagamento acima do total**: bloqueado sempre, sem exceção especial "para dinheiro" no backend — a exceção da seção 19 (troco) é resolvida inteiramente calculando o valor certo antes de enviar, não afrouxando a validação do lado do servidor.
-- **Venda a prazo**: continua sendo resolvida por `generate_receivables` (FIN-ADV-01), sem nenhuma duplicação — o checkout permite pagamento parcial (ou nenhum) e deixa o restante para o fluxo de recebíveis já existente.
-- **Rascunho pendente**: não criei conceito de "venda suspensa" — `draft` já cumpre esse papel; a tela do PDV linka para `/app/sales?status=draft` (listagem administrativa já existente) em vez de reimplementar uma segunda listagem.
-- **Comprovante**: página imprimível via `window.print()` do navegador (mesmo padrão já usado pelo fechamento de caixa) — nenhuma integração com impressora térmica, conforme a seção 30 pede para não fazer neste marco.
+**Web**: `/app/fiscal` (lista com filtros de status/tipo/origem/busca, diálogo de emissão escolhendo venda confirmada ou OS concluída via busca) e `/app/fiscal/[id]` (situação, origem com link para a venda/OS, destinatário, itens, totais, chave/protocolo, motivo de rejeição, linha do tempo de eventos, ações Emitir/Consultar/Cancelar conforme o status). Item novo no menu lateral.
 
-### Estoque
+**Testes**: `packages/db/tests/fis-adv01-contract.test.ts` (7) + `apps/api/tests/fiscal-documents.integration.test.ts` (16) — criação com cliente PF/PJ, criação de NFS-e só a partir de OS entregue (nunca aberta), autorização, rejeição com nova tentativa, recuperação via consulta depois de erro do provedor (nunca assume "não emitido"), concorrência (duplo clique só aciona o provedor uma vez), cancelamento e cancelamento rejeitado pelo provedor, imutabilidade física pós-autorização, venda/estoque nunca corrompidos por falha fiscal, isolamento cross-tenant, RBAC negativo.
 
-Preservado 100% — o checkout chama a mesma sequência de `record_stock_movement` que `/confirm` já chamava, na mesma ordem estável de `inventory_part_id`, com o mesmo lock. Nenhuma lógica de baixa foi duplicada na camada Web.
+### Reutilizado (nada foi duplicado)
 
-### Financeiro
+`companies`/`branches`/`customers`/`customer_addresses`/`inventory_parts` para toda a identidade fiscal; `sales`/`service_orders` como única origem possível; o padrão de trigger de máquina de estados e de imutabilidade já usado em OS-ADV-02; o padrão de permission dedicada por ação (`.issue`/`.cancel`, mesmo estilo de `.confirm`/`.approve`); o mecanismo de auditoria já existente (`service.auditResource`) para os eventos fiscais — nenhuma tabela de auditoria paralela.
 
-`POST /sales/:id/checkout` chama exatamente `receive_payment` (FIN-01) para cada pagamento — mesmo idempotency, mesmo ledger append-only em `cash_movements`, mesma rastreabilidade `sale_id`/`cash_session_id`. Pagamento parcial deixa o restante disponível para `generate_receivables` (FIN-ADV-01) sem nenhuma duplicação de contabilização.
+## Resultado
 
-### Concorrência e idempotência
+```text
+NF-e: PARCIAL
+NFC-e: PARCIAL
+NFS-e: PARCIAL
+```
+O modelo de domínio, a máquina de estados, a imutabilidade, a numeração-pelo-provedor e a API/Web estão completos e idênticos para os três tipos (`document_type` é o único diferencial). O que falta para "SIM" pleno é o mesmo em todos: validação do payload exato contra a Focus NFe real (abaixo).
 
-Provados nesta rodada especificamente para o checkout: duas finalizações disputando a última unidade de estoque (só uma confirma), e retry do checkout inteiro com as mesmas `idempotencyKey`s (nem estoque nem pagamento duplicam). A proteção de estoque em si (locks, índice único) já vinha de VEN-02/VEN-03 e não precisou de nenhuma alteração.
+```text
+Integração Focus NFe: PARCIAL
+```
+`FiscalProvider`/`FocusNfeProvider` existem, com autenticação/idempotência corretas (contrato público estável da Focus NFe), mas **não há credencial de homologação disponível neste ambiente** para validar o mapeamento exato de payload/resposta contra a API real (seção 28 antecipa exatamente esse cenário — testes usam `FakeFiscalProvider`, nunca rede real). Está isolado atrás da interface `FiscalProvider`, então validar/ajustar o adapter não toca em nenhuma rota, trigger ou tela.
+
+```text
+PDV → Fiscal: PARCIAL
+```
+O domínio e a API suportam perfeitamente o fluxo (criar documento a partir da venda que o PDV acabou de confirmar, emitir). Não adicionei um botão "Emitir NFC-e" na tela de comprovante do PDV nesta rodada — o checkout atômico de venda/estoque/pagamento (seção 17) permanece deliberadamente independente da disponibilidade fiscal; a ação de emitir já existe em `/app/fiscal`, faltando só o atalho de UX a partir do comprovante do PDV.
+
+```text
+OS → Fiscal: SIM
+```
+NFS-e só pode nascer de OS `completed`/`delivered` — nunca de aprovação de orçamento — já testado.
+
+### Idempotência
+
+`idempotency_key` nasce no servidor na criação do documento (nunca do cliente) e é a mesma referência (`externalRef`) enviada ao provedor em toda tentativa de emissão — retry depois de erro/timeout nunca duplica, porque é sempre a mesma referência do lado de fora. Testado: erro do provedor → documento fica `pending` → `/consult` reconcilia sem nunca assumir "não emitido".
+
+### Concorrência
+
+Duas requisições de emissão simultâneas sobre o mesmo rascunho: só uma reivindica a transição `draft→pending` (lock rápido) e chama o provedor; a outra recebe 409 antes de qualquer chamada de rede. Testado e confirmado (`fiscalProvider.issueCalls` == 1).
 
 ### RBAC
 
-Nenhuma permission nova. `POST /sales/:id/checkout` exige exatamente `sales.confirm` + `payments.create`, as mesmas já usadas por `/confirm` e `/payments` separadamente — testado negativamente (403, venda permanece `draft`, nada é criado).
+`fiscal.read`/`fiscal.create`/`fiscal.issue`/`fiscal.cancel`, mapeadas ao role template `fiscal` já reservado. Testado negativamente: sem `fiscal.create` → 403 na criação; sem `fiscal.issue` → 403 na emissão, documento permanece `draft`.
 
-### Web
+### RLS
 
-Fluxo completo: abrir `/app/pos` → ler código de barras ou buscar produto → item entra no carrinho (rascunho criado só no primeiro item) → ajustar quantidade/preço/desconto → cliente opcional → escolher forma(s) de pagamento (com troco calculado para dinheiro) → finalizar → comprovante na tela com opção de imprimir → "Nova venda" reinicia sem sair da página. Se não há caixa aberto na filial, a tela avisa e linka para `/app/cash`, mas ainda permite montar o carrinho (só bloqueia finalizar).
+Forçado em `fiscal_documents`/`fiscal_document_items`, mesmo padrão de toda a base. Testado: documento de outro tenant é invisível (`GET`/`issue` → 404) e não aparece na listagem, mesmo com o UUID real conhecido.
 
-### PDV
-
-```text
-PDV operacional básico: SIM
-```
-
-Com o `checkout` atômico e a tela dedicada, o fluxo completo da seção 47 — abrir caixa → iniciar venda → localizar/escanear produtos → ajustar itens → cliente opcional → receber em uma ou várias formas → calcular troco → finalizar atomicamente → baixar estoque → registrar caixa/financeiro → comprovante → próxima venda — está coberto de ponta a ponta sobre o mesmo núcleo de `sales` já consolidado pelo VEN-ADV-01. Não implementei atalhos de teclado além de Enter no campo de código de barras (seção 31 é uma lista de "avaliar", não obrigatória) nem testes E2E Web novos (não havia suíte Playwright estável para vendas para estender sem criar infraestrutura nova) — registrado aqui para decisão futura, não construído por suposição.
-
-### Gates
+### Testes
 
 ```text
-DB: 253/253 PASS
-API: 357/357 PASS
-PDV-ADV-01 (sales-checkout): 14/14 PASS
+DB: 260/260 PASS (7 novos — fis-adv01-contract.test.ts)
+API: 373/373 PASS (16 novos — fiscal-documents.integration.test.ts)
 lint: PASS
 typecheck: PASS
-build: PASS (inclui rota /app/pos)
+build: PASS (inclui /app/fiscal e /app/fiscal/[id])
 git diff --check: PASS
-
-ROADMAP:
-PDV-ADV-01 = DONE
 ```
 
 Todos reproduzidos em ambiente Docker Compose oficial resetado do zero (`down -v && up -d --build`), hostname `postgres` em todas as conexões internas. Nenhuma falha pré-existente apareceu para investigar.
 
+### Limitações reais restantes
+
+1. **Payload exato da Focus NFe não validado contra sandbox real** — é o único item que impede "SIM" pleno em NF-e/NFC-e/NFS-e/Integração. Precisa de uma credencial de homologação real para ajustar/confirmar o mapeamento de campos de `FocusNfeProvider` antes do primeiro uso em produção.
+2. **Sem atalho "Emitir NFC-e" no comprovante do PDV** — a ação já existe em `/app/fiscal`, só falta o link direto a partir da tela de finalização do PDV-ADV-01 (deliberadamente não acoplado ao checkout atômico).
+3. **NFS-e**: código de serviço/item da LC 116/alíquota ISS ficam em branco por padrão (`fiscal_document_items.service_code`/`iss_rate`), preenchidos manualmente se necessário — não construí nenhum motor de tributação municipal automático (proibido pela seção 32).
+
+Nada disso bloqueia o marco: são exatamente os pontos que a seção 46 antecipa como aceitáveis para `DONE` (infraestrutura correta e operacional, com o provedor real como próxima validação externa).
+
 ## Conclusão
 
-PDV-ADV-01 APROVADO E ENCERRADO
+FIS-ADV-01 APROVADO E ENCERRADO
 
-Não foi feito commit.
+Não foi feito commit por mim. Durante a execução, um commit externo ("Push", fora desta conversa) arquivou o trabalho já concluído no repositório — não foi uma ação minha; o conteúdo do `correio.md` usado corresponde exatamente ao commitado.

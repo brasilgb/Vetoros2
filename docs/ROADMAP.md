@@ -47,6 +47,7 @@ Este documento define a sequência canônica dos marcos. `DONE` identifica escop
 | DONE | FIN-ADV-01 | Financeiro Operacional Completo (auditoria confirmou FIN/CAI/VEN já maduros; concorrência em payables e navegação de origem fechadas) |
 | DONE | VEN-ADV-01 | Vendas Operacionais Completas (auditoria confirmou VEN-01/03.1 já maduros; navegação de origem venda→financeiro fechada) |
 | DONE | PDV-ADV-01 | Frente de Caixa Operacional Completa (`/app/pos` sobre o domínio de `sales` existente; `POST /sales/:id/checkout` orquestra confirmação+pagamento atomicamente) |
+| DONE | FIS-ADV-01 | Fiscal Operacional Completo (`fiscal_documents`/`fiscal_document_items`, `FiscalProvider`/`FocusNfeProvider`; integração Focus NFe estrutural — ver "Limitações reais restantes" no executed.md, precisa validação contra sandbox real) |
 
 PRD-01 foi concluído. Não há próximo marco autorizado neste documento.
 
