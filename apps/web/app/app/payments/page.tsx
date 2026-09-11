@@ -103,21 +103,29 @@ function PaymentsPageContent() {
   useEffect(() => { if (hasFullContext) void load(1); }, [load, hasFullContext]);
   useEffect(() => { void api('/payment-methods').then((r) => r.ok && r.json()).then((items) => items && setMethods(items)); }, []);
 
-  const openDialog = useCallback(async (preselectSessionId?: string) => {
+  const openDialog = useCallback(async (preselectSessionId?: string, preselectServiceOrderId?: string) => {
     setDialogError(''); setAmount(''); setPaymentMethodId2(''); setOriginType('none'); setSale(null); setServiceOrder(null); setNotes('');
     setIdempotencyKey(crypto.randomUUID());
-    const response = await api('/cash-registers');
-    const items: Register[] = response.ok ? await response.json() : [];
+    const [registersResponse, serviceOrderResponse] = await Promise.all([
+      api('/cash-registers'),
+      preselectServiceOrderId ? api(`/service-orders/${preselectServiceOrderId}`) : Promise.resolve(null),
+    ]);
+    const items: Register[] = registersResponse.ok ? await registersResponse.json() : [];
     setRegisters(items);
     const open = items.filter((r) => r.current_session_id);
     setCashSessionId(preselectSessionId ?? open[0]?.current_session_id ?? '');
+    if (preselectServiceOrderId && serviceOrderResponse?.ok) {
+      const order = await serviceOrderResponse.json();
+      setOriginType('service_order');
+      setServiceOrder({ id: order.id, order_number: order.order_number, customer_id: order.customer_id, asset_id: order.asset_id ?? null, customer_name: order.customer_name ?? null, status: order.status });
+    }
     setDialogOpen(true);
   }, []);
 
   // Dispara só na montagem (deep-link vindo da tela de Caixa, "Registrar recebimento") — não deve
   // reabrir o diálogo a cada mudança de referência de `openDialog`/`searchParams`.
   useEffect(() => {
-    if (searchParams.get('new') === '1') void openDialog(searchParams.get('cashSessionId') ?? undefined);
+    if (searchParams.get('new') === '1') void openDialog(searchParams.get('cashSessionId') ?? undefined, searchParams.get('serviceOrderId') ?? undefined);
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

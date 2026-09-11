@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronsLeft, ChevronsRight, X } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { isNavItemActive, navGroups } from './nav-config';
 import { useOperationalContext } from './operational-context';
 
@@ -24,6 +25,14 @@ export function AppSidebar({
   const pathname = usePathname();
   const { session, selectContext, sidebarCompanySelectRef, sidebarBranchSelectRef } = useOperationalContext();
   const branchOptions = session?.profile.branches.filter((branch) => branch.company_id === session.activeCompanyId) ?? [];
+  const capabilities = session?.profile.capabilities ?? [];
+  const visibleGroups = navGroups.map((group) => ({ ...group, items: group.items.filter((item) => !item.permission || capabilities.includes(item.permission)) })).filter((group) => group.items.length > 0);
+  const activeGroup = visibleGroups.find((group) => group.items.some((item) => isNavItemActive(pathname, item.href)))?.label ?? visibleGroups[0]?.label;
+  const [expandedGroup, setExpandedGroup] = useState(activeGroup);
+
+  useEffect(() => {
+    if (activeGroup) setExpandedGroup(activeGroup);
+  }, [activeGroup]);
 
   return (
     <>
@@ -79,12 +88,18 @@ export function AppSidebar({
         )}
 
         <nav aria-label="Navegação principal" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label}>
-              <p className={`px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ${collapsed ? 'md:hidden' : ''}`}>
+              <button
+                type="button"
+                aria-expanded={expandedGroup === group.label}
+                onClick={() => setExpandedGroup((current) => current === group.label ? '' : group.label)}
+                className={`flex w-full items-center justify-between px-2.5 pb-1.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-300 ${collapsed ? 'md:hidden' : ''}`}
+              >
                 {group.label}
-              </p>
-              <ul className="space-y-0.5">
+                <ChevronDown className={`h-4 w-4 transition-transform ${expandedGroup === group.label ? '' : '-rotate-90'}`} aria-hidden />
+              </button>
+              <ul className={`space-y-0.5 ${expandedGroup === group.label ? '' : collapsed ? 'md:block' : 'hidden'}`}>
                 {group.items.map((item) => {
                   const active = isNavItemActive(pathname, item.href);
                   const Icon = item.icon;

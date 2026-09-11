@@ -9,7 +9,7 @@ import { Menu, MenuItem } from './menu';
 export function RowActionsMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div onClick={(event) => event.stopPropagation()}>
-      <Menu trigger={<MoreVertical className="h-4 w-4" />} triggerLabel={label} triggerClassName="h-8 w-8 hover:bg-slate-100">
+      <Menu trigger={<MoreVertical className="h-4 w-4" />} triggerLabel={label} triggerClassName="h-9 w-9 hover:bg-slate-100">
         {children}
       </Menu>
     </div>

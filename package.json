@@ -13,6 +13,7 @@
     "test": "pnpm -r test",
     "db:generate": "pnpm --filter @vetoros/db db:generate",
     "db:migrate": "pnpm --filter @vetoros/db db:migrate",
-    "db:seed": "pnpm --filter @vetoros/db db:seed"
+    "db:seed": "pnpm --filter @vetoros/db db:seed",
+    "db:bootstrap": "pnpm --filter @vetoros/db db:bootstrap"
   }
 }

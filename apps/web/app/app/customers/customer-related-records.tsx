@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
@@ -15,11 +16,12 @@ const emptyAddress={addressType:'main',postalCode:'',street:'',number:'',complem
 
 export function CustomerRelatedRecords({customerId}:{customerId:string}){
  const[contacts,setContacts]=useState<Contact[]>([]),[addresses,setAddresses]=useState<Address[]>([]);
+ const[history,setHistory]=useState<{service_orders:Array<{id:string;order_number:number;title:string;status:string;opened_at:string;asset_identifier:string|null;reported_problem:string;diagnosis:string|null;executed_solution:string|null}>;quotes:Array<{id:string;quote_number:number;title:string;status:string}>}>({service_orders:[],quotes:[]});
  const[contact,setContact]=useState({...emptyContact}),[address,setAddress]=useState({...emptyAddress});
  const[contactId,setContactId]=useState<string>(),[addressId,setAddressId]=useState<string>(),[deleteTarget,setDeleteTarget]=useState<{kind:'contacts'|'addresses';id:string}>();
  const[contactOpen,setContactOpen]=useState(false),[addressOpen,setAddressOpen]=useState(false);
  const[busy,setBusy]=useState(false),[error,setError]=useState('');
- const load=useCallback(async()=>{const[c,a]=await Promise.all([api(`/customers/${customerId}/contacts`),api(`/customers/${customerId}/addresses`)]);if(c.ok)setContacts(await c.json());if(a.ok)setAddresses(await a.json());},[customerId]);
+ const load=useCallback(async()=>{const[c,a,h]=await Promise.all([api(`/customers/${customerId}/contacts`),api(`/customers/${customerId}/addresses`),api(`/customers/${customerId}/history`)]);if(c.ok)setContacts(await c.json());if(a.ok)setAddresses(await a.json());if(h.ok)setHistory(await h.json());},[customerId]);
  useEffect(()=>{void load();},[load]);
  function editContact(row?:Contact){setError('');setContactId(row?.id);setContact(row?{contactType:row.contact_type,label:row.label??'',value:row.value,isPrimary:row.is_primary}:{...emptyContact});setContactOpen(true);}
  function editAddress(row?:Address){setError('');setAddressId(row?.id);setAddress(row?{addressType:row.address_type,postalCode:row.postal_code??'',street:row.street,number:row.number??'',complement:row.complement??'',district:row.district??'',city:row.city,state:row.state??'',country:row.country,isPrimary:row.is_primary}:{...emptyAddress});setAddressOpen(true);}
@@ -27,6 +29,10 @@ export function CustomerRelatedRecords({customerId}:{customerId:string}){
  async function saveAddress(e:FormEvent){e.preventDefault();setBusy(true);setError('');const payload=Object.fromEntries(Object.entries(address).map(([k,v])=>[k,v===''?null:v]));const response=await api(`/customers/${customerId}/addresses${addressId?`/${addressId}`:''}`,{method:addressId?'PATCH':'POST',body:JSON.stringify(payload)});setBusy(false);if(!response.ok)return setError(friendlyError((await response.json().catch(()=>({}))).error));setAddressOpen(false);setAddressId(undefined);setAddress({...emptyAddress});await load();}
  async function remove(){if(!deleteTarget)return;setBusy(true);const response=await api(`/customers/${customerId}/${deleteTarget.kind}/${deleteTarget.id}`,{method:'DELETE'});setBusy(false);if(!response.ok)return setError(friendlyError((await response.json().catch(()=>({}))).error));setDeleteTarget(undefined);await load();}
  return <>
+  <FormSection title="Histórico operacional" description="Ordens de serviço e orçamentos deste cliente, derivados das entidades originais." columns={1}>
+   <div className="divide-y rounded-xl border border-slate-200">{history.service_orders.map(row=><div key={row.id} className="p-3 text-sm"><Link className="font-medium text-blue-700 hover:underline" href={`/app/service-orders/${row.id}`}>OS {row.order_number} — {row.title}</Link><span className="text-slate-500"> · {row.status}{row.asset_identifier?` · ${row.asset_identifier}`:''}</span><p className="mt-1 text-slate-600">{row.executed_solution||row.diagnosis||row.reported_problem}</p></div>)}{!history.service_orders.length&&<p className="p-3 text-sm text-slate-500">Nenhuma OS vinculada.</p>}</div>
+   <div className="divide-y rounded-xl border border-slate-200">{history.quotes.map(row=><div key={row.id} className="p-3 text-sm"><Link className="text-blue-700 hover:underline" href={`/app/quotes/${row.id}`}>Orçamento {row.quote_number} — {row.title}</Link><span className="text-slate-500"> · {row.status}</span></div>)}{!history.quotes.length&&<p className="p-3 text-sm text-slate-500">Nenhum orçamento vinculado.</p>}</div>
+  </FormSection>
   <FormSection title="Contatos adicionais" description="Mantenha telefone, celular, WhatsApp e e-mail, com um principal por tipo." columns={1}>
    <button type="button" onClick={()=>editContact()} className="flex w-fit items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm"><PlusCircle className="h-4 w-4"/>Adicionar contato</button>
    <div className="divide-y rounded-xl border border-slate-200">{contacts.map(row=><div key={row.id} className="flex items-center justify-between gap-3 p-3 text-sm"><span><strong>{row.label||row.contact_type}</strong> · {row.value}{row.is_primary?' · Principal':''}</span><span className="flex gap-1"><button aria-label="Editar contato" onClick={()=>editContact(row)} className="p-2"><Pencil className="h-4 w-4"/></button><button aria-label="Remover contato" onClick={()=>setDeleteTarget({kind:'contacts',id:row.id})} className="p-2 text-red-700"><Trash2 className="h-4 w-4"/></button></span></div>)}{!contacts.length&&<p className="p-3 text-sm text-slate-500">Nenhum contato adicional.</p>}</div>

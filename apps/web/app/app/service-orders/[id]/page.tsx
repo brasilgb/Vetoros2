@@ -1,10 +1,12 @@
 'use client';
 import { use, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { PlusCircle, Wrench } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { PageHeader } from '../../../../components/page-header';
+import { Tab, Tabs } from '../../../../components/tabs';
 import { DataTable, type DataTableColumn } from '../../../../components/data-table';
 import { EmptyState } from '../../../../components/empty-state';
 import { ErrorState, friendlyError } from '../../../../components/error-state';
@@ -33,6 +35,8 @@ type Order = {
 type Technician = { id: string; name: string };
 type HistoryEntry = { id: string; previous_status: string | null; new_status: string; reason: string | null; created_at: string };
 type ReturnRow = { id: string; order_number: number; status: string; created_at: string; warranty_analysis_result: string | null };
+type Payment = { id: string; amount: string; payment_method_name: string; created_at: string; refunded: boolean };
+type Receivable = { id: string; installment_number: number; installment_count: number; original_amount: string; paid_amount: string; balance: string; due_date: string; derived_status: string };
 
 const priorityLabel: Record<string, string> = { low: 'Baixa', normal: 'Normal', high: 'Alta', urgent: 'Urgente' };
 // Espelha a máquina de estados validada pelo banco (migration 0033) — só para oferecer os
@@ -157,6 +161,8 @@ function ItemStockCell({ orderId, item, onChanged }: { orderId: string; item: It
 
 export default function ServiceOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') ?? 'general');
   const [order, setOrder] = useState<Order>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [itemForm, setItemForm] = useState({ type: 'service', description: '', quantity: '1', unitPrice: '0', discountAmount: '0' });
@@ -182,6 +188,8 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
   const [warrantyError, setWarrantyError] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [returns, setReturns] = useState<ReturnRow[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [receivables, setReceivables] = useState<Receivable[]>([]);
 
   const load = useCallback(async () => {
     const response = await api(`/service-orders/${id}`);
@@ -190,9 +198,11 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
     setOrder(data);
     setOpForm({ priority: data.priority, technicianUserProfileId: data.technician_user_profile_id ?? '', diagnosis: data.diagnosis ?? '', executedSolution: data.executed_solution ?? '', technicalNotes: data.technical_notes ?? '', deliveryNotes: data.delivery_notes ?? '' });
     setWarrantyForm({ enabled: data.warranty_enabled, startedAt: data.warranty_started_at ?? '', endsAt: data.warranty_ends_at ?? '', notes: data.warranty_notes ?? '' });
-    const [historyResponse, returnsResponse] = await Promise.all([api(`/service-orders/${id}/history`), api(`/service-orders/${id}/returns`)]);
+    const [historyResponse, returnsResponse, paymentsResponse, receivablesResponse] = await Promise.all([api(`/service-orders/${id}/history`), api(`/service-orders/${id}/returns`), api(`/payments?serviceOrderId=${id}&pageSize=100`), api(`/receivables?serviceOrderId=${id}&pageSize=100`)]);
     if (historyResponse.ok) setHistory(await historyResponse.json());
     if (returnsResponse.ok) setReturns(await returnsResponse.json());
+    if (paymentsResponse.ok) setPayments((await paymentsResponse.json()).items);
+    if (receivablesResponse.ok) setReceivables((await receivablesResponse.json()).items);
     setState('ready');
   }, [id]);
 
@@ -258,6 +268,13 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
 
   useSetBreadcrumb(order ? `OS ${order.order_number}` : undefined);
 
+  function selectTab(tab: string) {
+    setActiveTab(tab);
+    const query = new URLSearchParams(window.location.search);
+    if (tab === 'general') query.delete('tab'); else query.set('tab', tab);
+    window.history.replaceState({}, '', `${window.location.pathname}${query.toString() ? `?${query}` : ''}`);
+  }
+
   async function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAddingItem(true);
@@ -289,7 +306,11 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
     <RequireOperationalContext>
     <div className="flex flex-col gap-6">
       <PageHeader title={`OS ${order.order_number} — ${order.title}`} description={`Cliente: ${order.customer_name}${order.asset_identifier ? ` · Equipamento: ${order.asset_identifier}` : ''}`} action={<StatusBadge tone={tone}>{label}</StatusBadge>} />
+      <Tabs label="Seções da ordem de serviço">
+        {([['general', 'Geral'], ['attendance', 'Atendimento'], ['items', 'Itens'], ['financial', 'Financeiro'], ['history', 'Histórico']] as const).map(([value, label]) => <Tab key={value} value={value} active={activeTab === value} onSelect={selectTab}>{label}</Tab>)}
+      </Tabs>
 
+      <div hidden={activeTab !== 'general'}>
       <FormSection title="Descrição" columns={1}>
         <p className="text-sm text-slate-700">
           <span className="text-slate-500">Problema relatado: </span>
@@ -329,9 +350,30 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
           </FormField>
         </FormDialog>
       </FormSection>
-      {(['completed', 'delivered'].includes(order.status)) && <div><Link href={fiscalDocument ? `/app/fiscal/${fiscalDocument.id}` : `/app/fiscal?origin=service_order&serviceOrderId=${id}`} className="inline-flex rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">{fiscalDocument ? 'Ver documento fiscal' : 'Emitir documento fiscal'}</Link></div>}
+      <div className="flex flex-wrap gap-2"><Link href={`/app/service-orders/${id}/print`} className="inline-flex rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Imprimir comprovante não fiscal</Link>{(['completed', 'delivered'].includes(order.status)) && <Link href={fiscalDocument ? `/app/fiscal/${fiscalDocument.id}` : `/app/fiscal?origin=service_order&serviceOrderId=${id}`} className="inline-flex rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">{fiscalDocument ? 'Ver documento fiscal' : 'Emitir documento fiscal'}</Link>}</div>
+      </div>
 
-      <FormSection title="Técnico e diagnóstico">
+      {(() => {
+        const received = payments.filter((payment) => !payment.refunded).reduce((sum, payment) => sum + Number(payment.amount), 0);
+        const pending = receivables.reduce((sum, receivable) => sum + Number(receivable.balance), 0);
+        const financialStatus = receivables.length === 0 ? 'Sem parcelamento' : pending <= 0.005 ? 'Quitado' : received > 0 ? 'Parcial' : 'Em aberto';
+        return <div hidden={activeTab !== 'financial'}><FormSection title="Financeiro" description="Recebimentos e parcelas desta OS, sem alterar o fluxo operacional ou o estoque.">
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <Link href={`/app/payments?new=1&serviceOrderId=${id}`} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Registrar recebimento</Link>
+          <Link href={`/app/receivables?new=1&serviceOrderId=${id}`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">Gerar parcelamento</Link>
+        </div>
+        <div className="grid gap-2 text-sm text-slate-600 sm:col-span-2 sm:grid-cols-4">
+          <p>Total da OS: <strong className="text-slate-900">{formatCurrency(order.total)}</strong></p>
+          <p>Recebido: <strong className="text-slate-900">{formatCurrency(received)}</strong></p>
+          <p>Pendente: <strong className="text-slate-900">{formatCurrency(pending || Math.max(order.total - received, 0))}</strong></p>
+          <p>Situação: <strong className="text-slate-900">{financialStatus}</strong></p>
+        </div>
+        {payments.length > 0 && <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Recebimentos</h3><ul className="flex flex-col gap-1">{payments.map((payment) => <li key={payment.id}><Link href={`/app/payments/${payment.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span>{payment.payment_method_name} · {formatCurrency(payment.amount)}</span><span className="text-xs text-slate-500">{payment.refunded ? 'Estornado' : 'Ativo'}</span></Link></li>)}</ul></div>}
+        {receivables.length > 0 && <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Parcelas</h3><ul className="flex flex-col gap-1">{receivables.map((receivable) => <li key={receivable.id}><Link href={`/app/receivables/${receivable.id}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span>Parcela {receivable.installment_number}/{receivable.installment_count}</span><span>{formatCurrency(receivable.original_amount)} · {receivable.derived_status}</span></Link></li>)}</ul></div>}
+        </FormSection></div>;
+      })()}
+
+      <div hidden={activeTab !== 'attendance'}><FormSection title="Técnico e diagnóstico">
         <form onSubmit={saveOperational} className="contents">
           <FormField label="Prioridade" htmlFor="op-priority">
             <select id="op-priority" className={formFieldClass} value={opForm.priority} onChange={(e) => setOpForm({ ...opForm, priority: e.target.value })}>
@@ -406,9 +448,9 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
             </ul>
           </div>
         )}
-      </FormSection>
+      </FormSection></div>
 
-      {history.length > 0 && (
+      {history.length > 0 && activeTab === 'history' && (
         <div>
           <h2 className="mb-3 text-sm font-semibold text-slate-700">Histórico</h2>
           <ul className="flex flex-col gap-1.5">
@@ -427,7 +469,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      <div>
+      <div hidden={activeTab !== 'items'}>
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Itens da OS</h2>
         <DataTable
           columns={columns}
@@ -438,7 +480,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
         />
       </div>
 
-      <FormSection title="Adicionar item">
+      <div hidden={activeTab !== 'items'}><FormSection title="Adicionar item">
         <form onSubmit={addItem} className="contents">
           <FormField label="Tipo" htmlFor="item-type">
             <select id="item-type" className={formFieldClass} value={itemForm.type} onChange={(e) => setItemForm({ ...itemForm, type: e.target.value })}>
@@ -475,7 +517,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
             </button>
           </div>
         </form>
-      </FormSection>
+      </FormSection></div>
 
       <p className="text-right text-sm text-slate-600">
         Subtotal: {formatCurrency(order.subtotal)} · Descontos: {formatCurrency(order.discounts)} · <span className="font-semibold text-slate-900">Total: {formatCurrency(order.total)}</span>

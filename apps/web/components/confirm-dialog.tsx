@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useRef } from 'react';
+import { Button } from './button';
 
 // Modal pequeno para confirmação (seção 11 do correio.md UX-01: "confirmação; mudança simples de
 // status" são exemplos explícitos de uso apropriado de modal). Usa <dialog> nativo para
@@ -86,18 +87,17 @@ export function ConfirmDialog({
           </p>
         )}
         <div className="mt-5 flex justify-end gap-3">
-          <button ref={cancelRef} onClick={onCancel} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          <Button ref={cancelRef} onClick={onCancel} size="small">
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleConfirm}
             disabled={busy}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-              tone === 'destructive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            size="small"
+            variant={tone === 'destructive' ? 'danger' : 'primary'}
           >
             {busy ? 'Aguarde…' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </dialog>

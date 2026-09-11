@@ -171,6 +171,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
             Receber mercadorias
           </Link>
         )}
+        {order.status === 'approved' && (
+          <Link href={`/app/payables/new?purchaseOrderId=${order.id}`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">
+            Gerar conta a pagar
+          </Link>
+        )}
       </div>
 
       <div>

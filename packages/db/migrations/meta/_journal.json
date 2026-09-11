@@ -253,6 +253,13 @@
       "when": 1788735600000,
       "tag": "0035_fis_adv02_operational_links",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788739200000,
+      "tag": "0036_fis_nfce01_native",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ type Session = {
   activeTenantId: string;
   activeCompanyId: string | null;
   activeBranchId: string | null;
-  profile: { companies: Array<{ id: string; legal_name: string }>; branches: Array<{ id: string; company_id: string; name: string }> };
+  profile: { capabilities: string[]; companies: Array<{ id: string; legal_name: string }>; branches: Array<{ id: string; company_id: string; name: string }> };
 };
 
 type OperationalContextValue = {

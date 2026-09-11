@@ -1,6 +1,6 @@
 'use client';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { FormEvent } from 'react';
 import { CalendarClock, PlusCircle, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
@@ -50,6 +50,7 @@ type InstallmentRow = { amount: string; dueDate: string };
 
 function ReceivablesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { hasFullContext } = useOperationalContext();
   const [rows, setRows] = useState<Receivable[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -102,10 +103,22 @@ function ReceivablesPageContent() {
 
   useEffect(() => { if (hasFullContext) void load(1); }, [load, hasFullContext]);
 
-  const openDialog = useCallback(() => {
+  const openDialog = useCallback(async (preselectServiceOrderId?: string) => {
     setDialogError(''); setOriginType('sale'); setSale(null); setServiceOrder(null); setOriginTotal(null); setAlreadyReceived(0);
     setInstallments([{ amount: '', dueDate: '' }]);
+    if (preselectServiceOrderId) {
+      const response = await api(`/service-orders/${preselectServiceOrderId}`);
+      if (response.ok) {
+        const order = await response.json();
+        setOriginType('service_order');
+        setServiceOrder({ id: order.id, order_number: order.order_number, customer_id: order.customer_id, asset_id: order.asset_id ?? null, customer_name: order.customer_name ?? null, status: order.status });
+      }
+    }
     setDialogOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') void openDialog(searchParams.get('serviceOrderId') ?? undefined);
   }, []);
 
   // Ao escolher a origem, busca o total (venda/OS) e o que já foi recebido diretamente para ela
@@ -175,7 +188,7 @@ function ReceivablesPageContent() {
           title="Contas a Receber"
           description="Parcelas e vencimentos gerados a partir de vendas e ordens de serviço."
           action={
-            <button onClick={openDialog} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
+            <button onClick={() => void openDialog()} className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               <PlusCircle className="h-4 w-4" /> Gerar parcelamento
             </button>
           }
@@ -228,7 +241,7 @@ function ReceivablesPageContent() {
             activeFilterCount > 0 ? (
               <EmptyState icon={CalendarClock} title="Nenhum título encontrado" description="Nenhuma conta a receber corresponde aos filtros atuais." action={<button onClick={clearFilters} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Limpar filtros</button>} />
             ) : (
-              <EmptyState icon={CalendarClock} title="Nenhuma conta a receber" description="Gere o parcelamento de uma venda confirmada ou ordem de serviço para começar." action={<button onClick={openDialog} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Gerar parcelamento</button>} />
+              <EmptyState icon={CalendarClock} title="Nenhuma conta a receber" description="Gere o parcelamento de uma venda confirmada ou ordem de serviço para começar." action={<button onClick={() => void openDialog()} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Gerar parcelamento</button>} />
             )
           }
         />

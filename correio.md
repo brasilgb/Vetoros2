@@ -1,553 +1,607 @@
-# FIS-ADV-02 — Fluxo Fiscal Operacional Integrado
+# UX-05 — Padronização Final de Botões de Ação e Tabs
 
-## Objetivo
+Antes de continuar o fechamento operacional do `PILOT-08`, executar uma revisão completa da interface Web.
 
-Executar autonomamente o próximo marco:
+Existe uma pendência visual ainda não resolvida:
 
-**FIS-ADV-02 — Fluxo Fiscal Operacional Integrado**
+1. botões de ações das telas;
+2. tabs/abas das telas.
 
-O objetivo deste marco é integrar o domínio fiscal já implementado ao fluxo operacional normal do VetorOS, principalmente:
+Esta rodada deve corrigir isso de forma transversal e consistente no VetorOS 2.
 
-* PDV → documento fiscal;
-* Venda → documento fiscal;
-* Ordem de Serviço → documento fiscal;
-* configuração dos dados fiscais necessários;
-* navegação e UX entre documentos de origem e documentos fiscais.
+Não iniciar funcionalidades novas.
 
-Este marco é exclusivamente de **domínio, aplicação, UX, validações internas, banco e testes**.
+Não alterar regras de negócio.
 
-## Restrição obrigatória
+Não trabalhar em módulo fiscal.
 
-Nesta rodada, NÃO trabalhar, pesquisar, documentar, alterar ou mencionar:
-
-* APIs fiscais externas;
-* provedores fiscais;
-* Focus NFe;
-* SEFAZ;
-* endpoints externos;
-* autenticação externa;
-* credenciais;
-* sandbox/homologação externa;
-* payload de terceiros;
-* comunicação HTTP fiscal;
-* integração com serviços fiscais externos.
-
-Se existir código previamente implementado relacionado a qualquer integração externa, ele deve permanecer intacto.
-
-**Não alterar, ampliar, remover, refatorar ou testar essa camada nesta rodada.**
-
-O foco é somente o funcionamento interno do VetorOS.
+`FIS-NFCE-01` permanece suspenso.
 
 ---
 
-# 1. Descoberta obrigatória antes de alterar código
+# 1. Auditoria completa
 
-Antes de implementar qualquer coisa, auditar integralmente o estado atual de:
+Revisar todas as telas Web existentes, incluindo no mínimo:
 
-* FIS-ADV-01;
-* PDV-ADV-01;
-* VEN-ADV-01;
-* OS-ADV-02;
-* CAD-01;
-* companies;
-* branches;
-* inventory_parts;
-* sales;
-* service_orders;
-* fiscal_documents;
-* fiscal_document_items;
-* rotas Web relacionadas;
-* permissions/RBAC;
-* RLS;
-* auditoria existente.
+* Dashboard;
+* Clientes;
+* Equipamentos;
+* Ordens de Serviço;
+* Orçamentos;
+* Agenda;
+* Estoque;
+* Fornecedores;
+* Compras;
+* Vendas;
+* PDV;
+* Caixa;
+* Contas a Receber;
+* Contas a Pagar;
+* Tesouraria;
+* Relatórios;
+* Usuários;
+* Papéis/permissões;
+* Empresas;
+* Filiais;
+* Auditoria;
+* Configurações/contexto operacional.
 
-Identificar o que já está pronto e reutilizar.
+Inspecionar:
 
-Não duplicar estruturas existentes.
-
----
-
-# 2. PDV → Fiscal
-
-O operador deve conseguir sair da conclusão de uma venda do PDV diretamente para o fluxo fiscal.
-
-Após uma venda ser confirmada/concluída no PDV:
-
-* mostrar ação clara **Emitir documento fiscal**;
-* se a venda já possuir documento fiscal, mostrar **Ver documento fiscal**;
-* nunca criar documento duplicado para a mesma origem;
-* manter link entre venda e documento fiscal;
-* permitir retornar do documento fiscal para a venda;
-* preservar integralmente o checkout existente.
-
-O fluxo comercial deve continuar sendo:
-
-```text
-Venda
-→ Estoque
-→ Pagamento
-→ Venda concluída
-→ Documento fiscal
-```
-
-Fiscal não deve ser condição para concluir a venda.
-
-Uma falha posterior no processo fiscal nunca pode:
-
-* desfazer a venda;
-* devolver estoque;
-* remover pagamento;
-* alterar caixa;
-* corromper financeiro.
+* listagens;
+* create;
+* edit;
+* detalhes;
+* telas com tabs;
+* telas com ações no header;
+* ações por linha de tabela;
+* ações destrutivas;
+* ações secundárias;
+* ações condicionadas por estado ou permissão.
 
 ---
 
-# 3. Venda → Fiscal fora do PDV
+# 2. Botões de ações
 
-Na tela normal de uma venda confirmada:
+Hoje os botões de ações ainda não estão suficientemente padronizados.
 
-* disponibilizar ação para criar/acessar seu documento fiscal;
-* identificar visualmente quando já existe documento;
-* impedir duplicidade;
-* permitir navegação bidirecional:
+Criar ou consolidar um padrão único.
 
-```text
-Venda → Fiscal
-Fiscal → Venda
-```
-
-A ação não deve aparecer de forma incorreta para venda:
-
-* draft;
-* cancelada;
-* ou em estado incompatível.
-
-Reutilizar as regras já implementadas no FIS-ADV-01.
-
----
-
-# 4. Ordem de Serviço → Fiscal
-
-Na tela da Ordem de Serviço:
-
-Para OS elegível conforme regras já existentes:
-
-* disponibilizar ação **Emitir documento fiscal**;
-* se já existir documento, mostrar **Ver documento fiscal**;
-* impedir documento duplicado para a mesma origem;
-* permitir navegação bidirecional:
-
-```text
-OS → Fiscal
-Fiscal → OS
-```
-
-Não criar regra paralela.
-
-Continuar respeitando exatamente os estados já definidos no FIS-ADV-01 para elegibilidade da OS.
-
-Orçamento aprovado não deve ser tratado como documento fiscal.
-
----
-
-# 5. Origem fiscal visível
-
-Na listagem fiscal e na tela individual do documento deixar extremamente claro:
-
-* tipo da origem;
-* número da venda ou OS;
-* cliente;
-* empresa;
-* filial;
-* situação;
-* valor;
-* data;
-* link para origem.
-
-Evitar exibir apenas UUIDs quando houver um número comercial disponível.
+## Ações principais
 
 Exemplos:
 
-```text
-Venda #000154
-OS #000438
-```
+* Novo;
+* Salvar;
+* Confirmar;
+* Aprovar;
+* Finalizar;
+* Registrar;
+* Receber;
+* Pagar.
 
----
+Devem possuir destaque visual de ação principal.
 
-# 6. Dados fiscais da empresa
-
-Auditar os campos fiscais já existentes em `companies`.
-
-Garantir interface administrativa adequada para manutenção dos campos existentes necessários ao domínio fiscal.
-
-Reutilizar os campos existentes.
-
-Não criar segunda configuração fiscal da empresa.
-
-A interface deve seguir o padrão visual do VetorOS 2:
-
-* formulário responsivo;
-* largura adequada;
-* labels claros;
-* validações;
-* mensagens de erro;
-* create/edit conforme arquitetura atual.
-
----
-
-# 7. Dados fiscais da filial
-
-Auditar `branches`.
-
-Os dados relacionados ao estabelecimento/município já existentes no modelo devem estar disponíveis para manutenção quando aplicável.
-
-Não duplicar identidade fiscal da empresa dentro da filial se o modelo definido no FIS-ADV-01 estabeleceu que ela pertence à empresa.
-
-Respeitar a decisão arquitetural já registrada:
+Em telas de formulário, normalmente:
 
 ```text
-Empresa = identidade fiscal
-Filial = estabelecimento/endereço da operação
+Cancelar                              Salvar
 ```
 
----
+ou equivalente.
 
-# 8. Dados fiscais dos produtos
-
-Auditar `inventory_parts`.
-
-Os campos fiscais já adicionados anteriormente devem poder ser mantidos pela interface administrativa quando aplicável.
-
-Exemplos de informações já pertencentes ao cadastro:
-
-* NCM;
-* CEST;
-* origem;
-* CFOP padrão;
-* GTIN/EAN já existente.
-
-Não construir motor tributário.
-
-Não inventar enquadramento fiscal automaticamente.
-
-O sistema apenas armazena e utiliza os dados definidos pelo usuário.
+A ação principal deve ficar visualmente evidente.
 
 ---
 
-# 9. Validação antes da ação fiscal
+# 3. Ações secundárias
 
-Antes de iniciar uma ação fiscal interna, validar os dados obrigatórios conhecidos pelo domínio.
+Exemplos:
 
-Quando houver ausência de dados:
+* Editar;
+* Visualizar;
+* Histórico;
+* Imprimir;
+* Duplicar;
+* Voltar;
+* Exportar.
 
-não retornar apenas erro técnico.
+Usar tratamento visual secundário consistente.
 
-Apresentar mensagem operacional clara, por exemplo:
+Não transformar todas as ações em botões primários.
+
+---
+
+# 4. Ações destrutivas ou críticas
+
+Exemplos:
+
+* Cancelar venda;
+* Estornar;
+* Excluir quando permitido;
+* Reverter;
+* Fechar caixa quando irreversível ou crítico.
+
+Devem possuir representação visual claramente distinta.
+
+Preservar `ConfirmDialog` existente.
+
+Não utilizar:
+
+```javascript
+alert()
+confirm()
+```
+
+do navegador.
+
+---
+
+# 5. Ações em tabelas
+
+Padronizar a coluna:
 
 ```text
-Não foi possível continuar.
-
-Verifique os seguintes dados:
-
-- CNPJ da empresa
-- regime tributário
-- código IBGE da filial
-- NCM do produto XPTO
+Ações
 ```
 
-Sempre que possível incluir link para corrigir o cadastro correspondente.
+Evitar diversas palavras/botões grandes ocupando espaço excessivo em cada linha.
 
----
+Preferência:
 
-# 10. Idempotência interna
+* ícones consistentes;
+* tooltip;
+* menu de ações (`...`) quando houver várias opções;
+* ação principal direta quando necessário.
 
-Garantir que múltiplos cliques ou refresh da interface não criem documentos fiscais duplicados.
-
-Para uma mesma origem, deve existir no máximo o documento permitido pela modelagem atual.
-
-Validar essa proteção também no banco quando apropriado, não apenas na UI.
-
----
-
-# 11. Histórico e rastreabilidade
-
-Garantir que as operações relevantes do fluxo fiscal continuem aparecendo na auditoria existente.
-
-Não criar sistema paralelo de logs.
-
-Quando o documento possuir origem:
-
-* registrar vínculo corretamente;
-* preservar o documento de origem;
-* preservar snapshots;
-* não permitir alteração retroativa da venda/OS refletir incorretamente no documento fiscal já congelado.
-
----
-
-# 12. Permissões
-
-Reutilizar exatamente as permissions já existentes:
+Exemplo conceitual:
 
 ```text
-fiscal.read
-fiscal.create
-fiscal.issue
-fiscal.cancel
+[ visualizar ] [ editar ] [ ... ]
 ```
 
-Não criar permissions redundantes.
-
-Testar pelo menos:
-
-* usuário autorizado;
-* usuário sem fiscal.read;
-* usuário sem fiscal.create;
-* tentativa cross-tenant.
-
-Comportamento esperado de autorização:
+ou:
 
 ```text
-403
+[ abrir ] [...]
 ```
 
-Cross-tenant deve continuar invisível:
+Não deixar cada CRUD utilizando um padrão diferente.
 
-```text
-404
-```
-
-quando esse for o padrão já adotado no projeto.
+Em mobile, garantir que as ações continuem acessíveis sem quebrar layout.
 
 ---
 
-# 13. UX
+# 6. Ícones
 
-Manter os padrões definidos no VetorOS 2:
+Auditar os ícones disponíveis atualmente no projeto.
 
-* sidebar existente;
+Usar a biblioteca já adotada.
+
+Não adicionar nova biblioteca de ícones se não houver necessidade.
+
+Padronizar significado:
+
+* olho → visualizar;
+* lápis → editar;
+* mais → criar;
+* impressora → imprimir;
+* download → exportar;
+* histórico/clock → histórico;
+* trash → excluir;
+* X/circle-x → cancelar;
+* check → confirmar/aprovar;
+* menu `...` → mais ações.
+
+Ícone sozinho deve ter:
+
+* `aria-label`;
+* tooltip quando apropriado;
+* estado hover/focus.
+
+---
+
+# 7. Tabs / abas
+
+Auditar todas as telas que possuem navegação interna por tabs.
+
+As tabs devem apresentar padrão visual único.
+
+Exemplo conceitual:
+
+```text
+[ Geral ] [ Itens ] [ Financeiro ] [ Histórico ]
+  ━━━━━
+```
+
+ou padrão equivalente compatível com a identidade atual.
+
+A aba ativa deve ser claramente identificável.
+
+Não depender apenas de mudança sutil de cor.
+
+---
+
+# 8. Comportamento das tabs
+
+Garantir:
+
+* tab ativa evidente;
+* hover consistente;
+* focus acessível;
+* cursor correto;
+* responsividade;
+* navegação por teclado quando o componente permitir;
+* nenhuma tab aparentemente clicável quando estiver desabilitada.
+
+Em telas pequenas, usar solução adequada:
+
+* scroll horizontal;
+* overflow controlado;
+* ou quebra planejada.
+
+Não permitir que as tabs destruam o layout mobile.
+
+---
+
+# 9. Tabs não devem substituir rotas quando não fizer sentido
+
+Preservar a regra de UX já definida:
+
+CRUD principal continua separado em:
+
+```text
+/list
+/create
+/edit
+```
+
+Tabs devem servir para subdivisão lógica da mesma entidade ou tela.
+
+Não transformar create/edit/list em tabs artificiais.
+
+---
+
+# 10. Componentes compartilhados
+
+Verificar se já existem componentes reutilizáveis para:
+
+* `Button`;
+* `IconButton`;
+* `ActionMenu`;
+* `Tabs`;
+* `TabList`;
+* `Tab`;
+* `PageActions`;
+* componentes equivalentes.
+
+Se existirem, consolidá-los.
+
+Se não existirem e houver duplicação significativa, criar componentes compartilhados.
+
+Evitar:
+
+```tsx
+className="..."
+```
+
+copiado manualmente em dezenas de telas para implementar o mesmo botão.
+
+O objetivo é haver uma fonte visual comum para ações e tabs.
+
+---
+
+# 11. Variantes de botão
+
+Preferencialmente disponibilizar variantes semânticas equivalentes a:
+
+```text
+primary
+secondary
+outline
+ghost
+danger
+```
+
+Não é obrigatório utilizar exatamente esses nomes se o design system existente utilizar outra convenção.
+
+O importante é eliminar variações arbitrárias entre telas.
+
+---
+
+# 12. Tamanho dos botões
+
+Padronizar tamanhos para contextos diferentes.
+
+Exemplo:
+
+```text
+normal
+small
+icon
+```
+
+Ações de tabela devem ser compactas.
+
+Ações principais de página não devem parecer microbotões.
+
+---
+
+# 13. Cabeçalho das páginas
+
+Revisar o padrão:
+
+```text
+Título da página                     [ ação principal ]
+Descrição opcional                   [ ações secundárias ]
+```
+
+Evitar páginas onde:
+
+* botão Novo aparece em local diferente;
+* Salvar aparece no topo em umas telas e no rodapé em outras sem justificativa;
+* Voltar utiliza formatos diferentes;
+* várias ações competem visualmente.
+
+---
+
+# 14. Formulários
+
+Padronizar footer/área de ações.
+
+Exemplo:
+
+```text
+Cancelar                         Salvar alterações
+```
+
+ou:
+
+```text
+Voltar                           Criar cliente
+```
+
+Preservar comportamento adequado de submit/loading.
+
+Durante submit:
+
+* impedir duplo clique;
+* mostrar estado de processamento;
+* manter feedback visual.
+
+---
+
+# 15. Permissões
+
+Botões não permitidos pelo RBAC não devem aparecer para usuários sem capability correspondente.
+
+Preservar a correção feita no `UX-04`.
+
+Não confiar somente na ocultação visual.
+
+A API continua sendo a autoridade de autorização.
+
+---
+
+# 16. Estados da entidade
+
+Ações também devem respeitar o estado operacional.
+
+Exemplos:
+
+Uma venda `cancelled` não pode mostrar novamente:
+
+```text
+Cancelar venda
+```
+
+Uma OS finalizada não deve apresentar ações incompatíveis com seu estado.
+
+Um orçamento aprovado não deve exibir ações que façam sentido somente em `draft`.
+
+Auditar os principais casos existentes.
+
+---
+
+# 17. Responsividade
+
+Testar no mínimo:
+
+* desktop;
+* viewport intermediário;
+* mobile.
+
+Verificar especialmente:
+
+* cabeçalho + ações;
+* tabs largas;
+* menu de ações;
+* botões em tabelas;
+* rodapé de formulários.
+
+Não aceitar overflow horizontal da página causado pelos controles de ação.
+
+---
+
+# 18. Acessibilidade
+
+Garantir:
+
+* `aria-label` em botões somente com ícone;
+* foco visível;
+* elementos realmente interativos usando `button`/`a`;
+* não usar `div` clicável sem semântica;
+* tabs acessíveis conforme componente/base utilizada;
+* contraste adequado.
+
+---
+
+# 19. Consistência visual
+
+Manter o padrão visual já definido para VetorOS 2:
+
+* interface clean;
+* azul tecnologia como identidade principal;
+* sidebar retrátil;
+* header;
 * breadcrumbs;
-* telas responsivas;
-* tabelas consistentes;
-* ações visíveis conforme estado;
-* sem `alert()`;
-* sem `confirm()`;
-* usar componentes existentes de confirmação;
-* mensagens de erro claras;
-* evitar modais grandes para CRUD completo.
+* formulários full width;
+* responsividade;
+* visual semelhante à evolução natural do VetorOS 1.
 
-A integração fiscal deve parecer parte natural de:
+Não redesenhar o sistema inteiro.
 
-```text
-Venda
-PDV
-OS
-```
-
-e não um módulo isolado do restante do produto.
+Esta rodada é de consolidação.
 
 ---
 
-# 14. Não duplicar documento
+# 20. Validação
 
-Auditar especificamente a possibilidade de:
+Após as alterações executar:
 
-```text
-PDV → cria documento
+```bash
+pnpm --filter web build
 ```
 
-e depois:
+e os testes Web existentes relevantes.
 
-```text
-Fiscal → cria outro documento da mesma venda
-```
+Se houver lint/typecheck separados, executar também conforme scripts existentes.
 
-Isso não pode acontecer.
+Validar que não foram introduzidos erros de:
 
-O mesmo vale para OS.
-
-Implementar proteção estrutural apropriada caso ainda não exista.
+* TypeScript;
+* React;
+* Next.js;
+* hydration;
+* rotas;
+* permissões;
+* build.
 
 ---
 
-# 15. Testes obrigatórios
+# 21. Evidência esperada
 
-Adicionar cobertura automatizada proporcional às mudanças.
+No relatório final listar:
 
-Cobrir no mínimo:
+## Componentes criados ou alterados
 
-### Venda
+Exemplo:
 
-* venda confirmada pode iniciar fluxo fiscal;
-* venda draft não pode;
-* venda cancelada não pode;
-* documento existente não é duplicado;
-* link venda → fiscal;
-* link fiscal → venda.
+```text
+Button
+IconButton
+ActionMenu
+Tabs
+PageActions
+```
 
-### PDV
+Somente informar componentes realmente existentes/alterados.
 
-* após checkout concluído aparece ação fiscal;
-* checkout permanece concluído independentemente do passo fiscal;
-* refresh/duplo clique não duplica documento.
+## Telas revisadas
 
-### OS
+Listar módulos efetivamente auditados.
 
-* OS elegível permite fluxo fiscal;
-* OS inelegível não permite;
-* documento existente é reutilizado;
-* orçamento não é tratado como origem fiscal.
+## Alterações
 
-### Cadastros
+Separar:
 
-* campos fiscais da empresa persistem;
-* campos fiscais da filial persistem;
-* campos fiscais dos produtos persistem;
-* validações obrigatórias produzem mensagens operacionais.
-
-### Segurança
-
-* RBAC negativo;
-* isolamento de tenant;
-* RLS;
-* tentativa de utilizar origem de outro tenant;
-* acesso direto por UUID estrangeiro.
+* botões de página;
+* botões de formulário;
+* ações de tabela;
+* ações destrutivas;
+* tabs;
+* responsividade;
+* acessibilidade.
 
 ---
 
-# 16. Descoberta antes de migration
+# 22. Critério de conclusão
 
-Não criar migration automaticamente.
+`UX-05` somente pode ser considerado `DONE` quando:
 
-Antes:
-
-1. auditar todas as constraints existentes;
-2. verificar se já existe proteção de unicidade/origem;
-3. verificar índices;
-4. verificar foreign keys;
-5. verificar checks;
-6. verificar triggers.
-
-Só criar migration se houver lacuna estrutural real.
-
-Se a garantia já existir no banco, não duplicar.
-
----
-
-# 17. Regressão
-
-Nenhuma alteração deste marco pode quebrar:
-
-* clientes;
-* ativos;
-* OS;
-* orçamentos;
-* estoque;
-* compras;
-* vendas;
-* PDV;
-* caixa;
-* contas a pagar;
-* contas a receber;
-* tesouraria;
-* agenda;
-* relatórios;
-* administração.
+| Item                 | Esperado     |
+| -------------------- | ------------ |
+| Ações principais     | Padronizadas |
+| Ações secundárias    | Padronizadas |
+| Ações destrutivas    | Padronizadas |
+| Ações das tabelas    | Padronizadas |
+| Ícones               | Consistentes |
+| Tooltips/aria-label  | OK           |
+| Tabs                 | Padronizadas |
+| Tab ativa            | Evidente     |
+| Tabs mobile          | OK           |
+| Page headers         | Padronizados |
+| Form actions         | Padronizados |
+| RBAC visual          | Preservado   |
+| Estados operacionais | Respeitados  |
+| Build Web            | PASS         |
 
 ---
 
-# 18. Gate final
+# 23. correio.md
 
-Executar o ambiente oficial do projeto conforme documentação existente.
+Ao concluir, atualizar `correio.md` com o novo marco:
 
-Rodar:
+```markdown
+# Execução de `correio.md`
 
-```text
-DB tests
-API tests
-lint
-typecheck
-Web build
-git diff --check
+Data: 2026-09-11
+
+## Comparação
+
+...
+
+## UX-05 — Padronização Final de Botões de Ação e Tabs
+
+### Auditoria
+
+...
+
+### Botões de ações
+
+...
+
+### Ações de tabelas
+
+...
+
+### Tabs
+
+...
+
+### Componentes compartilhados
+
+...
+
+### Responsividade e acessibilidade
+
+...
+
+### Permissões e estados
+
+...
+
+### Testes
+
+...
+
+### Correções realizadas
+
+...
+
+### Pendências
+
+...
+
+### Classificação
+
+`UX-05 — DONE`
 ```
 
-Se houver testes Web automatizados já estabelecidos para esses fluxos, executá-los também.
+Se houver tela ainda fora do padrão, não marcar como `DONE`.
 
-Todos os gates devem permanecer 100% verdes.
+Não realizar commit.
 
-Não encerrar o marco com falhas novas.
+Não iniciar `PILOT-08` automaticamente.
 
----
-
-# 19. Relatório final obrigatório
-
-Ao terminar, registrar em `executed.md`:
-
-```text
-FIS-ADV-02 — Fluxo Fiscal Operacional Integrado
-```
-
-Informar objetivamente:
-
-```text
-PDV → Fiscal: SIM / PARCIAL / NÃO
-Venda → Fiscal: SIM / PARCIAL / NÃO
-OS → Fiscal: SIM / PARCIAL / NÃO
-Configuração empresa: SIM / PARCIAL / NÃO
-Configuração filial: SIM / PARCIAL / NÃO
-Configuração produtos: SIM / PARCIAL / NÃO
-Proteção contra duplicidade: SIM / PARCIAL / NÃO
-RBAC: SIM / PARCIAL / NÃO
-RLS: SIM / PARCIAL / NÃO
-```
-
-Também informar:
-
-* descoberta realizada;
-* estruturas reutilizadas;
-* arquivos alterados;
-* migrations criadas, se realmente necessárias;
-* testes adicionados;
-* resultados completos dos gates;
-* limitações reais restantes.
-
----
-
-# 20. Critério de conclusão
-
-O marco só pode ser marcado:
-
-```text
-FIS-ADV-02 = DONE
-```
-
-quando o usuário conseguir seguir naturalmente:
-
-```text
-PDV
-→ concluir venda
-→ ação fiscal
-→ consultar documento
-→ voltar à venda
-```
-
-e:
-
-```text
-OS concluída
-→ ação fiscal
-→ consultar documento
-→ voltar à OS
-```
-
-sem duplicidade, sem quebra financeira, sem quebra de estoque e sem violação de tenant.
-
-## Regra final
-
-Executar autonomamente até concluir o escopo permitido.
-
-Não interromper para pedir autorização entre descoberta, implementação, testes e correções.
-
-Não fazer commit.
-
-**Não trabalhar em nenhuma integração fiscal externa nesta rodada.**
+Executar auditoria, correções e testes diretamente, sem solicitar autorização intermediária.

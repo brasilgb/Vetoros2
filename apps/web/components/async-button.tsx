@@ -1,13 +1,9 @@
 'use client';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { Button } from './button';
 
 type Tone = 'primary' | 'secondary' | 'destructive';
-const toneClass: Record<Tone, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700',
-  secondary: 'border border-slate-300 text-slate-700 hover:bg-slate-50',
-  destructive: 'border border-red-300 text-red-700 hover:bg-red-50',
-};
 
 // Estados de operação padronizados (seção 8 do correio.md UX-02): todo botão de ação
 // assíncrona (Salvar, Aprovar, Reservar, Consumir…) troca de rótulo durante o processamento e
@@ -43,8 +39,8 @@ export function AsyncButton({
   }
 
   return (
-    <button onClick={() => void handleClick()} disabled={busy || disabled} className={`rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${toneClass[tone]} ${className ?? ''}`}>
+    <Button onClick={() => void handleClick()} disabled={busy || disabled} variant={tone === 'destructive' ? 'danger' : tone} className={className}>
       {busy ? (busyLabel ?? label) : label}
-    </button>
+    </Button>
   );
 }
