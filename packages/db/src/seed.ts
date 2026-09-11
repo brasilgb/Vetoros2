@@ -46,7 +46,11 @@ export async function mapTemplatePermissions() {
     // manual, transfere entre contas e estorna; nenhum papel operacional recebe automaticamente
     // acesso a tesouraria, seção 20 do correio.md).
     finance: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'suppliers.read', 'suppliers.update', 'purchase_orders.read', 'purchase_orders.create', 'purchase_orders.update', 'purchase_orders.approve', 'purchase_receipts.read', 'sales.read', 'cash.read', 'cash.manage', 'payments.read', 'payments.refund', 'receivables.read', 'receivables.create', 'receivables.cancel', 'receivables.allocate', 'payables.read', 'payables.create', 'payables.update', 'payables.pay', 'payables.cancel', 'payables.reverse', 'financial_accounts.read', 'financial_accounts.create', 'financial_accounts.update', 'financial_accounts.transact', 'financial_accounts.transfer', 'financial_accounts.reverse'],
-    fiscal: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'purchase_orders.read', 'purchase_receipts.read', 'sales.read'],
+    // FIS-ADV-01: o papel `fiscal` já existia (seed inicial, migration 0001) com leitura ampla
+    // mas nenhuma permission do próprio módulo fiscal — porque `fiscal_documents` não existia.
+    // `service_orders.read` entra agora pela mesma razão de `sales.read` já estar aqui: origem
+    // possível de documento fiscal (NFS-e).
+    fiscal: ['auth.session.read', 'operational.context.select', 'companies.read', 'branches.read', 'customers.read', 'purchase_orders.read', 'purchase_receipts.read', 'sales.read', 'service_orders.read', 'fiscal.read', 'fiscal.create', 'fiscal.issue', 'fiscal.cancel'],
   };
   for (const [code, codes] of Object.entries(byCode)) {
     // `sql.join` monta um `IN (...)` explícito — o `sql` tag do drizzle não serializa um array JS
@@ -173,6 +177,8 @@ async function runDevSeed() {
   // dinâmica por módulo, para que este e qualquer futuro `service_orders.*` chegue ao papel dev
   // sem precisar editar esta lista de novo.
   const serviceOrdersPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='service_orders' order by code`)).map((row) => row.id);
+  // FIS-ADV-01: mesmo padrão dinâmico por módulo de `serviceOrdersPermissionIds` acima.
+  const fiscalPermissionIds = (await db.execute<{ id: string }>(sql`select id from permissions where module='fiscal' order by code`)).map((row) => row.id);
   await mapTemplatePermissions();
   await provisionRoleTemplates(dev.tenantAlpha);
   await provisionRoleTemplates(dev.tenantBeta);
@@ -195,7 +201,7 @@ async function runDevSeed() {
     await tx.execute(sql`insert into tenant_user_profiles (id,tenant_id,membership_id,name) values (${dev.profileSingle},${dev.tenantAlpha},${dev.membershipSingle},'Single Alpha') on conflict (id) do nothing`);
     await tx.execute(sql`insert into tenant_roles (id,tenant_id,code,name,scope_type) values (${dev.roleSingle},${dev.tenantAlpha},'dev_auth_reader','Development auth reader','tenant') on conflict (id) do nothing`);
     const reportsPermissionIds = (await tx.execute<{ id: string }>(sql`select id from permissions where code='reports.read'`)).map((row) => row.id);
-    for (const permissionId of [...permissionIds, ...salesPermissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds, ...schedulePermissionIds, ...serviceOrdersPermissionIds, ...reportsPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
+    for (const permissionId of [...permissionIds, ...salesPermissionIds, ...usersPermissionIds, ...auditPermissionIds, ...finPermissionIds, ...schedulePermissionIds, ...serviceOrdersPermissionIds, ...fiscalPermissionIds, ...reportsPermissionIds]) await tx.execute(sql`insert into tenant_role_permissions (tenant_id,role_id,permission_id) values (${dev.tenantAlpha},${dev.roleSingle},${permissionId}) on conflict do nothing`);
     await tx.execute(sql`insert into access_grants (id,tenant_id,user_profile_id,role_id,scope_type) values (${dev.grantSingle},${dev.tenantAlpha},${dev.profileSingle},${dev.roleSingle},'tenant') on conflict (id) do nothing`);
     await tx.execute(sql`insert into companies (id,tenant_id,legal_name,trade_name,tax_id_type,tax_id_normalized) values (${dev.companyAlphaServices},${dev.tenantAlpha},'Company Alpha Serviços','Alpha Serviços','cnpj','01992ea1125071') on conflict (id) do nothing`);
     await tx.execute(sql`insert into branches (id,tenant_id,company_id,code,name) values (${dev.branchAlphaNorth},${dev.tenantAlpha},${dev.companyAlpha},'NORTH','Branch Alpha Norte'),(${dev.branchAlphaServices},${dev.tenantAlpha},${dev.companyAlphaServices},'SERVICES','Branch Alpha Serviços 01') on conflict (id) do nothing`);

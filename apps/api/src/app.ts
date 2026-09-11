@@ -23,8 +23,11 @@ import { registerPayableRoutes } from './payables/routes.js';
 import { registerFinancialAccountRoutes } from './financial-accounts/routes.js';
 import { registerScheduleRoutes } from './schedules/routes.js';
 import { registerReportRoutes } from './reports/routes.js';
+import { registerFiscalRoutes } from './fiscal/routes.js';
+import { FocusNfeProvider } from './fiscal/provider.js';
+import type { FiscalProvider } from './fiscal/provider.js';
 
-export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string; trustProxy?: boolean; readinessCheck?: () => Promise<void> }) {
+export function buildApp(options?: { authService?: AuthService; secureCookie?: boolean; sessionTtlSeconds?: number; loginRateLimitMax?: number; webOrigin?: string; trustProxy?: boolean; readinessCheck?: () => Promise<void>; fiscalProvider?: FiscalProvider }) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test', trustProxy: options?.trustProxy ?? false, requestIdHeader: 'x-request-id' });
   void app.register(cors, { origin: options?.webOrigin ?? 'http://localhost:3000', credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE'] });
   app.addHook('onRequest', (request, reply, done) => {
@@ -75,6 +78,11 @@ export function buildApp(options?: { authService?: AuthService; secureCookie?: b
     registerFinancialAccountRoutes(app, options.authService);
     registerScheduleRoutes(app, options.authService);
     registerReportRoutes(app, options.authService);
+    // FIS-ADV-01: sem credencial configurada, `FocusNfeProvider` responde de forma recuperável
+    // (`fiscal_provider_not_configured`), nunca fingindo uma emissão que não aconteceu — mesmo
+    // princípio de "não implementar emissão fiscal de fachada" aplicado ao caminho padrão de
+    // produção quando ninguém ainda configurou a Focus NFe.
+    registerFiscalRoutes(app, options.authService, options.fiscalProvider ?? new FocusNfeProvider(process.env.FOCUS_NFE_API_KEY));
   }
   return app;
 }

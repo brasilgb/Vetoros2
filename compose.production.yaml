@@ -55,6 +55,7 @@ services:
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
       COOKIE_SECURE: "true"
       TRUST_PROXY: "true"
+      FOCUS_NFE_API_KEY: ${FOCUS_NFE_API_KEY:-}
     ports: ["127.0.0.1:3001:3001"]
     depends_on:
       migrate: { condition: service_completed_successfully }

@@ -1,6 +1,7 @@
 import { parseServerEnv } from '@vetoros/config';
 import { buildApp } from './app.js';
 import { AuthService } from './auth/service.js';
+import { FocusNfeProvider } from './fiscal/provider.js';
 import { Redis } from 'ioredis';
 
 const env = parseServerEnv(process.env);
@@ -13,6 +14,7 @@ const app = buildApp({
   sessionTtlSeconds: env.SESSION_TTL_SECONDS,
   webOrigin: env.WEB_ORIGIN,
   trustProxy: env.TRUST_PROXY,
+  fiscalProvider: new FocusNfeProvider(env.FOCUS_NFE_API_KEY),
   readinessCheck: async () => {
     await authService.readiness();
     if (redis.status === 'wait') await redis.connect();

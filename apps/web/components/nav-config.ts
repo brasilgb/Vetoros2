@@ -16,6 +16,7 @@ import {
   Receipt,
   ShieldCheck,
   ShoppingCart,
+  Stamp,
   Store,
   Truck,
   Undo2,
@@ -81,6 +82,9 @@ export const navGroups: NavGroup[] = [
       { label: 'Vendas', href: '/app/sales', icon: ShoppingCart, requiresOperationalContext: true },
     ],
   },
+  // FIS-ADV-01: grupo próprio — o documento fiscal nasce de Venda OU OS, não pertence
+  // exclusivamente a nenhum dos dois grupos existentes.
+  { label: 'Fiscal', items: [{ label: 'Documentos fiscais', href: '/app/fiscal', icon: Stamp, requiresOperationalContext: true }] },
   { label: 'Relatórios', items: [{ label: 'Visão operacional', href: '/app/reports', icon: BarChart3 }] },
   {
     // FIN-01, seção 15 do correio.md: agrupamento sugerido literalmente ("Financeiro: Caixa,

@@ -1,890 +1,805 @@
-# PDV-ADV-01 — Frente de Caixa Operacional Completa
+# FIS-ADV-01 — Fiscal Operacional Completo
 
 Data: 2026-09-10
 
-## Objetivo
+## 1. Objetivo
 
-Executar o marco **PDV-ADV-01 — Frente de Caixa Operacional Completa**, transformando o núcleo atual de vendas, estoque, pagamentos e caixa em uma operação de balcão realmente utilizável.
+Executar o próximo marco avançado do VetorOS 2:
 
-O PDV **não deve criar um segundo domínio de vendas**.
+**FIS-ADV-01 — Fiscal Operacional Completo**
 
-A venda realizada pelo PDV deve continuar usando, sempre que tecnicamente adequado, as estruturas canônicas já existentes:
+O objetivo é descobrir e, somente onde houver lacuna real, completar a infraestrutura fiscal necessária para que o sistema consiga representar corretamente documentos fiscais originados das operações já existentes.
 
-* `sales`;
-* `sale_items`;
-* `payments`;
-* `payment_methods`;
-* `cash_registers`;
-* `cash_sessions`;
-* `cash_movements`;
-* `stock_movements`;
-* `financial_transactions`;
-* recebíveis quando aplicável.
+O marco deve considerar principalmente:
 
-O objetivo é criar uma **experiência operacional especializada de frente de caixa sobre o domínio existente**, e não duplicar entidades ou regras já resolvidas.
+* Vendas / PDV;
+* Ordens de Serviço;
+* clientes;
+* empresas e filiais;
+* produtos/peças;
+* serviços;
+* pagamentos e financeiro;
+* futura integração com provedor fiscal, especialmente Focus NFe.
 
----
+Não implementar emissão fiscal "de fachada".
 
-# 1. Regra obrigatória: descoberta antes da implementação
-
-Antes de alterar qualquer arquivo, faça uma auditoria completa do estado atual relacionado ao PDV.
-
-Revisar obrigatoriamente:
-
-* VEN-01;
-* VEN-02;
-* VEN-03;
-* VEN-03.1;
-* VEN-ADV-01;
-* FIN-01;
-* CAI-01 a CAI-05;
-* FIN-04;
-* FIN-ADV-01;
-* EST-01;
-* EST-02;
-* estrutura atual de produtos/peças;
-* fluxo de `payments`;
-* fluxo de abertura e fechamento de caixa;
-* telas Web de vendas;
-* permissões existentes;
-* testes de concorrência e idempotência relacionados.
-
-Não implementar uma funcionalidade apenas porque ela está listada abaixo.
-
-Primeiro verificar se ela:
-
-1. já existe;
-2. existe parcialmente;
-3. está resolvida por outra estrutura;
-4. realmente constitui uma lacuna.
-
-Evitar duplicação arquitetural.
+O domínio fiscal deve se apoiar nas operações reais já existentes.
 
 ---
 
-# 2. Princípio arquitetural
+## 2. Estado consolidado que NÃO deve ser refeito
 
-O PDV deve ser tratado prioritariamente como uma **interface operacional especializada**.
+Considere concluídos e preserve:
 
-Não criar tabelas como:
-
-* `pos_sales`;
-* `pdv_sales`;
-* `checkout_sales`;
-
-se `sales` já representa corretamente a transação comercial.
-
-Também não criar estrutura paralela para:
-
-* itens;
-* pagamentos;
-* baixa de estoque;
-* movimentação de caixa;
-* cancelamentos.
-
-Reutilizar o núcleo existente.
-
-Uma nova estrutura só é aceitável se representar um conceito operacional que realmente não pertença às entidades atuais.
-
----
-
-# 3. Acesso ao PDV
-
-Criar ou validar uma rota dedicada de operação, preferencialmente:
-
-`/app/pos`
-
-ou equivalente já adotado pelo projeto.
-
-A tela deve ser pensada para uso contínuo no balcão.
-
-Não reproduzir simplesmente o CRUD administrativo de vendas.
-
----
-
-# 4. Caixa aberto
-
-Descobrir como o sistema atualmente vincula:
-
-* usuário;
-* filial;
+* COM-ADV-01 — Compras Operacionais Completas;
+* FIN-ADV-01 — Financeiro Operacional Completo;
+* VEN-ADV-01 — Vendas Operacionais Completas;
+* PDV-ADV-01 — Frente de Caixa Operacional Completa;
+* OS-ADV-01 / OS-ADV-02;
+* estoque;
 * caixa;
-* sessão aberta.
+* recebíveis;
+* pagáveis;
+* tesouraria;
+* clientes;
+* empresas;
+* filiais;
+* fornecedores;
+* equipamentos;
+* RBAC;
+* auditoria.
 
-Determinar se uma venda feita pelo PDV deve exigir sessão de caixa aberta.
-
-Para operações que gerem recebimento físico ou financeiro pelo caixa, o comportamento esperado é:
-
-* não permitir finalizar a venda sem sessão válida;
-* informar claramente ao operador quando não houver caixa aberto;
-* permitir navegar para abertura do caixa quando autorizado.
-
-Não duplicar regras já existentes no módulo de caixa.
+Não criar estruturas fiscais paralelas para substituir `sales`, `service_orders`, `payments`, `customers`, `companies`, `branches` ou `inventory_parts`.
 
 ---
 
-# 5. Identificação operacional
+# 3. DESCOBERTA OBRIGATÓRIA
 
-O PDV deve conhecer corretamente:
+Antes de qualquer código ou migration, auditar integralmente o estado atual.
+
+Responder objetivamente.
+
+### 3.1 Estruturas fiscais existentes
+
+Localizar qualquer estrutura relacionada a:
+
+* fiscal;
+* invoice;
+* nota fiscal;
+* NF-e;
+* NFC-e;
+* NFS-e;
+* Focus NFe;
+* SEFAZ;
+* prefeitura;
+* série;
+* número fiscal;
+* chave de acesso;
+* XML;
+* DANFE;
+* RPS;
+* CNAE;
+* NCM;
+* CEST;
+* CFOP;
+* CST;
+* CSOSN;
+* ICMS;
+* IPI;
+* PIS;
+* COFINS;
+* ISS;
+* inscrição estadual;
+* inscrição municipal;
+* regime tributário.
+
+Não assumir que algo não existe sem pesquisar migrations, schema, API, Web, contratos e testes.
+
+---
+
+## 4. Cadastro da empresa emissora
+
+Auditar `companies` e `branches`.
+
+Confirmar quais dados fiscais já existem e quais realmente faltam.
+
+Avaliar, no mínimo:
+
+* razão social;
+* nome fantasia;
+* CNPJ;
+* IE;
+* IM;
+* endereço;
+* município;
+* UF;
+* CEP;
+* código IBGE;
+* telefone;
+* e-mail;
+* regime tributário;
+* CNAE;
+* ambiente fiscal homologação/produção.
+
+Não criar tabela separada de "emitente" se `companies`/`branches` puderem representar isso corretamente.
+
+Determinar explicitamente se a emissão fiscal pertence à:
+
+```text
+Tenant
+  └── Company
+       └── Branch
+```
+
+A decisão deve refletir a operação real do VetorOS.
+
+---
+
+# 5. Cliente / destinatário
+
+Auditar `customers` e seus endereços/contatos.
+
+Confirmar capacidade de representar:
+
+### Pessoa física
+
+* CPF;
+* nome;
+* endereço;
+* município;
+* UF;
+* CEP;
+* e-mail;
+* telefone.
+
+### Pessoa jurídica
+
+* CNPJ;
+* razão social/nome;
+* IE;
+* indicador de contribuinte, caso necessário;
+* endereço;
+* município;
+* UF;
+* CEP.
+
+Não duplicar cadastro de cliente dentro do módulo fiscal.
+
+O documento fiscal poderá possuir **snapshot fiscal do destinatário**, caso necessário para preservar histórico.
+
+---
+
+# 6. Produtos e peças
+
+Auditar `inventory_parts`.
+
+Determinar quais campos fiscais já existem.
+
+Avaliar necessidade real de:
+
+* NCM;
+* CEST;
+* origem da mercadoria;
+* unidade tributável/comercial;
+* GTIN/EAN;
+* CFOP padrão;
+* CST/CSOSN;
+* alíquotas ou classificação tributária.
+
+Não transformar `inventory_parts` em um motor tributário completo sem necessidade.
+
+Separar claramente:
+
+```text
+dados cadastrais fiscais do produto
+```
+
+de:
+
+```text
+tributação efetivamente aplicada no documento
+```
+
+A tributação aplicada deverá ser preservada como snapshot quando houver emissão.
+
+---
+
+# 7. Serviços
+
+Auditar como serviços são atualmente representados em:
+
+* `service_order_items`;
+* `sale_items`;
+* demais estruturas existentes.
+
+Determinar como representar os dados necessários para NFS-e, incluindo somente quando aplicável:
+
+* código de serviço;
+* item da lista LC 116;
+* CNAE;
+* município de incidência;
+* alíquota ISS;
+* retenção.
+
+Não inventar catálogo paralelo de serviços se uma estrutura existente puder ser estendida com clareza.
+
+---
+
+# 8. Tipos de documento fiscal
+
+Avaliar separadamente:
+
+### NFC-e
+
+Principal candidato para venda de balcão / PDV.
+
+### NF-e
+
+Principal candidato para vendas que necessitem documento modelo 55.
+
+### NFS-e
+
+Principal candidato para serviços.
+
+Não tratar NF-e, NFC-e e NFS-e como se fossem o mesmo documento.
+
+Descobrir quais conceitos podem ser compartilhados e quais necessariamente precisam ser específicos.
+
+---
+
+# 9. Origem operacional
+
+Todo documento fiscal deverá possuir origem inequívoca.
+
+Avaliar vínculos como:
+
+```text
+fiscal_document
+  -> sale
+```
+
+e, quando aplicável:
+
+```text
+fiscal_document
+  -> service_order
+```
+
+ou outra estrutura já existente.
+
+Nunca copiar a venda inteira para uma segunda estrutura operacional.
+
+O fiscal deve registrar o documento emitido e seus snapshots necessários, não criar outra venda.
+
+---
+
+# 10. Modelo de documento fiscal
+
+Somente após a descoberta, determinar se é necessária estrutura persistida para documentos fiscais.
+
+Caso exista lacuna real, considerar conceitos equivalentes a:
+
+```text
+fiscal_documents
+fiscal_document_items
+```
+
+mas os nomes finais devem seguir os padrões existentes do projeto.
+
+O documento precisa conseguir representar, quando aplicável:
 
 * tenant;
 * company;
 * branch;
-* usuário operador;
-* sessão de caixa;
-* caixa físico quando aplicável.
+* origem;
+* modelo;
+* série;
+* número;
+* ambiente;
+* status;
+* destinatário snapshot;
+* totais;
+* chave de acesso;
+* protocolo;
+* XML;
+* URL/PDF/DANFE quando fornecido pelo provedor;
+* código/identificador externo;
+* motivo de rejeição;
+* timestamps relevantes.
 
-Esses valores devem vir do contexto operacional e da sessão autenticada sempre que já forem definidos pelo sistema.
-
-Não solicitar manualmente informações que o sistema já conhece.
-
----
-
-# 6. Venda em rascunho
-
-Avaliar se o modelo atual de `sales.status = draft` atende adequadamente ao carrinho operacional.
-
-Preferencialmente utilizar a própria venda `draft` como estado temporário da operação.
-
-O operador deve conseguir:
-
-* iniciar venda;
-* adicionar itens;
-* remover itens;
-* alterar quantidade;
-* alterar preço quando permitido;
-* aplicar desconto quando permitido;
-* selecionar cliente opcional;
-* abandonar/cancelar rascunho sem movimentar estoque ou caixa.
-
-Verificar o comportamento atual para rascunhos abandonados.
-
-Não criar mecanismo paralelo de carrinho sem necessidade.
+Não persistir campos apenas porque existem no layout oficial se o VetorOS não os utiliza.
 
 ---
 
-# 7. Busca rápida de itens
+# 11. Estados fiscais
 
-Auditar o cadastro atual de peças/produtos e seus identificadores.
+Definir uma máquina de estados explícita.
 
-O PDV deve permitir busca rápida por informações disponíveis no domínio, tais como:
+Avaliar estados equivalentes a:
 
-* descrição;
-* código interno;
-* SKU;
-* código de barras;
-* identificadores existentes.
+```text
+draft
+pending
+authorized
+rejected
+cancelled
+```
 
-Se código de barras ainda não existir no cadastro canônico, documentar claramente a lacuna antes de implementar qualquer nova coluna.
+e outros somente se forem necessários pelo fluxo real/provider.
 
-Não inventar estrutura paralela de produto apenas para o PDV.
+Uma nota autorizada não pode simplesmente voltar para rascunho.
 
----
+Rejeição não pode destruir o histórico da tentativa.
 
-# 8. Código de barras
-
-Verificar se já existe suporte a:
-
-* EAN;
-* GTIN;
-* barcode;
-* identificadores múltiplos por produto/peça.
-
-Se já existir, reutilizar.
-
-Se não existir e a descoberta demonstrar necessidade real, implementar da forma mais integrada ao cadastro canônico.
-
-A entrada de scanner USB deve funcionar como teclado comum, sem exigir integração proprietária.
-
-Fluxo desejável:
-
-1. foco permanente ou facilmente recuperável no campo de leitura;
-2. scanner envia código;
-3. Enter conclui;
-4. item é localizado;
-5. item é adicionado ou sua quantidade incrementada;
-6. foco retorna para leitura.
+Cancelamento fiscal não deve significar exclusão do documento.
 
 ---
 
-# 9. Inclusão rápida
+# 12. Imutabilidade e snapshots
 
-Ao localizar um item:
+Após autorização fiscal, os dados fiscais relevantes devem permanecer historicamente reproduzíveis mesmo que:
 
-* incluir imediatamente no carrinho;
-* se já estiver presente, avaliar se incrementar quantidade é a melhor UX;
-* manter possibilidade de edição manual;
-* mostrar estoque disponível quando isso for relevante ao operador.
+* cliente seja alterado;
+* produto seja alterado;
+* preço cadastral mude;
+* endereço mude;
+* empresa altere cadastro posteriormente.
 
-O fluxo deve exigir o mínimo possível de cliques.
+Descobrir quais snapshots são necessários.
 
----
-
-# 10. Estoque
-
-Preservar integralmente as regras já validadas em VEN-02/VEN-03.
-
-O PDV:
-
-* não baixa estoque durante o rascunho;
-* baixa estoque apenas na confirmação;
-* não permite estoque negativo quando a regra atual proíbe;
-* mantém atomicidade;
-* mantém proteção contra concorrência;
-* mantém idempotência;
-* restitui estoque corretamente no cancelamento.
-
-Não duplicar lógica de baixa dentro da camada Web.
+Não duplicar dados sem justificativa histórica/fiscal.
 
 ---
 
-# 11. Quantidade
+# 13. Numeração fiscal
 
-Permitir:
+Não usar `sale_number`, `service_order_number` ou qualquer contador comercial como número fiscal.
 
-* incremento rápido;
-* decremento;
-* digitação direta;
-* remoção do item.
+Descobrir como série/número devem ser controlados.
 
-Respeitar as regras atuais de tipo/precisão da quantidade.
+Se o provedor fiscal for responsável pela numeração, preservar esse modelo.
 
-Não alterar escala decimal do domínio sem necessidade comprovada.
+Não criar contador local sem necessidade comprovada.
 
 ---
 
-# 12. Preço
+# 14. Focus NFe
 
-O preço deve inicialmente vir do cadastro ou regra já utilizada atualmente em vendas.
+Auditar se já existe qualquer integração ou contrato relacionado à Focus NFe.
 
-O operador pode editar o preço somente se isso já for permitido pelo domínio/RBAC ou se a descoberta indicar necessidade de uma nova regra.
+Caso não exista:
 
-Não criar permission nova automaticamente.
-
-Primeiro verificar o padrão existente.
-
----
-
-# 13. Desconto
-
-Permitir desconto conforme o modelo atual da venda/item.
-
-Auditar se hoje o desconto é:
-
-* por item;
-* global;
-* ambos.
-
-Preservar o modelo canônico.
-
-Se houver necessidade operacional não atendida, implementar de forma consistente com vendas administrativas.
-
----
-
-# 14. Cliente
-
-Cliente deve continuar opcional quando o domínio atual permitir.
-
-O PDV deve oferecer:
-
-* venda sem cliente;
-* busca rápida de cliente;
-* seleção;
-* troca;
-* remoção.
-
-Não exigir cadastro para vendas de balcão que legalmente e funcionalmente possam ocorrer sem identificação.
-
----
-
-# 15. Totais
-
-Mostrar de forma muito clara:
-
-* subtotal;
-* descontos;
-* total final;
-* valor recebido;
-* valor restante;
-* troco.
-
-Os valores devem ser derivados das regras canônicas.
-
-Não recalcular de maneira divergente apenas no frontend.
-
----
-
-# 16. Pagamento
-
-Auditar profundamente o fluxo já existente de `payments`.
-
-O PDV deve reutilizar essa estrutura.
-
-Deve suportar, se já permitido pela arquitetura:
-
-* uma forma de pagamento;
-* várias formas de pagamento;
-* pagamentos parciais na mesma finalização.
-
-Exemplo:
-
-Venda: R$ 150,00
-
-* Dinheiro: R$ 50,00
-* PIX: R$ 40,00
-* Cartão: R$ 60,00
-
-Não criar uma estrutura `payment_splits` se múltiplos `payments` já representam corretamente esse cenário.
-
----
-
-# 17. Formas de pagamento
-
-Listar apenas métodos disponíveis e válidos para o contexto.
-
-Verificar se `payment_methods` já diferencia características como:
-
-* dinheiro;
-* cartão;
-* PIX;
-* transferência;
-* outros.
-
-Não codificar nomes fixos no frontend quando houver cadastro canônico.
-
----
-
-# 18. Dinheiro e troco
-
-Para pagamento em dinheiro, a operação precisa suportar valor entregue pelo cliente.
-
-Exemplo:
-
-Total: R$ 72,30
-
-Valor entregue: R$ 100,00
-
-Troco: R$ 27,70
-
-Auditar primeiro se existe conceito equivalente no domínio.
-
-O troco não deve ser confundido com desconto nem com pagamento adicional.
-
-Determinar a forma correta de representar isso no caixa e no histórico sem distorcer o valor real da venda.
-
----
-
-# 19. Pagamento acima do total
-
-Bloquear pagamentos acumulados acima do total da venda, exceto no cenário específico de dinheiro em que a diferença representa troco e é tratada explicitamente.
-
-Evitar contabilizar R$ 100 como receita de uma venda de R$ 72,30.
-
-A receita deve continuar sendo R$ 72,30.
-
----
-
-# 20. Venda à vista
-
-Fluxo típico:
-
-1. criar venda draft;
-2. incluir itens;
-3. definir cliente opcional;
-4. escolher formas de pagamento;
-5. confirmar operação;
-6. baixar estoque;
-7. registrar pagamentos;
-8. movimentar caixa quando aplicável;
-9. marcar venda confirmada;
-10. disponibilizar comprovante.
-
-A descoberta deve definir a melhor ordem transacional conforme o código existente.
-
----
-
-# 21. Atomicidade da finalização
-
-Este é um dos pontos críticos do marco.
-
-A finalização do PDV não pode produzir estados como:
-
-* venda confirmada sem pagamento que deveria existir;
-* pagamento registrado sem venda confirmada;
-* caixa movimentado sem venda válida;
-* estoque baixado com falha posterior deixando operação inconsistente.
-
-Auditar se as APIs atuais permitem uma finalização verdadeiramente transacional.
-
-Se o frontend atualmente precisar executar diversas chamadas independentes como:
-
-1. confirmar venda;
-2. criar pagamento A;
-3. criar pagamento B;
-
-avaliar seriamente se isso deixa janela de inconsistência.
-
-Se houver lacuna real, criar um **endpoint orquestrador transacional de checkout/finalização**, reutilizando internamente as regras existentes.
+projetar uma abstração mínima de provider para impedir que regras de negócio fiquem espalhadas pelo código.
 
 Exemplo conceitual:
 
-`POST /sales/:id/checkout`
+```text
+FiscalProvider
+  issue(...)
+  consult(...)
+  cancel(...)
+```
 
-ou equivalente.
+O nome/arquitetura final deve seguir os padrões do código existente.
 
-Esse endpoint não deve duplicar regras do domínio; deve apenas coordená-las atomicamente.
+Não criar uma framework genérica para dezenas de provedores.
 
----
-
-# 22. Concorrência na finalização
-
-Cobrir cenários reais de concorrência quando aplicáveis.
-
-Exemplos:
-
-* dois requests tentando finalizar a mesma venda;
-* operador dando duplo clique;
-* retry após timeout;
-* duas vendas concorrendo pelo último saldo disponível.
-
-A proteção já existente no estoque deve ser preservada.
-
-A finalização completa também deve ser idempotente ou estruturalmente protegida contra duplicação financeira.
+O sistema pode começar com Focus NFe como provider concreto.
 
 ---
 
-# 23. Falha no meio da finalização
+# 15. Credenciais
 
-Criar teste se houver nova orquestração.
+Credenciais fiscais nunca devem:
 
-Simular erro após parte da operação e verificar rollback integral.
+* aparecer em respostas comuns da API;
+* aparecer integralmente em logs;
+* aparecer em auditoria;
+* ser enviadas ao Web;
+* ficar hardcoded.
 
-Por exemplo:
-
-* estoque baixado;
-* primeiro pagamento criado;
-* segundo pagamento falha.
-
-Resultado obrigatório:
-
-nenhuma parte parcial deve permanecer caso a operação seja definida como uma única finalização atômica.
+Descobrir o modelo de configuração já utilizado pelo projeto antes de criar solução nova.
 
 ---
 
-# 24. Cartão
+# 16. Emissão
 
-Não implementar integração TEF/adquirente nesta etapa se ela não existir.
+Avaliar operações explícitas equivalentes a:
 
-O objetivo inicial é registrar corretamente uma forma de pagamento configurada como cartão.
+```text
+POST /fiscal-documents
+POST /fiscal-documents/:id/issue
+```
 
-Não criar integração externa fictícia.
+ou arquitetura mais adequada ao padrão atual.
 
-Preparar a arquitetura para futura integração sem acoplar o marco atual a fornecedor específico.
+Emissão deve ser uma ação explícita.
 
----
-
-# 25. PIX
-
-Mesma regra do cartão.
-
-Registrar o pagamento corretamente usando `payment_methods`.
-
-Não implementar gateway/banco/QR dinâmico sem marco específico.
+Não emitir nota automaticamente apenas porque uma venda foi confirmada, a menos que já exista regra inequívoca aprovada no domínio.
 
 ---
 
-# 26. Venda a prazo
+# 17. PDV
 
-Venda a prazo deve continuar utilizando o domínio financeiro existente.
+Integrar conceitualmente com o `PDV-ADV-01`.
 
-Não representar parcelamento usando múltiplas formas de pagamento.
+Após uma venda finalizada, avaliar UX para:
 
-Se o fluxo correto atualmente for:
+```text
+Finalizar venda
+→ comprovante
+→ Emitir NFC-e
+```
 
-* confirmar venda;
-* gerar recebíveis;
+ou emissão integrada quando configurada.
 
-preservar essa decisão.
+Mas não alterar o checkout atômico de venda/estoque/pagamento para torná-lo dependente da disponibilidade da SEFAZ/Focus.
 
-O PDV pode oferecer a ação operacional correspondente, mas não deve criar outro modelo de parcelas.
+Uma indisponibilidade fiscal não pode corromper:
 
----
+* venda;
+* estoque;
+* pagamento;
+* caixa.
 
-# 27. Pagamento parcial + prazo
-
-Auditar a capacidade já validada no FIN-ADV-01.
-
-Exemplo:
-
-Venda: R$ 1.000
-
-Entrada:
-
-* R$ 300 no PIX
-
-Restante:
-
-* R$ 700 em recebíveis.
-
-O sistema já deve evitar duplicidade entre o que foi pago e o que foi financiado.
-
-O PDV deve aproveitar essa capacidade, não reimplementá-la.
+Fiscal deve possuir seu próprio estado operacional recuperável.
 
 ---
 
-# 28. Cancelamento
+# 18. Ordem de Serviço
 
-Venda confirmada deve utilizar o cancelamento canônico de VEN-03.
+Auditar como serviços concluídos/faturados poderiam originar NFS-e.
 
-Não criar cancelamento específico do PDV.
+Não presumir que toda OS deve emitir nota.
 
-O cancelamento deve preservar:
+Separar:
 
-* estorno de estoque;
-* comportamento financeiro;
-* comportamento de caixa;
-* idempotência;
-* auditoria.
+```text
+conclusão operacional da OS
+```
 
-Auditar especialmente o efeito sobre pagamentos já registrados.
+de:
 
-Se houver uma lacuna entre cancelamento da venda e estorno financeiro/caixa, tratá-la explicitamente.
+```text
+emissão fiscal
+```
 
----
-
-# 29. Estorno de pagamentos
-
-Verificar como pagamentos ligados a uma venda cancelada são tratados hoje.
-
-Não assumir que estornar estoque é suficiente.
-
-Auditar:
-
-* `payments`;
-* `cash_movements`;
-* `financial_transactions`;
-* reversões.
-
-O sistema precisa manter rastreabilidade financeira correta.
-
-Se já estiver resolvido pelo FIN-ADV-01, apenas comprovar.
-
-Se houver lacuna, implementar sem apagar histórico.
-
-Preferir movimentos reversores/append-only.
+A indisponibilidade fiscal não deve impedir conclusão técnica da OS.
 
 ---
 
-# 30. Comprovante
+# 19. Cancelamento
 
-Auditar o que já existe para impressão/PDF.
+Distinguir obrigatoriamente:
 
-O PDV deve permitir ao menos uma saída de comprovante operacional após finalização.
+```text
+cancelamento da venda
+```
 
-Pode ser inicialmente:
+de:
 
-* página imprimível;
-* impressão via browser;
-* PDF existente reutilizado.
+```text
+cancelamento do documento fiscal
+```
 
-Não implementar integração direta com impressora térmica sem necessidade neste marco.
+Se uma venda com documento fiscal autorizado for cancelada, descobrir quais ações fiscais passam a ser necessárias.
 
-A solução deve ser compatível com futura impressão em 58/80 mm.
+Não implementar cancelamento fiscal apenas alterando `status='cancelled'` localmente.
 
----
-
-# 31. Atalhos de teclado
-
-A operação deve ser eficiente sem depender exclusivamente de mouse.
-
-Avaliar atalhos para ações como:
-
-* foco na busca;
-* finalizar venda;
-* cancelar operação;
-* abrir seleção de cliente;
-* editar quantidade;
-* remover item.
-
-Evitar atalhos conflitantes com navegador.
-
-Documentar no próprio PDV os principais atalhos, de forma discreta.
+Uma operação externa real deverá confirmar o cancelamento quando houver provider integrado.
 
 ---
 
-# 32. Scanner
+# 20. Falhas e recuperação
 
-Garantir experiência adequada para scanner de código de barras do tipo teclado.
+Projetar o fluxo considerando:
 
-Não exigir plugin, driver ou integração nativa especial nesta etapa.
+* timeout;
+* queda de rede;
+* resposta desconhecida;
+* rejeição;
+* retry;
+* provider indisponível;
+* resposta duplicada;
+* usuário clicando duas vezes.
 
-O operador deve conseguir realizar repetidas leituras sem precisar clicar novamente no campo a cada item.
+Nunca assumir que timeout significa "nota não emitida".
 
----
-
-# 33. Interface
-
-Criar uma interface clean e operacional, consistente com o padrão do VetorOS 2.
-
-Manter:
-
-* azul tecnologia como cor principal;
-* sidebar atual;
-* responsividade;
-* componentes visuais existentes;
-* `ConfirmDialog`;
-* sem `alert()`/`confirm()` nativos.
-
-A tela do PDV pode usar mais espaço horizontal que os CRUDs tradicionais.
+Deve ser possível consultar/reconciliar o estado no provider utilizando identificador idempotente/referência apropriada.
 
 ---
 
-# 34. Layout sugerido
+# 21. Idempotência
 
-Desktop:
+Emissão não pode produzir duas notas fiscais por duplo clique/retry.
 
-Área principal esquerda/central:
+Descobrir o mecanismo de idempotência adequado ao provider e ao domínio.
 
-* busca/scanner;
-* tabela ou lista dos itens;
-* quantidade;
-* preço;
-* desconto;
-* total do item.
-
-Painel lateral direito:
-
-* cliente;
-* subtotal;
-* desconto;
-* total;
-* pagamentos;
-* valor recebido;
-* restante;
-* troco;
-* botão de finalizar.
-
-Em telas menores, reorganizar verticalmente.
-
-Não sacrificar usabilidade do desktop em nome de um layout genérico.
+Criar proteção estrutural/local onde necessário.
 
 ---
 
-# 35. Foco operacional
+# 22. Concorrência
 
-O operador deve conseguir fazer a maioria das vendas com fluxo semelhante a:
+Testar situações como duas requisições tentando emitir o mesmo documento simultaneamente.
 
-1. abrir PDV;
-2. escanear itens;
-3. eventualmente selecionar cliente;
-4. pressionar finalizar;
-5. informar pagamento;
-6. concluir;
-7. iniciar próxima venda.
-
-Minimizar navegação entre páginas.
+Somente uma operação fiscal lógica deve sobreviver.
 
 ---
 
-# 36. Próxima venda
+# 23. Auditoria
 
-Após finalização bem-sucedida:
+Auditar as ações fiscais importantes utilizando o mecanismo já existente.
 
-* apresentar confirmação;
-* disponibilizar comprovante;
-* permitir iniciar imediatamente nova venda.
+No mínimo avaliar eventos para:
 
-Evitar obrigar o operador a retornar manualmente para listagem administrativa.
+* documento criado;
+* emissão solicitada;
+* autorizado;
+* rejeitado;
+* cancelamento solicitado;
+* cancelado.
 
----
+Não registrar:
 
-# 37. Rascunho pendente
-
-Descobrir se há necessidade real de:
-
-* suspender venda;
-* guardar venda;
-* recuperar depois.
-
-Não implementar automaticamente.
-
-Se `draft` já permite isso naturalmente, verificar se basta uma listagem de vendas pendentes.
-
-Evitar conceito paralelo de "venda suspensa" se não houver diferença de domínio.
+* credenciais;
+* XML completo desnecessariamente em metadata;
+* tokens;
+* informações sigilosas do provider.
 
 ---
 
-# 38. Vendas pendentes
+# 24. RBAC
 
-Se operacionalmente útil e simples sobre a estrutura existente, permitir acesso a drafts da filial/operador conforme regras atuais.
+Antes de criar permissions, auditar o catálogo atual.
 
-Garantir isolamento por tenant/company/branch.
+Reaproveitar permissions fiscais existentes se houver.
 
----
+Somente criar novas quando existir lacuna inequívoca.
 
-# 39. RBAC
+Avaliar semanticamente capacidades como:
 
-Auditar se as permissions existentes são suficientes:
+```text
+fiscal.read
+fiscal.issue
+fiscal.cancel
+```
 
-* `sales.read`;
-* `sales.create`;
-* `sales.update`;
-* `sales.confirm`;
-* `sales.cancel`;
-* permissions de caixa;
-* permissions de pagamentos.
+Não criar dezenas de permissões artificiais.
 
-Não criar `pos.*` apenas porque existe uma tela nova.
-
-Só criar namespace/permission específica se houver uma ação de negócio realmente distinta.
+Testar RBAC negativo.
 
 ---
 
-# 40. Segurança e isolamento
+# 25. RLS e multitenancy
 
-Toda API nova deve preservar:
+Qualquer nova tabela fiscal pertencente ao tenant deve seguir rigorosamente os padrões atuais de:
 
-* tenant isolation;
 * RLS;
-* company/branch context;
-* RBAC;
-* ownership quando aplicável;
-* validação server-side.
+* fail-closed;
+* FKs same-tenant;
+* isolamento cross-tenant.
 
-Nunca confiar nos totais enviados pelo frontend.
-
----
-
-# 41. Auditoria
-
-Preservar rastreabilidade de:
-
-* quem realizou venda;
-* filial;
-* caixa;
-* sessão;
-* pagamentos;
-* cancelamento;
-* movimentos de estoque;
-* movimentos financeiros.
-
-Não apagar registros para "corrigir" operações.
+Testar explicitamente tentativa de leitura/manipulação cruzada.
 
 ---
 
-# 42. API
+# 26. Web
 
-Antes de criar endpoints novos, verificar se os atuais são suficientes.
+Caso a descoberta confirme necessidade de interface fiscal, manter os padrões UX atuais.
 
-Endpoints específicos de PDV são aceitáveis quando funcionarem como **orquestradores transacionais**, principalmente na finalização.
+Avaliar:
 
-Evitar endpoints que simplesmente dupliquem CRUDs existentes com prefixo `/pos`.
+```text
+Fiscal
+  └── Documentos fiscais
+```
 
----
+com:
 
-# 43. Web
+* listagem;
+* filtros;
+* status;
+* origem;
+* número;
+* cliente;
+* valor;
+* data;
+* ações permitidas.
 
-A implementação deve priorizar produtividade operacional.
+Detalhe do documento deve apresentar de maneira operacional:
 
-A página do PDV não deve parecer uma ficha de cadastro.
+* situação;
+* origem;
+* cliente;
+* itens;
+* totais;
+* eventos;
+* rejeição, quando houver;
+* chave;
+* protocolo;
+* ações permitidas.
 
-Elementos essenciais devem estar imediatamente acessíveis.
-
-Campos e controles devem ser responsivos e ocupar largura adequada.
-
----
-
-# 44. Testes mínimos esperados
-
-Depois da descoberta, criar apenas os testes realmente necessários para lacunas ou novas implementações.
-
-Caso seja criado checkout transacional, cobrir obrigatoriamente:
-
-1. venda simples à vista;
-2. múltiplas formas de pagamento;
-3. dinheiro com troco;
-4. tentativa de pagamento insuficiente quando a venda deveria ser integralmente quitada;
-5. tentativa de pagamento acima do total;
-6. estoque insuficiente;
-7. duplo request/retry;
-8. concorrência;
-9. rollback integral em falha intermediária;
-10. RBAC negativo;
-11. tenant isolation;
-12. caixa fechado;
-13. venda cancelada;
-14. venda já confirmada;
-15. rastreabilidade caixa/pagamento/venda.
-
-Não duplicar testes já existentes apenas para aumentar número de casos.
+Não expor JSON bruto da Focus NFe como interface principal.
 
 ---
 
-# 45. Gates
+# 27. XML e DANFE
 
-Executar os gates canônicos do projeto ao final.
+Descobrir exatamente o que a Focus NFe fornece.
 
-No mínimo, conforme estrutura atual:
+Não gerar DANFE próprio se o provider já fornecer documento oficial adequado.
 
-* migrations/DB tests;
-* API tests;
-* Web build;
-* testes específicos novos;
-* RBAC negativo;
-* validações de TypeScript/lint se fizerem parte dos gates canônicos.
+Definir estratégia de armazenamento/referência para XML baseada no padrão atual de arquivos do sistema.
 
-Todo erro causado pelas alterações deste marco deve ser corrigido.
-
-Se surgirem falhas pré-existentes que impeçam o fechamento do marco, investigar causa raiz antes de classificá-las como externas.
+Não armazenar grandes blobs no PostgreSQL automaticamente sem avaliar a arquitetura existente.
 
 ---
 
-# 46. Roadmap
+# 28. Ambiente de homologação
 
-Somente marcar:
+Qualquer integração real deve começar apta a trabalhar em homologação.
 
-`PDV-ADV-01 — DONE`
+Não executar emissão real em produção durante os testes automatizados.
 
-quando:
-
-* descoberta estiver documentada;
-* lacunas reais estiverem implementadas;
-* integrações estiverem consistentes;
-* testes necessários estiverem verdes;
-* gates canônicos estiverem verdes.
-
-Se a descoberta demonstrar que grande parte do PDV já existe, não reimplementar.
-
-O resultado pode legitimamente ser pequeno se o sistema já possuir a maioria das capacidades.
+Testes automatizados de integração com provider devem utilizar mocks/fakes controlados, salvo suíte explicitamente destinada a sandbox/homologação.
 
 ---
 
-# 47. Resultado esperado
+# 29. Testes mínimos
 
-Ao final, o sistema deve permitir uma operação real de balcão:
+Se houver implementação, criar cobertura para pelo menos:
 
-**Abrir caixa → iniciar venda → localizar/escanear produtos → ajustar itens → selecionar cliente opcional → receber em uma ou várias formas → calcular troco quando houver → finalizar atomicamente → baixar estoque → registrar caixa/financeiro → emitir comprovante → iniciar próxima venda.**
+1. criação a partir de venda válida;
+2. cliente PF;
+3. cliente PJ;
+4. snapshots;
+5. autorização;
+6. rejeição;
+7. retry idempotente;
+8. duplo clique;
+9. concorrência;
+10. cancelamento;
+11. cancelamento rejeitado;
+12. isolamento cross-tenant;
+13. RBAC negativo;
+14. venda inexistente/de outro tenant;
+15. imutabilidade após autorização;
+16. falha externa sem corromper venda;
+17. recuperação após timeout/estado desconhecido.
 
-Tudo isso sobre o mesmo núcleo de vendas já consolidado pelo VEN-ADV-01.
+Adicionar testes específicos de NFC-e/NF-e/NFS-e somente para os tipos realmente implementados.
 
 ---
 
-# 48. Regra final de execução
+# 30. Gate final
 
-Execute autonomamente.
+Após implementação:
 
-Não pedir autorização entre etapas.
+```bash
+pnpm -r lint
+pnpm -r typecheck
+pnpm -r test
+pnpm -r build
+```
 
-Descobrir primeiro.
+Executar também todas as suítes de banco/API relevantes no ambiente PostgreSQL real utilizado pelo projeto.
 
-Implementar somente lacunas reais.
+Não enfraquecer testes existentes.
 
-Não recriar funcionalidades maduras.
+Não alterar teste apenas para fazer implementação incorreta passar.
 
-Não criar arquitetura paralela ao domínio existente.
+Qualquer regressão provocada pela rodada deve ser corrigida.
 
-Não parar após encontrar a primeira lacuna: revisar o fluxo operacional completo do PDV.
+---
 
-Corrigir regressões introduzidas durante o marco.
+# 31. Regra de execução
 
-Somente reportar conclusão quando houver um diagnóstico completo do estado encontrado, alterações realmente necessárias e resultado dos gates finais.
+Executar autonomamente.
+
+Não parar solicitando autorização entre descoberta, implementação, correções e testes.
+
+Primeiro descobrir.
+
+Depois implementar somente lacunas comprovadas.
+
+Depois testar.
+
+Corrigir regressões introduzidas pelo marco.
+
+Não expandir para funcionalidades que não sejam necessárias ao FIS-ADV-01.
+
+---
+
+# 32. Regra bloqueante contra overengineering
+
+Especialmente neste marco:
+
+**NÃO implementar um ERP fiscal/tributário genérico.**
+
+Não construir por antecipação:
+
+* SPED;
+* Sintegra;
+* EFD;
+* escrituração contábil;
+* apuração tributária completa;
+* GNRE;
+* MDF-e;
+* CT-e;
+* manifesto do destinatário;
+* carta de correção;
+* inutilização;
+* contingência própria;
+* múltiplos providers;
+* motor tributário nacional genérico;
+* cálculo fiscal para todos os regimes brasileiros.
+
+Esses assuntos somente entram quando houver marco específico e necessidade comprovada.
+
+---
+
+# 33. Resultado esperado
+
+Ao final responder explicitamente:
+
+```text
+FIS-ADV-01 — Fiscal Operacional Completo
+
+Descoberta:
+...
+
+Lacunas reais:
+...
+
+Implementado:
+...
+
+Reutilizado:
+...
+
+NF-e:
+SIM / NÃO / PARCIAL
+
+NFC-e:
+SIM / NÃO / PARCIAL
+
+NFS-e:
+SIM / NÃO / PARCIAL
+
+Integração Focus NFe:
+SIM / NÃO / PARCIAL
+
+PDV → Fiscal:
+SIM / NÃO / PARCIAL
+
+OS → Fiscal:
+SIM / NÃO / PARCIAL
+
+Idempotência:
+...
+
+Concorrência:
+...
+
+RBAC:
+...
+
+RLS:
+...
+
+Testes:
+...
+
+Gates finais:
+...
+
+Limitações reais restantes:
+...
+```
+
+Se a descoberta demonstrar que uma área já está corretamente resolvida, **não reimplementar**.
+
+O objetivo é sair desta rodada com uma arquitetura fiscal correta e operacionalmente utilizável, preservando integralmente o núcleo já consolidado de:
+
+**OS → Vendas → PDV → Estoque → Caixa → Financeiro.**

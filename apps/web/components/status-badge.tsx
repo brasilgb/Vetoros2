@@ -40,6 +40,9 @@ const commonStatusMap: Record<string, { label: string; tone: StatusTone }> = {
   awaiting_parts: { label: 'Aguardando peças', tone: 'warning' },
   ready: { label: 'Pronta para entrega', tone: 'info' },
   delivered: { label: 'Entregue', tone: 'success' },
+  // FIS-ADV-01: estados do documento fiscal que ainda não tinham rótulo no mapa comum.
+  authorized: { label: 'Autorizado', tone: 'success' },
+  cancellation_pending: { label: 'Cancelamento em andamento', tone: 'warning' },
 };
 
 /** Mapa central para significados comuns de status entre módulos. Um módulo com vocabulário próprio deve declarar seu próprio mapa e usar <StatusBadge tone> diretamente, mas reaproveitar este mapa sempre que o significado coincidir. */
