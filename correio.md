@@ -1,805 +1,553 @@
-# FIS-ADV-01 — Fiscal Operacional Completo
+# FIS-ADV-02 — Fluxo Fiscal Operacional Integrado
 
-Data: 2026-09-10
+## Objetivo
 
-## 1. Objetivo
+Executar autonomamente o próximo marco:
 
-Executar o próximo marco avançado do VetorOS 2:
+**FIS-ADV-02 — Fluxo Fiscal Operacional Integrado**
 
-**FIS-ADV-01 — Fiscal Operacional Completo**
+O objetivo deste marco é integrar o domínio fiscal já implementado ao fluxo operacional normal do VetorOS, principalmente:
 
-O objetivo é descobrir e, somente onde houver lacuna real, completar a infraestrutura fiscal necessária para que o sistema consiga representar corretamente documentos fiscais originados das operações já existentes.
+* PDV → documento fiscal;
+* Venda → documento fiscal;
+* Ordem de Serviço → documento fiscal;
+* configuração dos dados fiscais necessários;
+* navegação e UX entre documentos de origem e documentos fiscais.
 
-O marco deve considerar principalmente:
+Este marco é exclusivamente de **domínio, aplicação, UX, validações internas, banco e testes**.
 
-* Vendas / PDV;
-* Ordens de Serviço;
-* clientes;
-* empresas e filiais;
-* produtos/peças;
-* serviços;
-* pagamentos e financeiro;
-* futura integração com provedor fiscal, especialmente Focus NFe.
+## Restrição obrigatória
 
-Não implementar emissão fiscal "de fachada".
+Nesta rodada, NÃO trabalhar, pesquisar, documentar, alterar ou mencionar:
 
-O domínio fiscal deve se apoiar nas operações reais já existentes.
-
----
-
-## 2. Estado consolidado que NÃO deve ser refeito
-
-Considere concluídos e preserve:
-
-* COM-ADV-01 — Compras Operacionais Completas;
-* FIN-ADV-01 — Financeiro Operacional Completo;
-* VEN-ADV-01 — Vendas Operacionais Completas;
-* PDV-ADV-01 — Frente de Caixa Operacional Completa;
-* OS-ADV-01 / OS-ADV-02;
-* estoque;
-* caixa;
-* recebíveis;
-* pagáveis;
-* tesouraria;
-* clientes;
-* empresas;
-* filiais;
-* fornecedores;
-* equipamentos;
-* RBAC;
-* auditoria.
-
-Não criar estruturas fiscais paralelas para substituir `sales`, `service_orders`, `payments`, `customers`, `companies`, `branches` ou `inventory_parts`.
-
----
-
-# 3. DESCOBERTA OBRIGATÓRIA
-
-Antes de qualquer código ou migration, auditar integralmente o estado atual.
-
-Responder objetivamente.
-
-### 3.1 Estruturas fiscais existentes
-
-Localizar qualquer estrutura relacionada a:
-
-* fiscal;
-* invoice;
-* nota fiscal;
-* NF-e;
-* NFC-e;
-* NFS-e;
+* APIs fiscais externas;
+* provedores fiscais;
 * Focus NFe;
 * SEFAZ;
-* prefeitura;
-* série;
-* número fiscal;
-* chave de acesso;
-* XML;
-* DANFE;
-* RPS;
-* CNAE;
-* NCM;
-* CEST;
-* CFOP;
-* CST;
-* CSOSN;
-* ICMS;
-* IPI;
-* PIS;
-* COFINS;
-* ISS;
-* inscrição estadual;
-* inscrição municipal;
-* regime tributário.
+* endpoints externos;
+* autenticação externa;
+* credenciais;
+* sandbox/homologação externa;
+* payload de terceiros;
+* comunicação HTTP fiscal;
+* integração com serviços fiscais externos.
 
-Não assumir que algo não existe sem pesquisar migrations, schema, API, Web, contratos e testes.
+Se existir código previamente implementado relacionado a qualquer integração externa, ele deve permanecer intacto.
+
+**Não alterar, ampliar, remover, refatorar ou testar essa camada nesta rodada.**
+
+O foco é somente o funcionamento interno do VetorOS.
 
 ---
 
-## 4. Cadastro da empresa emissora
+# 1. Descoberta obrigatória antes de alterar código
 
-Auditar `companies` e `branches`.
+Antes de implementar qualquer coisa, auditar integralmente o estado atual de:
 
-Confirmar quais dados fiscais já existem e quais realmente faltam.
+* FIS-ADV-01;
+* PDV-ADV-01;
+* VEN-ADV-01;
+* OS-ADV-02;
+* CAD-01;
+* companies;
+* branches;
+* inventory_parts;
+* sales;
+* service_orders;
+* fiscal_documents;
+* fiscal_document_items;
+* rotas Web relacionadas;
+* permissions/RBAC;
+* RLS;
+* auditoria existente.
 
-Avaliar, no mínimo:
+Identificar o que já está pronto e reutilizar.
 
-* razão social;
-* nome fantasia;
-* CNPJ;
-* IE;
-* IM;
-* endereço;
-* município;
-* UF;
-* CEP;
-* código IBGE;
-* telefone;
-* e-mail;
-* regime tributário;
-* CNAE;
-* ambiente fiscal homologação/produção.
+Não duplicar estruturas existentes.
 
-Não criar tabela separada de "emitente" se `companies`/`branches` puderem representar isso corretamente.
+---
 
-Determinar explicitamente se a emissão fiscal pertence à:
+# 2. PDV → Fiscal
+
+O operador deve conseguir sair da conclusão de uma venda do PDV diretamente para o fluxo fiscal.
+
+Após uma venda ser confirmada/concluída no PDV:
+
+* mostrar ação clara **Emitir documento fiscal**;
+* se a venda já possuir documento fiscal, mostrar **Ver documento fiscal**;
+* nunca criar documento duplicado para a mesma origem;
+* manter link entre venda e documento fiscal;
+* permitir retornar do documento fiscal para a venda;
+* preservar integralmente o checkout existente.
+
+O fluxo comercial deve continuar sendo:
 
 ```text
-Tenant
-  └── Company
-       └── Branch
+Venda
+→ Estoque
+→ Pagamento
+→ Venda concluída
+→ Documento fiscal
 ```
 
-A decisão deve refletir a operação real do VetorOS.
+Fiscal não deve ser condição para concluir a venda.
+
+Uma falha posterior no processo fiscal nunca pode:
+
+* desfazer a venda;
+* devolver estoque;
+* remover pagamento;
+* alterar caixa;
+* corromper financeiro.
 
 ---
 
-# 5. Cliente / destinatário
+# 3. Venda → Fiscal fora do PDV
 
-Auditar `customers` e seus endereços/contatos.
+Na tela normal de uma venda confirmada:
 
-Confirmar capacidade de representar:
+* disponibilizar ação para criar/acessar seu documento fiscal;
+* identificar visualmente quando já existe documento;
+* impedir duplicidade;
+* permitir navegação bidirecional:
 
-### Pessoa física
+```text
+Venda → Fiscal
+Fiscal → Venda
+```
 
-* CPF;
-* nome;
-* endereço;
-* município;
-* UF;
-* CEP;
-* e-mail;
-* telefone.
+A ação não deve aparecer de forma incorreta para venda:
 
-### Pessoa jurídica
+* draft;
+* cancelada;
+* ou em estado incompatível.
 
-* CNPJ;
-* razão social/nome;
-* IE;
-* indicador de contribuinte, caso necessário;
-* endereço;
-* município;
-* UF;
-* CEP.
-
-Não duplicar cadastro de cliente dentro do módulo fiscal.
-
-O documento fiscal poderá possuir **snapshot fiscal do destinatário**, caso necessário para preservar histórico.
+Reutilizar as regras já implementadas no FIS-ADV-01.
 
 ---
 
-# 6. Produtos e peças
+# 4. Ordem de Serviço → Fiscal
+
+Na tela da Ordem de Serviço:
+
+Para OS elegível conforme regras já existentes:
+
+* disponibilizar ação **Emitir documento fiscal**;
+* se já existir documento, mostrar **Ver documento fiscal**;
+* impedir documento duplicado para a mesma origem;
+* permitir navegação bidirecional:
+
+```text
+OS → Fiscal
+Fiscal → OS
+```
+
+Não criar regra paralela.
+
+Continuar respeitando exatamente os estados já definidos no FIS-ADV-01 para elegibilidade da OS.
+
+Orçamento aprovado não deve ser tratado como documento fiscal.
+
+---
+
+# 5. Origem fiscal visível
+
+Na listagem fiscal e na tela individual do documento deixar extremamente claro:
+
+* tipo da origem;
+* número da venda ou OS;
+* cliente;
+* empresa;
+* filial;
+* situação;
+* valor;
+* data;
+* link para origem.
+
+Evitar exibir apenas UUIDs quando houver um número comercial disponível.
+
+Exemplos:
+
+```text
+Venda #000154
+OS #000438
+```
+
+---
+
+# 6. Dados fiscais da empresa
+
+Auditar os campos fiscais já existentes em `companies`.
+
+Garantir interface administrativa adequada para manutenção dos campos existentes necessários ao domínio fiscal.
+
+Reutilizar os campos existentes.
+
+Não criar segunda configuração fiscal da empresa.
+
+A interface deve seguir o padrão visual do VetorOS 2:
+
+* formulário responsivo;
+* largura adequada;
+* labels claros;
+* validações;
+* mensagens de erro;
+* create/edit conforme arquitetura atual.
+
+---
+
+# 7. Dados fiscais da filial
+
+Auditar `branches`.
+
+Os dados relacionados ao estabelecimento/município já existentes no modelo devem estar disponíveis para manutenção quando aplicável.
+
+Não duplicar identidade fiscal da empresa dentro da filial se o modelo definido no FIS-ADV-01 estabeleceu que ela pertence à empresa.
+
+Respeitar a decisão arquitetural já registrada:
+
+```text
+Empresa = identidade fiscal
+Filial = estabelecimento/endereço da operação
+```
+
+---
+
+# 8. Dados fiscais dos produtos
 
 Auditar `inventory_parts`.
 
-Determinar quais campos fiscais já existem.
+Os campos fiscais já adicionados anteriormente devem poder ser mantidos pela interface administrativa quando aplicável.
 
-Avaliar necessidade real de:
+Exemplos de informações já pertencentes ao cadastro:
 
 * NCM;
 * CEST;
-* origem da mercadoria;
-* unidade tributável/comercial;
-* GTIN/EAN;
-* CFOP padrão;
-* CST/CSOSN;
-* alíquotas ou classificação tributária.
-
-Não transformar `inventory_parts` em um motor tributário completo sem necessidade.
-
-Separar claramente:
-
-```text
-dados cadastrais fiscais do produto
-```
-
-de:
-
-```text
-tributação efetivamente aplicada no documento
-```
-
-A tributação aplicada deverá ser preservada como snapshot quando houver emissão.
-
----
-
-# 7. Serviços
-
-Auditar como serviços são atualmente representados em:
-
-* `service_order_items`;
-* `sale_items`;
-* demais estruturas existentes.
-
-Determinar como representar os dados necessários para NFS-e, incluindo somente quando aplicável:
-
-* código de serviço;
-* item da lista LC 116;
-* CNAE;
-* município de incidência;
-* alíquota ISS;
-* retenção.
-
-Não inventar catálogo paralelo de serviços se uma estrutura existente puder ser estendida com clareza.
-
----
-
-# 8. Tipos de documento fiscal
-
-Avaliar separadamente:
-
-### NFC-e
-
-Principal candidato para venda de balcão / PDV.
-
-### NF-e
-
-Principal candidato para vendas que necessitem documento modelo 55.
-
-### NFS-e
-
-Principal candidato para serviços.
-
-Não tratar NF-e, NFC-e e NFS-e como se fossem o mesmo documento.
-
-Descobrir quais conceitos podem ser compartilhados e quais necessariamente precisam ser específicos.
-
----
-
-# 9. Origem operacional
-
-Todo documento fiscal deverá possuir origem inequívoca.
-
-Avaliar vínculos como:
-
-```text
-fiscal_document
-  -> sale
-```
-
-e, quando aplicável:
-
-```text
-fiscal_document
-  -> service_order
-```
-
-ou outra estrutura já existente.
-
-Nunca copiar a venda inteira para uma segunda estrutura operacional.
-
-O fiscal deve registrar o documento emitido e seus snapshots necessários, não criar outra venda.
-
----
-
-# 10. Modelo de documento fiscal
-
-Somente após a descoberta, determinar se é necessária estrutura persistida para documentos fiscais.
-
-Caso exista lacuna real, considerar conceitos equivalentes a:
-
-```text
-fiscal_documents
-fiscal_document_items
-```
-
-mas os nomes finais devem seguir os padrões existentes do projeto.
-
-O documento precisa conseguir representar, quando aplicável:
-
-* tenant;
-* company;
-* branch;
 * origem;
-* modelo;
-* série;
-* número;
-* ambiente;
-* status;
-* destinatário snapshot;
-* totais;
-* chave de acesso;
-* protocolo;
-* XML;
-* URL/PDF/DANFE quando fornecido pelo provedor;
-* código/identificador externo;
-* motivo de rejeição;
-* timestamps relevantes.
+* CFOP padrão;
+* GTIN/EAN já existente.
 
-Não persistir campos apenas porque existem no layout oficial se o VetorOS não os utiliza.
+Não construir motor tributário.
+
+Não inventar enquadramento fiscal automaticamente.
+
+O sistema apenas armazena e utiliza os dados definidos pelo usuário.
 
 ---
 
-# 11. Estados fiscais
+# 9. Validação antes da ação fiscal
 
-Definir uma máquina de estados explícita.
+Antes de iniciar uma ação fiscal interna, validar os dados obrigatórios conhecidos pelo domínio.
 
-Avaliar estados equivalentes a:
+Quando houver ausência de dados:
+
+não retornar apenas erro técnico.
+
+Apresentar mensagem operacional clara, por exemplo:
 
 ```text
-draft
-pending
-authorized
-rejected
-cancelled
+Não foi possível continuar.
+
+Verifique os seguintes dados:
+
+- CNPJ da empresa
+- regime tributário
+- código IBGE da filial
+- NCM do produto XPTO
 ```
 
-e outros somente se forem necessários pelo fluxo real/provider.
-
-Uma nota autorizada não pode simplesmente voltar para rascunho.
-
-Rejeição não pode destruir o histórico da tentativa.
-
-Cancelamento fiscal não deve significar exclusão do documento.
+Sempre que possível incluir link para corrigir o cadastro correspondente.
 
 ---
 
-# 12. Imutabilidade e snapshots
+# 10. Idempotência interna
 
-Após autorização fiscal, os dados fiscais relevantes devem permanecer historicamente reproduzíveis mesmo que:
+Garantir que múltiplos cliques ou refresh da interface não criem documentos fiscais duplicados.
 
-* cliente seja alterado;
-* produto seja alterado;
-* preço cadastral mude;
-* endereço mude;
-* empresa altere cadastro posteriormente.
+Para uma mesma origem, deve existir no máximo o documento permitido pela modelagem atual.
 
-Descobrir quais snapshots são necessários.
-
-Não duplicar dados sem justificativa histórica/fiscal.
+Validar essa proteção também no banco quando apropriado, não apenas na UI.
 
 ---
 
-# 13. Numeração fiscal
+# 11. Histórico e rastreabilidade
 
-Não usar `sale_number`, `service_order_number` ou qualquer contador comercial como número fiscal.
+Garantir que as operações relevantes do fluxo fiscal continuem aparecendo na auditoria existente.
 
-Descobrir como série/número devem ser controlados.
+Não criar sistema paralelo de logs.
 
-Se o provedor fiscal for responsável pela numeração, preservar esse modelo.
+Quando o documento possuir origem:
 
-Não criar contador local sem necessidade comprovada.
-
----
-
-# 14. Focus NFe
-
-Auditar se já existe qualquer integração ou contrato relacionado à Focus NFe.
-
-Caso não exista:
-
-projetar uma abstração mínima de provider para impedir que regras de negócio fiquem espalhadas pelo código.
-
-Exemplo conceitual:
-
-```text
-FiscalProvider
-  issue(...)
-  consult(...)
-  cancel(...)
-```
-
-O nome/arquitetura final deve seguir os padrões do código existente.
-
-Não criar uma framework genérica para dezenas de provedores.
-
-O sistema pode começar com Focus NFe como provider concreto.
+* registrar vínculo corretamente;
+* preservar o documento de origem;
+* preservar snapshots;
+* não permitir alteração retroativa da venda/OS refletir incorretamente no documento fiscal já congelado.
 
 ---
 
-# 15. Credenciais
+# 12. Permissões
 
-Credenciais fiscais nunca devem:
-
-* aparecer em respostas comuns da API;
-* aparecer integralmente em logs;
-* aparecer em auditoria;
-* ser enviadas ao Web;
-* ficar hardcoded.
-
-Descobrir o modelo de configuração já utilizado pelo projeto antes de criar solução nova.
-
----
-
-# 16. Emissão
-
-Avaliar operações explícitas equivalentes a:
-
-```text
-POST /fiscal-documents
-POST /fiscal-documents/:id/issue
-```
-
-ou arquitetura mais adequada ao padrão atual.
-
-Emissão deve ser uma ação explícita.
-
-Não emitir nota automaticamente apenas porque uma venda foi confirmada, a menos que já exista regra inequívoca aprovada no domínio.
-
----
-
-# 17. PDV
-
-Integrar conceitualmente com o `PDV-ADV-01`.
-
-Após uma venda finalizada, avaliar UX para:
-
-```text
-Finalizar venda
-→ comprovante
-→ Emitir NFC-e
-```
-
-ou emissão integrada quando configurada.
-
-Mas não alterar o checkout atômico de venda/estoque/pagamento para torná-lo dependente da disponibilidade da SEFAZ/Focus.
-
-Uma indisponibilidade fiscal não pode corromper:
-
-* venda;
-* estoque;
-* pagamento;
-* caixa.
-
-Fiscal deve possuir seu próprio estado operacional recuperável.
-
----
-
-# 18. Ordem de Serviço
-
-Auditar como serviços concluídos/faturados poderiam originar NFS-e.
-
-Não presumir que toda OS deve emitir nota.
-
-Separar:
-
-```text
-conclusão operacional da OS
-```
-
-de:
-
-```text
-emissão fiscal
-```
-
-A indisponibilidade fiscal não deve impedir conclusão técnica da OS.
-
----
-
-# 19. Cancelamento
-
-Distinguir obrigatoriamente:
-
-```text
-cancelamento da venda
-```
-
-de:
-
-```text
-cancelamento do documento fiscal
-```
-
-Se uma venda com documento fiscal autorizado for cancelada, descobrir quais ações fiscais passam a ser necessárias.
-
-Não implementar cancelamento fiscal apenas alterando `status='cancelled'` localmente.
-
-Uma operação externa real deverá confirmar o cancelamento quando houver provider integrado.
-
----
-
-# 20. Falhas e recuperação
-
-Projetar o fluxo considerando:
-
-* timeout;
-* queda de rede;
-* resposta desconhecida;
-* rejeição;
-* retry;
-* provider indisponível;
-* resposta duplicada;
-* usuário clicando duas vezes.
-
-Nunca assumir que timeout significa "nota não emitida".
-
-Deve ser possível consultar/reconciliar o estado no provider utilizando identificador idempotente/referência apropriada.
-
----
-
-# 21. Idempotência
-
-Emissão não pode produzir duas notas fiscais por duplo clique/retry.
-
-Descobrir o mecanismo de idempotência adequado ao provider e ao domínio.
-
-Criar proteção estrutural/local onde necessário.
-
----
-
-# 22. Concorrência
-
-Testar situações como duas requisições tentando emitir o mesmo documento simultaneamente.
-
-Somente uma operação fiscal lógica deve sobreviver.
-
----
-
-# 23. Auditoria
-
-Auditar as ações fiscais importantes utilizando o mecanismo já existente.
-
-No mínimo avaliar eventos para:
-
-* documento criado;
-* emissão solicitada;
-* autorizado;
-* rejeitado;
-* cancelamento solicitado;
-* cancelado.
-
-Não registrar:
-
-* credenciais;
-* XML completo desnecessariamente em metadata;
-* tokens;
-* informações sigilosas do provider.
-
----
-
-# 24. RBAC
-
-Antes de criar permissions, auditar o catálogo atual.
-
-Reaproveitar permissions fiscais existentes se houver.
-
-Somente criar novas quando existir lacuna inequívoca.
-
-Avaliar semanticamente capacidades como:
+Reutilizar exatamente as permissions já existentes:
 
 ```text
 fiscal.read
+fiscal.create
 fiscal.issue
 fiscal.cancel
 ```
 
-Não criar dezenas de permissões artificiais.
+Não criar permissions redundantes.
 
-Testar RBAC negativo.
+Testar pelo menos:
+
+* usuário autorizado;
+* usuário sem fiscal.read;
+* usuário sem fiscal.create;
+* tentativa cross-tenant.
+
+Comportamento esperado de autorização:
+
+```text
+403
+```
+
+Cross-tenant deve continuar invisível:
+
+```text
+404
+```
+
+quando esse for o padrão já adotado no projeto.
 
 ---
 
-# 25. RLS e multitenancy
+# 13. UX
 
-Qualquer nova tabela fiscal pertencente ao tenant deve seguir rigorosamente os padrões atuais de:
+Manter os padrões definidos no VetorOS 2:
 
+* sidebar existente;
+* breadcrumbs;
+* telas responsivas;
+* tabelas consistentes;
+* ações visíveis conforme estado;
+* sem `alert()`;
+* sem `confirm()`;
+* usar componentes existentes de confirmação;
+* mensagens de erro claras;
+* evitar modais grandes para CRUD completo.
+
+A integração fiscal deve parecer parte natural de:
+
+```text
+Venda
+PDV
+OS
+```
+
+e não um módulo isolado do restante do produto.
+
+---
+
+# 14. Não duplicar documento
+
+Auditar especificamente a possibilidade de:
+
+```text
+PDV → cria documento
+```
+
+e depois:
+
+```text
+Fiscal → cria outro documento da mesma venda
+```
+
+Isso não pode acontecer.
+
+O mesmo vale para OS.
+
+Implementar proteção estrutural apropriada caso ainda não exista.
+
+---
+
+# 15. Testes obrigatórios
+
+Adicionar cobertura automatizada proporcional às mudanças.
+
+Cobrir no mínimo:
+
+### Venda
+
+* venda confirmada pode iniciar fluxo fiscal;
+* venda draft não pode;
+* venda cancelada não pode;
+* documento existente não é duplicado;
+* link venda → fiscal;
+* link fiscal → venda.
+
+### PDV
+
+* após checkout concluído aparece ação fiscal;
+* checkout permanece concluído independentemente do passo fiscal;
+* refresh/duplo clique não duplica documento.
+
+### OS
+
+* OS elegível permite fluxo fiscal;
+* OS inelegível não permite;
+* documento existente é reutilizado;
+* orçamento não é tratado como origem fiscal.
+
+### Cadastros
+
+* campos fiscais da empresa persistem;
+* campos fiscais da filial persistem;
+* campos fiscais dos produtos persistem;
+* validações obrigatórias produzem mensagens operacionais.
+
+### Segurança
+
+* RBAC negativo;
+* isolamento de tenant;
 * RLS;
-* fail-closed;
-* FKs same-tenant;
-* isolamento cross-tenant.
-
-Testar explicitamente tentativa de leitura/manipulação cruzada.
+* tentativa de utilizar origem de outro tenant;
+* acesso direto por UUID estrangeiro.
 
 ---
 
-# 26. Web
+# 16. Descoberta antes de migration
 
-Caso a descoberta confirme necessidade de interface fiscal, manter os padrões UX atuais.
+Não criar migration automaticamente.
 
-Avaliar:
+Antes:
+
+1. auditar todas as constraints existentes;
+2. verificar se já existe proteção de unicidade/origem;
+3. verificar índices;
+4. verificar foreign keys;
+5. verificar checks;
+6. verificar triggers.
+
+Só criar migration se houver lacuna estrutural real.
+
+Se a garantia já existir no banco, não duplicar.
+
+---
+
+# 17. Regressão
+
+Nenhuma alteração deste marco pode quebrar:
+
+* clientes;
+* ativos;
+* OS;
+* orçamentos;
+* estoque;
+* compras;
+* vendas;
+* PDV;
+* caixa;
+* contas a pagar;
+* contas a receber;
+* tesouraria;
+* agenda;
+* relatórios;
+* administração.
+
+---
+
+# 18. Gate final
+
+Executar o ambiente oficial do projeto conforme documentação existente.
+
+Rodar:
 
 ```text
-Fiscal
-  └── Documentos fiscais
+DB tests
+API tests
+lint
+typecheck
+Web build
+git diff --check
 ```
 
-com:
+Se houver testes Web automatizados já estabelecidos para esses fluxos, executá-los também.
 
-* listagem;
-* filtros;
-* status;
-* origem;
-* número;
-* cliente;
-* valor;
-* data;
-* ações permitidas.
+Todos os gates devem permanecer 100% verdes.
 
-Detalhe do documento deve apresentar de maneira operacional:
-
-* situação;
-* origem;
-* cliente;
-* itens;
-* totais;
-* eventos;
-* rejeição, quando houver;
-* chave;
-* protocolo;
-* ações permitidas.
-
-Não expor JSON bruto da Focus NFe como interface principal.
+Não encerrar o marco com falhas novas.
 
 ---
 
-# 27. XML e DANFE
+# 19. Relatório final obrigatório
 
-Descobrir exatamente o que a Focus NFe fornece.
-
-Não gerar DANFE próprio se o provider já fornecer documento oficial adequado.
-
-Definir estratégia de armazenamento/referência para XML baseada no padrão atual de arquivos do sistema.
-
-Não armazenar grandes blobs no PostgreSQL automaticamente sem avaliar a arquitetura existente.
-
----
-
-# 28. Ambiente de homologação
-
-Qualquer integração real deve começar apta a trabalhar em homologação.
-
-Não executar emissão real em produção durante os testes automatizados.
-
-Testes automatizados de integração com provider devem utilizar mocks/fakes controlados, salvo suíte explicitamente destinada a sandbox/homologação.
-
----
-
-# 29. Testes mínimos
-
-Se houver implementação, criar cobertura para pelo menos:
-
-1. criação a partir de venda válida;
-2. cliente PF;
-3. cliente PJ;
-4. snapshots;
-5. autorização;
-6. rejeição;
-7. retry idempotente;
-8. duplo clique;
-9. concorrência;
-10. cancelamento;
-11. cancelamento rejeitado;
-12. isolamento cross-tenant;
-13. RBAC negativo;
-14. venda inexistente/de outro tenant;
-15. imutabilidade após autorização;
-16. falha externa sem corromper venda;
-17. recuperação após timeout/estado desconhecido.
-
-Adicionar testes específicos de NFC-e/NF-e/NFS-e somente para os tipos realmente implementados.
-
----
-
-# 30. Gate final
-
-Após implementação:
-
-```bash
-pnpm -r lint
-pnpm -r typecheck
-pnpm -r test
-pnpm -r build
-```
-
-Executar também todas as suítes de banco/API relevantes no ambiente PostgreSQL real utilizado pelo projeto.
-
-Não enfraquecer testes existentes.
-
-Não alterar teste apenas para fazer implementação incorreta passar.
-
-Qualquer regressão provocada pela rodada deve ser corrigida.
-
----
-
-# 31. Regra de execução
-
-Executar autonomamente.
-
-Não parar solicitando autorização entre descoberta, implementação, correções e testes.
-
-Primeiro descobrir.
-
-Depois implementar somente lacunas comprovadas.
-
-Depois testar.
-
-Corrigir regressões introduzidas pelo marco.
-
-Não expandir para funcionalidades que não sejam necessárias ao FIS-ADV-01.
-
----
-
-# 32. Regra bloqueante contra overengineering
-
-Especialmente neste marco:
-
-**NÃO implementar um ERP fiscal/tributário genérico.**
-
-Não construir por antecipação:
-
-* SPED;
-* Sintegra;
-* EFD;
-* escrituração contábil;
-* apuração tributária completa;
-* GNRE;
-* MDF-e;
-* CT-e;
-* manifesto do destinatário;
-* carta de correção;
-* inutilização;
-* contingência própria;
-* múltiplos providers;
-* motor tributário nacional genérico;
-* cálculo fiscal para todos os regimes brasileiros.
-
-Esses assuntos somente entram quando houver marco específico e necessidade comprovada.
-
----
-
-# 33. Resultado esperado
-
-Ao final responder explicitamente:
+Ao terminar, registrar em `executed.md`:
 
 ```text
-FIS-ADV-01 — Fiscal Operacional Completo
-
-Descoberta:
-...
-
-Lacunas reais:
-...
-
-Implementado:
-...
-
-Reutilizado:
-...
-
-NF-e:
-SIM / NÃO / PARCIAL
-
-NFC-e:
-SIM / NÃO / PARCIAL
-
-NFS-e:
-SIM / NÃO / PARCIAL
-
-Integração Focus NFe:
-SIM / NÃO / PARCIAL
-
-PDV → Fiscal:
-SIM / NÃO / PARCIAL
-
-OS → Fiscal:
-SIM / NÃO / PARCIAL
-
-Idempotência:
-...
-
-Concorrência:
-...
-
-RBAC:
-...
-
-RLS:
-...
-
-Testes:
-...
-
-Gates finais:
-...
-
-Limitações reais restantes:
-...
+FIS-ADV-02 — Fluxo Fiscal Operacional Integrado
 ```
 
-Se a descoberta demonstrar que uma área já está corretamente resolvida, **não reimplementar**.
+Informar objetivamente:
 
-O objetivo é sair desta rodada com uma arquitetura fiscal correta e operacionalmente utilizável, preservando integralmente o núcleo já consolidado de:
+```text
+PDV → Fiscal: SIM / PARCIAL / NÃO
+Venda → Fiscal: SIM / PARCIAL / NÃO
+OS → Fiscal: SIM / PARCIAL / NÃO
+Configuração empresa: SIM / PARCIAL / NÃO
+Configuração filial: SIM / PARCIAL / NÃO
+Configuração produtos: SIM / PARCIAL / NÃO
+Proteção contra duplicidade: SIM / PARCIAL / NÃO
+RBAC: SIM / PARCIAL / NÃO
+RLS: SIM / PARCIAL / NÃO
+```
 
-**OS → Vendas → PDV → Estoque → Caixa → Financeiro.**
+Também informar:
+
+* descoberta realizada;
+* estruturas reutilizadas;
+* arquivos alterados;
+* migrations criadas, se realmente necessárias;
+* testes adicionados;
+* resultados completos dos gates;
+* limitações reais restantes.
+
+---
+
+# 20. Critério de conclusão
+
+O marco só pode ser marcado:
+
+```text
+FIS-ADV-02 = DONE
+```
+
+quando o usuário conseguir seguir naturalmente:
+
+```text
+PDV
+→ concluir venda
+→ ação fiscal
+→ consultar documento
+→ voltar à venda
+```
+
+e:
+
+```text
+OS concluída
+→ ação fiscal
+→ consultar documento
+→ voltar à OS
+```
+
+sem duplicidade, sem quebra financeira, sem quebra de estoque e sem violação de tenant.
+
+## Regra final
+
+Executar autonomamente até concluir o escopo permitido.
+
+Não interromper para pedir autorização entre descoberta, implementação, testes e correções.
+
+Não fazer commit.
+
+**Não trabalhar em nenhuma integração fiscal externa nesta rodada.**

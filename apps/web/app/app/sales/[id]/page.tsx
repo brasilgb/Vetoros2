@@ -21,7 +21,8 @@ import { PartOptionRow, partLabel } from '../../../../components/entity-option-r
 import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
 type Item = { id: string; type: string; part_sku: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total: string };
-type Sale = { id: string; sale_number: number; sale_date: string; customer_name: string | null; branch_name: string; status: string; notes: string | null; items: Item[]; subtotal: string; discount_total: string; total: string };
+type FiscalDocument = { id: string; document_type: string; status: string; document_number: number | null };
+type Sale = { id: string; sale_number: number; sale_date: string; customer_name: string | null; branch_name: string; status: string; notes: string | null; items: Item[]; subtotal: string; discount_total: string; total: string; fiscal_documents: FiscalDocument[] };
 // VEN-ADV-01, seção 24: a venda não tinha nenhuma visibilidade financeira — nem os pagamentos já
 // recebidos, nem os recebíveis gerados a partir dela apareciam aqui (só no sentido inverso, já
 // fechado no FIN-ADV-01). Mesmo padrão de lista+link já usado em payables/receivables/pedido de
@@ -139,6 +140,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
       <div className="flex flex-wrap gap-3">
         {editable && <AsyncButton tone="primary" label="Confirmar" onClick={() => setPendingAction('confirm')} />}
         {cancellable && <AsyncButton tone="destructive" label="Cancelar venda" onClick={() => setPendingAction('cancel')} />}
+        {sale.status === 'confirmed' && (sale.fiscal_documents?.[0] ? <Link href={`/app/fiscal/${sale.fiscal_documents[0].id}`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">Ver documento fiscal</Link> : <Link href={`/app/fiscal?origin=sale&saleId=${sale.id}`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">Emitir documento fiscal</Link>)}
       </div>
 
       <div>

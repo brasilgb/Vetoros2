@@ -1,6 +1,7 @@
 'use client';
 import { use, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { PlusCircle, Wrench } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { PageHeader } from '../../../../components/page-header';
@@ -19,9 +20,10 @@ import { PartOptionRow, partLabel } from '../../../../components/entity-option-r
 import { searchParts, type PartOption } from '../../../../lib/entity-search';
 
 type Item = { id: string; type: 'service' | 'part' | 'non_stock'; inventory_part_id: string | null; description: string; quantity: string; unit_price: string; discount_amount: string; total_amount: string };
+type FiscalDocument = { id: string; document_type: string; status: string; document_number: number | null };
 type Order = {
   id: string; order_number: number; title: string; status: string; customer_name: string; asset_identifier: string | null; reported_problem: string; initial_notes: string | null;
-  items: Item[]; subtotal: number; discounts: number; total: number;
+  items: Item[]; subtotal: number; discounts: number; total: number; fiscal_documents: FiscalDocument[];
   // OS-ADV-01/OS-ADV-02: campos operacionais e de garantia sem UI até agora (seção 15 do correio.md).
   priority: 'low' | 'normal' | 'high' | 'urgent'; technician_user_profile_id: string | null; diagnosis: string | null; executed_solution: string | null; technical_notes: string | null;
   started_at: string | null; technically_completed_at: string | null; delivered_at: string | null; delivery_notes: string | null;
@@ -273,6 +275,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
   if (state === 'error' || !order) return <RequireOperationalContext><ErrorState message="Não foi possível carregar esta ordem de serviço." onRetry={load} /></RequireOperationalContext>;
 
   const { label, tone } = commonStatus(order.status);
+  const fiscalDocument = order.fiscal_documents?.[0];
   const columns: DataTableColumn<Item>[] = [
     { key: 'type', header: 'Tipo', render: (row) => row.type === 'part' ? 'Peça' : row.type === 'non_stock' ? 'Material sem estoque' : 'Serviço' },
     { key: 'description', header: 'Descrição', render: (row) => row.description },
@@ -326,6 +329,7 @@ export default function ServiceOrderDetailPage({ params }: { params: Promise<{ i
           </FormField>
         </FormDialog>
       </FormSection>
+      {(['completed', 'delivered'].includes(order.status)) && <div><Link href={fiscalDocument ? `/app/fiscal/${fiscalDocument.id}` : `/app/fiscal?origin=service_order&serviceOrderId=${id}`} className="inline-flex rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50">{fiscalDocument ? 'Ver documento fiscal' : 'Emitir documento fiscal'}</Link></div>}
 
       <FormSection title="Técnico e diagnóstico">
         <form onSubmit={saveOperational} className="contents">

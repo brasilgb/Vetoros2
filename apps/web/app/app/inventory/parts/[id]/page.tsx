@@ -10,7 +10,7 @@ import { useSetBreadcrumb } from '../../../../../components/breadcrumb-context';
 import { RequireOperationalContext } from '../../../../../components/require-operational-context';
 import { useOperationalContext } from '../../../../../components/operational-context';
 
-type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string; category_id:string|null;brand_id:string|null;barcode_ean: string | null; minimum_stock: string; default_location: string | null; ncm: string | null };
+type Part = { id: string; sku: string; description: string; unit: string; status: string; balance: string; category_id:string|null;brand_id:string|null;barcode_ean: string | null; minimum_stock: string; default_location: string | null; ncm: string | null; cest:string|null; origin:string|null; default_cfop:string|null };
 const movementTypes = [
   { value: 'entry', label: 'Entrada' },
   { value: 'exit', label: 'Saída' },
@@ -24,7 +24,7 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
-  const [details, setDetails] = useState({ categoryId:'',brandId:'',barcodeEan: '', minimumStock: '0', defaultLocation: '', ncm: '' });
+  const [details, setDetails] = useState({ categoryId:'',brandId:'',barcodeEan: '', minimumStock: '0', defaultLocation: '', ncm: '', cest:'', origin:'', defaultCfop:'' });
   const [categories,setCategories]=useState<Array<{id:string;name:string;status:string}>>([]),[brands,setBrands]=useState<Array<{id:string;name:string;status:string}>>([]);
   const [move, setMove] = useState({ type: 'entry', quantity: '1', reason: '' });
   const [registering, setRegistering] = useState(false);
@@ -38,7 +38,7 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
     setPart(data);
     setDescription(data.description);
     setStatus(data.status);
-    setDetails({ categoryId:data.category_id??'',brandId:data.brand_id??'',barcodeEan: data.barcode_ean ?? '', minimumStock: data.minimum_stock, defaultLocation: data.default_location ?? '', ncm: data.ncm ?? '' });
+    setDetails({ categoryId:data.category_id??'',brandId:data.brand_id??'',barcodeEan: data.barcode_ean ?? '', minimumStock: data.minimum_stock, defaultLocation: data.default_location ?? '', ncm: data.ncm ?? '', cest:data.cest??'', origin:data.origin??'', defaultCfop:data.default_cfop??'' });
     setState('ready');
   }, [id]);
 
@@ -85,6 +85,9 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
         <FormField label="Estoque mínimo" htmlFor="minimumStock"><input id="minimumStock" type="number" min="0" step="0.001" className={formFieldClass} value={details.minimumStock} onChange={(e) => setDetails({ ...details, minimumStock: e.target.value })} /></FormField>
         <FormField label="Localização padrão" htmlFor="defaultLocation"><input id="defaultLocation" className={formFieldClass} value={details.defaultLocation} onChange={(e) => setDetails({ ...details, defaultLocation: e.target.value })} /></FormField>
         <FormField label="NCM" htmlFor="ncm"><input id="ncm" maxLength={8} className={formFieldClass} value={details.ncm} onChange={(e) => setDetails({ ...details, ncm: e.target.value })} /></FormField>
+        <FormField label="CEST" htmlFor="cest"><input id="cest" maxLength={7} className={formFieldClass} value={details.cest} onChange={(e) => setDetails({ ...details, cest: e.target.value })} /></FormField>
+        <FormField label="Origem" htmlFor="origin"><input id="origin" maxLength={1} className={formFieldClass} value={details.origin} onChange={(e) => setDetails({ ...details, origin: e.target.value })} /></FormField>
+        <FormField label="CFOP padrão" htmlFor="defaultCfop"><input id="defaultCfop" maxLength={4} className={formFieldClass} value={details.defaultCfop} onChange={(e) => setDetails({ ...details, defaultCfop: e.target.value })} /></FormField>
         <div className="sm:col-span-2">
           <AsyncButton
             tone="secondary"
@@ -92,7 +95,8 @@ export default function InventoryPartDetailPage({ params }: { params: Promise<{ 
             busyLabel="Salvando…"
             onClick={async () => {
               const response = await api(`/inventory/parts/${id}`, { method: 'PATCH', body: JSON.stringify({ description, status, categoryId:details.categoryId||null,brandId:details.brandId||null,barcodeEan: details.barcodeEan || null, minimumStock: Number(details.minimumStock), defaultLocation: details.defaultLocation || null, ncm: details.ncm || null }) });
-              if (!response.ok) setError(friendlyError((await response.json().catch(() => ({}))).error));
+              const fiscalResponse = await api(`/inventory/parts/${id}/fiscal`, { method: 'PATCH', body: JSON.stringify({ cest: details.cest || null, origin: details.origin || null, defaultCfop: details.defaultCfop || null }) });
+              if (!response.ok || !fiscalResponse.ok) setError(friendlyError((await (response.ok ? fiscalResponse : response).json().catch(() => ({}))).error));
               else await load();
             }}
           />

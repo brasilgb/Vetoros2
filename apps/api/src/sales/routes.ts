@@ -29,7 +29,8 @@ export function registerSaleRoutes(app: FastifyInstance, service: AuthService) {
       const [row] = await tx.execute(sql`select s.*,c.legal_name customer_name,b.name branch_name from sales s left join customers c on c.id=s.customer_id join branches b on b.id=s.branch_id where s.id=${saleId}`);
       if (!row) return null;
       const items = await tx.execute(sql`select i.*,ip.sku part_sku from sale_items i left join inventory_parts ip on ip.id=i.inventory_part_id where i.sale_id=${saleId} order by i.created_at`);
-      return { ...row, items, subtotal: Number(row.subtotal), discount_total: Number(row.discount_total), total: Number(row.total) };
+      const fiscalDocuments = await tx.execute(sql`select id,document_type,status,series,document_number,total,created_at from fiscal_documents where origin_sale_id=${saleId} order by created_at desc`);
+      return { ...row, items, fiscal_documents: fiscalDocuments, subtotal: Number(row.subtotal), discount_total: Number(row.discount_total), total: Number(row.total) };
     });
   }
 

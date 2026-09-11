@@ -25,7 +25,7 @@ type Sale = { id: string; sale_number: number; status: string; customer_id: stri
 type PaymentMethod = { id: string; code: string; name: string; status: string };
 type Register = { id: string; name: string; current_session_id: string | null };
 type PaymentRow = { key: string; paymentMethodId: string; amount: string; tendered: string };
-type Receipt = { saleNumber: number; total: number; payments: Array<{ methodName: string; amount: number }> };
+type Receipt = { saleId: string; saleNumber: number; total: number; payments: Array<{ methodName: string; amount: number }> };
 
 const newRow = (): PaymentRow => ({ key: crypto.randomUUID(), paymentMethodId: '', amount: '', tendered: '' });
 
@@ -179,6 +179,7 @@ export default function PosPage() {
     if (!response.ok) return setError(friendlyError((await response.json().catch(() => ({}))).error));
     const body = await response.json();
     setReceipt({
+      saleId: sale.id,
       saleNumber: sale.sale_number,
       total,
       payments: (body.payments as Array<{ amount: string; payment_id: string }>).map((p, index) => ({ methodName: methods.find((m) => m.id === payments[index]?.paymentMethodId)?.name ?? '—', amount: Number(p.amount) })),
@@ -204,6 +205,7 @@ export default function PosPage() {
             </ul>
           </div>
           <div className="print-hidden flex gap-3">
+            <Link href={`/app/fiscal?origin=sale&saleId=${receipt.saleId}`} className="flex-1 rounded-xl border border-blue-300 px-4 py-2.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-50">Emitir documento fiscal</Link>
             <button onClick={() => window.print()} className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">Imprimir comprovante</button>
             <button onClick={resetForNextSale} className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">Nova venda</button>
           </div>

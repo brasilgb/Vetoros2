@@ -9,7 +9,7 @@ import { useSetBreadcrumb } from '../../../../components/breadcrumb-context';
 
 type Company = {
   id: string; legal_name: string; trade_name: string | null; tax_id_type: string; tax_id_normalized: string;
-  state_registration: string | null; municipal_registration: string | null; status: string;
+  state_registration: string | null; municipal_registration: string | null; cnae: string | null; fiscal_environment: 'homologacao' | 'producao'; status: string;
   phone: string | null; email: string | null; postal_code: string | null; street: string | null; address_number: string | null; address_complement: string | null; district: string | null; city: string | null; state: string | null; country: string; logo_url: string | null;
 };
 
@@ -17,7 +17,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const [company, setCompany] = useState<Company>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [fields, setFields] = useState({ legalName: '', tradeName: '', stateRegistration: '', municipalRegistration: '', status: 'active', phone: '', email: '', postalCode: '', street: '', addressNumber: '', addressComplement: '', district: '', city: '', state: '', country: 'BR', logoUrl: '' });
+  const [fields, setFields] = useState({ legalName: '', tradeName: '', stateRegistration: '', municipalRegistration: '', cnae: '', fiscalEnvironment: 'homologacao', status: 'active', phone: '', email: '', postalCode: '', street: '', addressNumber: '', addressComplement: '', district: '', city: '', state: '', country: 'BR', logoUrl: '' });
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -25,7 +25,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
     if (!response.ok) return setState('error');
     const data: Company = await response.json();
     setCompany(data);
-    setFields({ legalName: data.legal_name, tradeName: data.trade_name ?? '', stateRegistration: data.state_registration ?? '', municipalRegistration: data.municipal_registration ?? '', status: data.status, phone: data.phone ?? '', email: data.email ?? '', postalCode: data.postal_code ?? '', street: data.street ?? '', addressNumber: data.address_number ?? '', addressComplement: data.address_complement ?? '', district: data.district ?? '', city: data.city ?? '', state: data.state ?? '', country: data.country, logoUrl: data.logo_url ?? '' });
+    setFields({ legalName: data.legal_name, tradeName: data.trade_name ?? '', stateRegistration: data.state_registration ?? '', municipalRegistration: data.municipal_registration ?? '', cnae: data.cnae ?? '', fiscalEnvironment: data.fiscal_environment, status: data.status, phone: data.phone ?? '', email: data.email ?? '', postalCode: data.postal_code ?? '', street: data.street ?? '', addressNumber: data.address_number ?? '', addressComplement: data.address_complement ?? '', district: data.district ?? '', city: data.city ?? '', state: data.state ?? '', country: data.country, logoUrl: data.logo_url ?? '' });
     setState('ready');
   }, [id]);
 
@@ -68,6 +68,8 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
         <FormField label="Inscrição municipal" htmlFor="municipalRegistration">
           <input id="municipalRegistration" className={formFieldClass} value={fields.municipalRegistration} onChange={(e) => setFields({ ...fields, municipalRegistration: e.target.value })} />
         </FormField>
+        <FormField label="CNAE" htmlFor="cnae"><input id="cnae" className={formFieldClass} value={fields.cnae} onChange={(e) => setFields({ ...fields, cnae: e.target.value })} /></FormField>
+        <FormField label="Ambiente fiscal" htmlFor="fiscalEnvironment"><select id="fiscalEnvironment" className={formFieldClass} value={fields.fiscalEnvironment} onChange={(e) => setFields({ ...fields, fiscalEnvironment: e.target.value })}><option value="homologacao">Homologação</option><option value="producao">Produção</option></select></FormField>
         <div className="sm:col-span-2">
           <AsyncButton
             tone="secondary"
@@ -78,6 +80,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
                 method: 'PATCH',
                 body: JSON.stringify({ ...fields, tradeName: fields.tradeName || null, stateRegistration: fields.stateRegistration || null, municipalRegistration: fields.municipalRegistration || null, phone: fields.phone || null, email: fields.email || null, postalCode: fields.postalCode || null, street: fields.street || null, addressNumber: fields.addressNumber || null, addressComplement: fields.addressComplement || null, district: fields.district || null, city: fields.city || null, state: fields.state || null, logoUrl: fields.logoUrl || null }),
               });
+              await api(`/companies/${id}/fiscal`, { method: 'PATCH', body: JSON.stringify({ cnae: fields.cnae || null, fiscalEnvironment: fields.fiscalEnvironment }) });
               if (!response.ok) setError(friendlyError((await response.json().catch(() => ({}))).error));
               else await load();
             }}
